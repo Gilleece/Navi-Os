@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NAVI-OS // personal terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="crt">
+
+<!-- ============ BOOT ============ -->
+<div id="boot" tabindex="0" aria-label="Boot screen, press any key to continue">
+  <div id="boot-text"></div><span class="cursor"></span>
+  <div id="boot-hint">[ PRESS ANY KEY / TAP TO JACK IN ]</div>
+</div>
+
+<!-- ============ DESKTOP ============ -->
+<main id="desktop" hidden>
+  <svg id="wallpaper-sigil" viewBox="0 0 200 200" aria-hidden="true">
+    <polygon points="100,12 188,160 12,160" fill="none" stroke="#ff7a1a" stroke-width="2"/>
+    <polygon points="100,44 162,148 38,148" fill="none" stroke="#46ff8e" stroke-width="1"/>
+    <circle cx="100" cy="118" r="14" fill="none" stroke="#46ff8e" stroke-width="1"/>
+    <line x1="100" y1="56" x2="100" y2="104" stroke="#46ff8e" stroke-width="1"/>
+  </svg>
+
+  <nav id="icons" aria-label="Desktop programs">
+    <button class="icon" data-open="win-about">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 5-7 8-7s7 2 8 7"/></svg>
+      <span>ABOUT.SYS</span>
+    </button>
+    <button class="icon" data-open="win-projects">
+      <svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v11H3z"/><path d="M3 7V4h7"/></svg>
+      <span>PROJECTS</span>
+    </button>
+    <button class="icon" data-open="win-calendar">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <span>CALENDAR</span>
+    </button>
+    <button class="icon" data-open="win-notepad">
+      <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <span>NOTEPAD</span>
+    </button>
+    <button class="icon" data-open="win-calc">
+      <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18"/><path d="M5 9h14M9 13h.01M12 13h.01M15 13h.01M9 17h.01M12 17h.01M15 17h.01"/></svg>
+      <span>CALC.EXE</span>
+    </button>
+    <button class="icon maze" data-open="win-maze">
+      <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3zM7 3v10M7 17v4M11 7v10M15 3v6M15 13v8M19 7v10M3 11h4M11 7h4M7 17h8"/></svg>
+      <span>MAZE.EXE</span>
+    </button>
+  </nav>
+
+  <!-- ABOUT -->
+  <section class="window" id="win-about" data-title="ABOUT.SYS" role="dialog" aria-label="About me">
+    <header class="titlebar"><span class="tag">&gt;_ ABOUT.SYS <b>// operator file</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body">
+      <h2>OPERATOR PROFILE</h2>
+      <div class="id-row">
+        <div class="id-photo">NO<br>SIGNAL</div>
+        <div class="kv">
+          <div><b>HANDLE:</b> your_name_here</div>
+          <div><b>CLASS:</b> developer / maker</div>
+          <div><b>NODE:</b> Belfast, NI</div>
+          <div><b>STATUS:</b> <span style="color:var(--green)">ONLINE</span></div>
+        </div>
+      </div>
+      <p>Hello. I live on the wired side of the screen. I build small machines out of
+      code and occasionally let them out into the world. This terminal is my home node —
+      everything I am is a few windows away.</p>
+      <p class="dim">// edit this text in ABOUT.SYS to make it yours: who you are,
+      what you build, how to reach you.</p>
+      <p><b style="color:var(--orange)">CONTACT:</b> you@example.com &nbsp;·&nbsp;
+      <a href="#">github</a> · <a href="#">mastodon</a></p>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section class="window" id="win-projects" data-title="PROJECTS" role="dialog" aria-label="Projects">
+    <header class="titlebar"><span class="tag">&gt;_ /PROJECTS <b>// 3 entries</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body">
+      <h2>PROJECT INDEX</h2>
+      <a class="proj" href="#project-1">
+        <h3><i>01</i> PROJECT ONE</h3>
+        <p>Replace this link + blurb with your first project.</p>
+      </a>
+      <a class="proj" href="#project-2">
+        <h3><i>02</i> PROJECT TWO</h3>
+        <p>Replace this link + blurb with your second project.</p>
+      </a>
+      <a class="proj" href="#project-3">
+        <h3><i>03</i> PROJECT THREE</h3>
+        <p>Replace this link + blurb with your third project.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section class="window" id="win-calendar" data-title="CALENDAR" role="dialog" aria-label="Calendar">
+    <header class="titlebar"><span class="tag">&gt;_ CALENDAR <b>// local time</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body">
+      <div class="cal-head">
+        <button class="cal-nav" id="cal-prev" aria-label="Previous month">&lt;&lt;</button>
+        <span class="m" id="cal-title">—</span>
+        <button class="cal-nav" id="cal-next" aria-label="Next month">&gt;&gt;</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div id="cal-readout"></div>
+    </div>
+  </section>
+
+  <!-- NOTEPAD -->
+  <section class="window" id="win-notepad" data-title="NOTEPAD" role="dialog" aria-label="Notepad">
+    <header class="titlebar"><span class="tag">&gt;_ NOTEPAD <b>// volatile memory</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body" style="display:flex;flex-direction:column">
+      <textarea id="note-area" spellcheck="false" placeholder="> type here. notes live in session memory only — they vanish on reload, like everything else."></textarea>
+      <div class="note-foot">
+        <span id="note-count">0 chars</span>
+        <button id="note-clear">PURGE</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALCULATOR -->
+  <section class="window" id="win-calc" data-title="CALC.EXE" role="dialog" aria-label="Calculator">
+    <header class="titlebar"><span class="tag">&gt;_ CALC.EXE</span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body">
+      <div id="calc-display" aria-live="polite">0</div>
+      <div class="calc-grid" id="calc-keys">
+        <button data-k="C" class="op">C</button><button data-k="±" class="op">±</button>
+        <button data-k="%" class="op">%</button><button data-k="/" class="op">÷</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="*" class="op">×</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="-" class="op">−</button>
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="+" class="op">+</button>
+        <button data-k="0">0</button><button data-k=".">.</button><button data-k="=" class="eq">=</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAZE LAUNCHER -->
+  <section class="window" id="win-maze" data-title="MAZE.EXE" role="dialog" aria-label="Maze launcher">
+    <header class="titlebar"><span class="tag">&gt;_ MAZE.EXE <b>// screensaver protocol</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body">
+      <h2>LABYRINTH PROTOCOL</h2>
+      <p>A first-person maze in the old screensaver style, rebuilt for the wired.
+      Find the orange gate. The walls remember you.</p>
+      <p class="dim">desktop&nbsp;: WASD / arrows to move, drag mouse to look<br>
+      mobile&nbsp;&nbsp;: left joystick to move, right buttons to turn<br>
+      headset&nbsp;: press ENTER VR inside the maze (WebXR)</p>
+      <button class="big" id="btn-launch-maze">[ INITIALISE MAZE ]</button>
+    </div>
+  </section>
+</main>
+
+<!-- ============ TASKBAR ============ -->
+<footer id="taskbar" hidden>
+  <button id="tb-root" aria-label="Show desktop">ROOT</button>
+  <div id="tb-tasks" aria-label="Open windows"></div>
+  <div id="tb-clock"><span class="t" id="clock-t">00:00:00</span><span id="clock-d">—</span></div>
+</footer>
+
+<!-- ============ MAZE OVERLAY ============ -->
+<div id="maze-layer" aria-label="3D maze">
+  <canvas id="maze-canvas"></canvas>
+  <div class="hud" id="hud-top">MAZE.EXE <b>// depth 01</b></div>
+  <div class="hud" id="hud-msg">GATE REACHED</div>
+  <div id="maze-ui">
+    <button id="btn-vr" hidden>ENTER VR</button>
+    <button id="btn-exit-maze">EXIT</button>
+  </div>
+  <div id="joy"><div class="nub"></div></div>
+  <div id="turnpad">
+    <button id="turn-l" aria-label="Turn left">&#8634;</button>
+    <button id="turn-r" aria-label="Turn right">&#8635;</button>
+  </div>
+  <div id="maze-help">WASD / arrows move · drag to look · ESC to exit</div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
