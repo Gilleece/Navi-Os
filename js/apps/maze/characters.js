@@ -12,7 +12,7 @@
    `firstLevelNearStart` (Zit) who are guaranteed within the first
    five squares on level 1.
    ============================================================ */
-import { cellCenter, bfsDistances, solidSides } from "./generator.js";
+import { cellCenter, bfsDistances, exteriorSides } from "./generator.js";
 
 /* affinity buckets -> tone key used to pick dialogue flavour */
 const TONES = [
@@ -317,13 +317,15 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
   const dist = bfsDistances(cells);
   const used = new Set();
 
-  // valid host cells: not the start, not the goal, and with a wall to host a window
+  // valid host cells: not the start, not the goal, and with a wall facing
+  // outside the grid — the only walls whose far side the player can never
+  // reach, so the window can't be flanked from the character's side
   const candidates = [];
   for (let y = 0; y < N; y++)
     for (let x = 0; x < N; x++){
       if (x === 0 && y === 0) continue;
       if (x === goalCell.x && y === goalCell.y) continue;
-      if (solidSides(cells[y][x]).length === 0) continue;
+      if (exteriorSides(cells, x, y).length === 0) continue;
       candidates.push({ x, y });
     }
 
@@ -338,7 +340,7 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
 
     const cell  = pool[Math.random()*pool.length | 0];
     used.add(cell.x + "," + cell.y);
-    const sides = solidSides(cells[cell.y][cell.x]);
+    const sides = exteriorSides(cells, cell.x, cell.y);
     const side  = sides[Math.random()*sides.length | 0];
     spawns.push(makeSpawn(ch, cell, side, CELL));
   }

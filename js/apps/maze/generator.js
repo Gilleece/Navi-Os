@@ -50,6 +50,22 @@ export function bfsDistances(cells){
 /* the sides of a cell that still have a wall, e.g. ["N","E"] */
 export const solidSides = c => ["N","S","E","W"].filter(d => c[d]);
 
+/* the sides of cell (x,y) that face outside the grid entirely —
+   no neighbouring cell sits across that wall. The recursive
+   backtracker only ever carves passages between in-bounds cells,
+   so these walls are always solid, and they're the only walls
+   whose far side is guaranteed unreachable by the player — safe
+   to put a one-way window+character spawn on. */
+export function exteriorSides(cells, x, y){
+  const n = cells.length;
+  const sides = [];
+  if (y === 0)     sides.push("N");
+  if (y === n - 1) sides.push("S");
+  if (x === 0)     sides.push("W");
+  if (x === n - 1) sides.push("E");
+  return sides;
+}
+
 /* pick the goal cell: the dead-end (single opening) furthest by
    path distance from the start (0,0). A perfect maze always has
    at least one dead-end, so reaching the goal there leaves nowhere

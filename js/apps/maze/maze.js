@@ -24,6 +24,7 @@ import { bindInput, updatePlayer } from "./player.js";
 import { spawnCharacters, buildCharacters, recoverAffinity } from "./characters.js";
 import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue } from "./dialogue.js";
 import { rollStats } from "./state.js";
+import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
 
 const layer = $("#maze-layer");
 let three = null;
@@ -91,6 +92,13 @@ function buildMaze(){
   $("#hud-top").innerHTML = `MAZE.EXE <b>// depth ${String(M.depth).padStart(2,"0")}</b>`;
 }
 
+/* debug-only: jump straight to the next level, skipping the goal */
+function debugNextLevel(){
+  if (M.dialogueOpen) return;
+  M.depth++;
+  buildMaze();
+}
+
 /* --- main loop --- */
 /* any controller trigger currently held (VR) */
 function triggerHeld(){
@@ -112,6 +120,7 @@ function mazeLoop(){
       const t = triggerHeld();
       if (t && !M.prevTrigger && M.nearCharacter) openDialogue(M, M.nearCharacter.character);
       M.prevTrigger = t;
+      updateDebugXR(M, three);    // left-trigger debug panel + right-trigger click
     }
   }
 
@@ -150,11 +159,18 @@ async function launchMaze(){
     M.dolly  = new three.Group();
     M.dolly.add(M.camera);
     M.controllers = [M.renderer.xr.getController(0), M.renderer.xr.getController(1)];
-    M.controllers.forEach(c => M.dolly.add(c));
+    M.controllers.forEach(c => {
+      M.dolly.add(c);
+      // tag each controller space with its hand so the debug panel
+      // (left to summon, right to point/click) can tell them apart
+      c.addEventListener("connected", e => { c.userData.handedness = e.data.handedness; });
+    });
     M.clock  = new three.Clock();
     bindInput(M, layer, exitMaze);
     initDialogue(M);                 // build the dialogue box DOM once
     initPanel(three, M.dolly);       // build the in-world VR dialogue panel
+    initDebugUI(debugNextLevel);     // desktop/touch debug button (no-op unless DEBUG)
+    initDebugPanel(three, M.dolly);  // in-world VR debug panel (no-op unless DEBUG)
     rollStats();                     // randomise the player's attributes (placeholder for char creation)
     addEventListener("resize", sizeMaze);
 

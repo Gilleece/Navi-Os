@@ -246,6 +246,8 @@ a{color:var(--green)}
 #maze-ui button:hover{background:var(--green);color:var(--bg);text-shadow:none}
 #btn-vr{color:var(--orange) !important;border-color:var(--orange) !important}
 #btn-vr:hover{background:var(--orange) !important;color:var(--bg) !important}
+#btn-debug-next{color:var(--red) !important;border-color:var(--red) !important}
+#btn-debug-next:hover{background:var(--red) !important;color:var(--bg) !important}
 #maze-help{
   position:absolute;bottom:14px;left:0;right:0;text-align:center;
   color:var(--green-dim);font-size:12px;pointer-events:none;
