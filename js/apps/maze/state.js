@@ -46,3 +46,8 @@ export function meetsReq(req){
 }
 
 export function addItem(item){ if (item) player.inventory.push(item); }
+
+export function removeItem(id){
+  const i = player.inventory.findIndex(it => it.id === id);
+  return i < 0 ? null : player.inventory.splice(i, 1)[0];
+}

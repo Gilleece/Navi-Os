@@ -23,14 +23,34 @@ const TONES = [
   [100, "warm"],
 ];
 
+/* relationship standing shown to the player (first band whose max >= affinity).
+   The 30-39 band ("Wary of you") fills a gap in the original spec. */
+const STANDINGS = [
+  [0,   "Wants to end you"],
+  [19,  "Hates your guts"],
+  [29,  "Dislikes you"],
+  [39,  "Wary of you"],
+  [49,  "Suspicious of you"],
+  [59,  "Neutral"],
+  [69,  "Intrigued by you"],
+  [79,  "Likes you"],
+  [89,  "Likes you a LOT"],
+  [99,  "Adores you"],
+  [100, "Obsessed"],
+];
+
+/* below this affinity a character refuses normal conversation */
+export const HOSTILE = 20;
+
 export class Character {
   constructor(def){
     this.id          = def.id;
     this.name        = def.name;
     this.description = def.description;
     this.color       = def.color ?? 0x46ff8e;
-    this.affinity    = def.affinity ?? 50;          // 0..100, mutated by dialogue, persists
-    this.met         = new Set();                    // ids of one-time affinity choices already taken
+    this.affinity    = def.affinity ?? 50;          // 0..100, mutated by dialogue, persists across levels (new game = 50)
+    this.seen        = new Map();                    // level -> Set of exhausted topic ids (conversations are fresh each level)
+    this.wants       = def.wants ?? [];              // item ids this character covets — gifting one thaws a hostile mood
     this.inventory   = (def.inventory ?? []).map(i => ({ ...i }));
     this.portrait    = def.portrait;                // (ctx, w, h) => void
     this._dialogue   = def.dialogue;                // (ctx) => rootNode
@@ -40,6 +60,20 @@ export class Character {
   like(delta){ this.affinity = Math.max(0, Math.min(100, this.affinity + delta)); }
 
   get tone(){ return (TONES.find(([max]) => this.affinity <= max) ?? TONES.at(-1))[1]; }
+
+  /* relationship label shown next to the name in dialogue */
+  get standing(){ return (STANDINGS.find(([max]) => this.affinity <= max) ?? STANDINGS.at(-1))[1]; }
+
+  /* too cold for normal conversation — needs a gift to thaw */
+  get wontTalk(){ return this.affinity < HOSTILE; }
+
+  /* topic exhaustion is tracked per maze level, so each level is a fresh conversation */
+  hasSeen(level, id){ return this.seen.get(level)?.has(id) ?? false; }
+  markSeen(level, id){
+    let s = this.seen.get(level);
+    if (!s) this.seen.set(level, s = new Set());
+    s.add(id);
+  }
 
   /* remove an item from this character's pockets (when they give it away) */
   takeItem(id){
@@ -116,12 +150,20 @@ function drawZit(g, w, h){
   g.beginPath(); g.ellipse(px+13, py+5, w*0.075, w*0.05,  0.35, 0, Math.PI*2); g.fill(); g.stroke();
 }
 
-/* leaf helper — an end-of-conversation node */
-const end = text => ({ text, choices: [] });
-const bye = () => end("Ciao, ciao, amico... *Zit melts back into the static, rubbing his hands.*");
+/* Zit's dialogue is a hub of topics. The dialogue engine shows the
+   available topics as choices; once a topic is used it is recorded
+   in `character.seen` and never offered again, and when nothing
+   engageable is left the hub falls back to the `exhausted` line.
 
+   A topic: { id, label, req?, effects?, oneShot?, available?, node }
+     - req       gate on a player attribute (shown disabled if unmet)
+     - effects   applied once, when the topic is selected (e.g. like)
+     - oneShot   default true; false topics persist (driven by state)
+     - available optional predicate for dynamic topics (e.g. trade)
+     - node      the line(s) Zit speaks; an object, or a function that
+                 returns one (use a function when it depends on state) */
 function zitDialogue(ctx){
-  const { depth, tone, character } = ctx;
+  const { depth, character } = ctx;
 
   const greet = {
     hostile:  "Eh. You again. Mamma mia... whaddya want?",
@@ -129,77 +171,46 @@ function zitDialogue(ctx){
     neutral:  "Ahh, ciao ciao! A little mouse, lost in the wires, eh?",
     friendly: "Amico! Bellissimo to see your face again!",
     warm:     "Mio caro amico! Come, come — Zit, he has been waiting for you!",
-  }[tone];
+  }[character.tone];
 
-  // an offer of whatever Zit is carrying next
-  const item = character.inventory[0] || null;
-  const offer = item
-    ? { text: `*Zit leans close, glancing around.* For you, my friend — take this, a '${item.name}'. No charge... this-a time. *winks*`,
-        choices: [
-          { text: `Take the ${item.name}.`, effects: { give: item.id, like: +3 },
-            next: end("*He presses it into your palm.* Sì! You no forget Zit was good to you, eh?") },
-          { text: "No, thank you — I travel light.", effects: { like: +1 },
-            next: end("Heh. A careful one. Smart. Zit respects this.") },
-        ] }
-    : end("*He pats his empty pockets.* Ahh, Zit has nothing more for you today. Next-a time, eh!");
+  return {
+    hub: true,
+    level: depth,                 // conversations are tracked (and exhausted) per level
+    greet: `${greet} Down here on level ${depth}, eh, is dangerous. But Zit, he knows-a things.`,
+    exhausted: "Eh, amico — we have-a talked enough for now. Go, go! The maze, she is waiting. *Zit rubs his hands and melts back into the static.*",
+    hostile: "*He turns his back, muttering in Italian.* Pah! I got nothing for you. You bring Zit something nice, eh — then maybe we talk again.",
+    topics: [
+      { id: "place", label: "Well met, friend — what is this place?", effects: { like: +4 },
+        node: { text: "Heh — 'friend', he says. I like-a this one. This is the in-between, amico — the maze that is not a maze. You walk, you talk to Zit, you no get lost. Capisce?" } },
 
-  // hubs (links filled in after the tree exists, so they can loop back)
-  const ask = {
-    text: "The others down here? Pfft. Things in the static, wearing faces, amico. Me — Zit — I am the only honest one. *grin*",
-    choices: [],
-  };
-  const canTrade = character.affinity >= 55;
-  const trade = {
-    text: canTrade
-      ? "*He rubs his hands together.* For a friend, Zit always has-a the little something..."
-      : "Trade? Hah! I no even know you, amico. You make Zit like you first, eh?",
-    choices: canTrade ? [{ text: "Let's see it, then.", next: offer }] : [],
-  };
+      { id: "others", label: "Who else wanders down here?",
+        node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Zit — I am the only honest one. *grin*" } },
 
-  const root = {
-    text: `${greet} Down here on level ${depth}, eh, is dangerous. But Zit, he knows-a things.`,
-    choices: [
-      { text: "Well met, friend. What is this place?", effects: { like: +4, once: "greet" },
-        next: { text: "Heh — 'friend', he says. I like-a this one. This is the in-between, amico — the maze that is not a maze. Capisce?",
-                choices: [
-                  { text: "Tell me about the others down here.", next: ask },
-                  { text: "Got anything to trade?",              next: trade },
-                  { text: "I should go.",                        next: bye() },
-                ] } },
-      { text: "[Charisma] A man of your style must run this whole place.",
-        req: { attr: "charisma", level: 6 }, effects: { like: +10, once: "charm" },
-        next: { text: "*He puffs up, twirling the mustache.* Ahhh, you have-a the eye! Nothing it moves in these wires without Zit knowing. For you... maybe a little something.",
-                choices: [
-                  { text: "I'd be honoured.",                   next: offer },
-                  { text: "Tell me about the others down here.", next: ask },
-                  { text: "I should go.",                        next: bye() },
-                ] } },
-      { text: "[Intelligence] This is a recursive lattice — where does it terminate?",
-        req: { attr: "intelligence", level: 6 },
-        next: { text: "*Zit blinks, then cackles.* Clever mouse! It 'terminates' at the broken wall — where everything it falls into the static. Follow the glow, amico. And watch your step, eh.",
-                choices: [
-                  { text: "Got anything to trade?", next: trade },
-                  { text: "My thanks.", effects: { like: +2, once: "int-thanks" }, next: bye() },
-                ] } },
-      { text: "Got anything to trade?", next: trade },
-      { text: "Get out of my way, little man.", effects: { like: -12, once: "rude" },
-        next: end("*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene — get lost. See if Zit, he helps you then.") },
-      { text: "(Leave)", next: bye() },
+      { id: "charm", label: "*Flatter him* A man of your style must run this whole place.",
+        req: { attr: "charisma", level: 6 }, effects: { like: +10 },
+        node: { text: "*He puffs up, twirling the mustache.* Ahhh, you have-a the eye! Nothing it moves in these wires without Zit knowing. We are friends now, eh? And friends — friends help each other." } },
+
+      { id: "smart", label: "This is a recursive lattice — where does it terminate?",
+        req: { attr: "intelligence", level: 6 }, effects: { like: +2 },
+        node: { text: "*Zit blinks, then cackles.* Clever mouse! It 'terminates' at the broken wall — where everything it falls into the static. Follow the glow, amico. And watch your step, eh." } },
+
+      { id: "rude", label: "Get out of my way, little man.", effects: { like: -12 },
+        node: { text: "*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene." } },
+
+      { id: "trade", label: "Got anything to trade?", oneShot: false,
+        available: () => character.affinity >= 55 && character.inventory.length > 0,
+        node: () => {
+          const item = character.inventory[0];
+          return {
+            text: `*Zit leans close, glancing around.* For you, my friend — take this, a '${item.name}'. No charge... this-a time. *winks*`,
+            choices: [
+              { text: `Take the ${item.name}.`, effects: { give: item.id, like: +3 } },
+              { text: "No, thank you — I travel light." },
+            ],
+          };
+        } },
     ],
   };
-
-  // wire the hubs back into the tree
-  ask.choices = [
-    { text: "Got anything to trade?", next: trade },
-    { text: "Back.",                  next: root },
-    { text: "(Leave)",                next: bye() },
-  ];
-  trade.choices.push(
-    canTrade ? { text: "Maybe later.", next: root }
-             : { text: "Back.",        next: root });
-  trade.choices.push({ text: "(Leave)", next: bye() });
-
-  return root;
 }
 
 const ZIT = new Character({
@@ -219,6 +230,14 @@ const ZIT = new Character({
 
 /* the full roster (just Zit for now) */
 export const ROSTER = [ZIT];
+
+/* passive recovery, applied once per maze level: a character who is
+   almost murderous (affinity < 10) warms by 5, capped at 10, so an
+   enraged character can eventually be approached again. */
+export function recoverAffinity(){
+  for (const c of ROSTER)
+    if (c.affinity < 10) c.affinity = Math.min(10, c.affinity + 5);
+}
 
 /* ---------- spawning ---------- */
 

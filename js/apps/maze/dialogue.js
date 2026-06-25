@@ -6,7 +6,7 @@
    style), shift the character's affinity, and make them hand over
    an item. All UI is built here and lives inside #maze-layer.
    ============================================================ */
-import { player, STATS, meetsReq, addItem } from "./state.js";
+import { player, STATS, meetsReq, addItem, removeItem } from "./state.js";
 
 const STAT_ABBR = { strength:"STR", perception:"PER", endurance:"END",
                     charisma:"CHA", intelligence:"INT", agility:"AGI", luck:"LCK" };
@@ -14,6 +14,7 @@ const STAT_ABBR = { strength:"STR", perception:"PER", endurance:"END",
 const ui = {};          // cached DOM refs
 let M = null;           // shared engine state
 let current = null;     // character currently being spoken to
+let hub = null;         // current character's topic hub
 const TALK_RADIUS = 2.4;
 
 /* ---------- build the DOM (once) ---------- */
@@ -63,6 +64,7 @@ export function initDialogue(state){
 export function openDialogue(state, character){
   M = state;
   current = character;
+  hub = character.dialogueFor(M.depth, player);
   M.dialogueOpen = true;
   M.keys = {};                              // drop any held movement keys
   M.talk = false;
@@ -71,7 +73,7 @@ export function openDialogue(state, character){
   ui.name.textContent = character.name;
   ui.foot.textContent = STATS.map(([k]) => `${STAT_ABBR[k]} ${player.stats[k]}`).join("  ·  ");
 
-  renderNode(character.dialogueFor(M.depth, player));
+  renderHub();
   ui.prompt.classList.remove("on");
   ui.box.classList.add("on");
 }
@@ -79,13 +81,85 @@ export function openDialogue(state, character){
 function close(){
   M.dialogueOpen = false;
   current = null;
+  hub = null;
   ui.box.classList.remove("on");
 }
 
 /* close from outside (e.g. when the player exits the maze) */
 export function closeDialogue(state){ if (state) M = state; if (ui.box) close(); }
 
-/* ---------- render a single dialogue node ---------- */
+/* a numbered choice button; disabled (and unclickable) when its
+   requirement isn't met, with a green/red attribute tag */
+function choiceButton(index, { label, req, disabled, onClick }){
+  const btn = document.createElement("button");
+  if (req){
+    const tag = document.createElement("span");
+    tag.className = "req";
+    tag.textContent = `[${STAT_ABBR[req.attr]} ${req.level}] `;
+    btn.appendChild(tag);
+  }
+  btn.appendChild(document.createTextNode(`${index}. ${label}`));
+  if (disabled) btn.disabled = true;
+  else btn.addEventListener("click", onClick);
+  return btn;
+}
+
+/* ---------- the topic hub ---------- */
+function renderHub(){
+  refreshAffinity();
+  ui.choices.innerHTML = "";
+
+  // a hostile character won't hold a normal conversation — but offering an
+  // item they covet (won from another character) will thaw them out
+  if (current.wontTalk){
+    const wanted = current.wants.map(id => player.inventory.find(it => it.id === id)).find(Boolean);
+    if (wanted){ renderGift(wanted); return; }
+    ui.text.textContent = hub.hostile;
+    ui.choices.appendChild(choiceButton(1, { label: "(Leave)", onClick: close }));
+    return;
+  }
+
+  // topics still worth offering: not exhausted this level, and currently available
+  const topics = hub.topics.filter(t => !current.hasSeen(hub.level, t.id) && (!t.available || t.available()));
+  const engageable = topics.filter(t => meetsReq(t.req));
+
+  // nothing left the player can actually do -> in-character brush-off
+  if (!engageable.length){
+    ui.text.textContent = hub.exhausted;
+    ui.choices.appendChild(choiceButton(1, { label: "(Leave)", onClick: close }));
+    return;
+  }
+
+  ui.text.textContent = hub.greet;
+  let i = 1;
+  for (const t of topics)
+    ui.choices.appendChild(choiceButton(i++, {
+      label: t.label, req: t.req, disabled: !meetsReq(t.req),
+      onClick: () => selectTopic(t),
+    }));
+  ui.choices.appendChild(choiceButton(i, { label: "(Leave)", onClick: close }));
+}
+
+/* offer a coveted item to a hostile character to win them over */
+function renderGift(item){
+  ui.text.textContent = `*${current.name} eyes the ${item.name} in your hands, suddenly interested.*`;
+  ui.choices.innerHTML = "";
+  ui.choices.appendChild(choiceButton(1, { label: `Offer the ${item.name}.`, onClick: () => {
+    const given = removeItem(item.id);
+    if (given){ current.inventory.push(given); current.like(20); toast(`GAVE — ${given.name.toUpperCase()}`); }
+    renderHub();                                 // mood may now be warm enough to talk
+  }}));
+  ui.choices.appendChild(choiceButton(2, { label: "(Leave)", onClick: close }));
+}
+
+function selectTopic(t){
+  if (!meetsReq(t.req)) return;                 // belt-and-braces
+  if (t.oneShot !== false) current.markSeen(hub.level, t.id);   // carried out -> not offered again this level
+  if (t.effects && typeof t.effects.like === "number") current.like(t.effects.like);
+  renderNode(typeof t.node === "function" ? t.node() : t.node);
+}
+
+/* ---------- a line within a topic; ends back at the hub ---------- */
 function renderNode(node){
   refreshAffinity();
   ui.text.textContent = node.text;
@@ -93,37 +167,21 @@ function renderNode(node){
 
   const choices = (node.choices && node.choices.length)
     ? node.choices
-    : [{ text: "(End)", _close: true }];
+    : [{ text: "(Continue)" }];     // no choices -> a single button back to the hub
 
-  choices.forEach((choice, i) => {
-    const btn = document.createElement("button");
-    const ok  = meetsReq(choice.req);
-    if (choice.req){
-      const tag = document.createElement("span");
-      tag.className = "req";
-      tag.textContent = `[${STAT_ABBR[choice.req.attr]} ${choice.req.level}] `;
-      btn.appendChild(tag);
-    }
-    btn.appendChild(document.createTextNode(`${i+1}. ${choice.text}`));
-    if (choice.req && !ok) btn.disabled = true;
-    btn.addEventListener("click", () => chooseChoice(choice));
-    ui.choices.appendChild(btn);
-  });
+  choices.forEach((choice, idx) =>
+    ui.choices.appendChild(choiceButton(idx + 1, {
+      label: choice.text, req: choice.req, disabled: choice.req && !meetsReq(choice.req),
+      onClick: () => chooseChoice(choice),
+    })));
 }
 
 function chooseChoice(choice){
-  if (choice._close){ close(); return; }
   if (choice.req && !meetsReq(choice.req)) return;   // belt-and-braces
 
-  // _used guards against double-apply within one conversation; `once`
-  // guards against re-farming by re-opening the conversation later.
-  if (choice.effects && !choice._used){
-    choice._used = true;
-    const fx = choice.effects;
-    if (typeof fx.like === "number" && (!fx.once || !current.met.has(fx.once))){
-      current.like(fx.like);
-      if (fx.once) current.met.add(fx.once);
-    }
+  const fx = choice.effects;
+  if (fx){
+    if (typeof fx.like === "number") current.like(fx.like);
     if (fx.give){                                    // giving is self-limiting (item is removed)
       const item = current.takeItem(fx.give);
       if (item){ addItem(item); toast(`RECEIVED — ${item.name.toUpperCase()}`); }
@@ -131,13 +189,11 @@ function chooseChoice(choice){
   }
 
   if (choice.next) renderNode(choice.next);
-  else close();
+  else renderHub();                                  // end of the topic -> back to the hub
 }
 
 function refreshAffinity(){
-  const a = current.affinity;
-  const bars = Math.round(a / 10);
-  ui.aff.textContent = `LIKES YOU ${"|".repeat(bars)}${".".repeat(10-bars)} ${a}`;
+  ui.aff.textContent = `${current.standing.toUpperCase()} · ${current.affinity}`;
 }
 
 /* reuse the maze's centre banner for pickups */

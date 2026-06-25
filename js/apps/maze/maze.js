@@ -21,7 +21,7 @@ import { buildEnvironment, wallKey } from "./environment.js";
 import { buildEntities } from "./entities.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
-import { spawnCharacters, buildCharacters } from "./characters.js";
+import { spawnCharacters, buildCharacters, recoverAffinity } from "./characters.js";
 import { initDialogue, updateInteractions, closeDialogue } from "./dialogue.js";
 import { rollStats } from "./state.js";
 
@@ -54,6 +54,8 @@ function buildMaze(){
   M.walls.length = 0;
   M.spinners.length = 0;
   while (M.scene.children.length) M.scene.remove(M.scene.children[0]);
+
+  recoverAffinity();                       // enraged characters thaw a little each level
 
   const cells = genMaze(M.N);
   const goalCell = findGoalCell(cells);   // furthest dead-end from start
