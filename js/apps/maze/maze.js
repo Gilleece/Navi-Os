@@ -22,7 +22,7 @@ import { buildEntities } from "./entities.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
 import { spawnCharacters, buildCharacters, recoverAffinity } from "./characters.js";
-import { initDialogue, updateInteractions, closeDialogue } from "./dialogue.js";
+import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue } from "./dialogue.js";
 import { rollStats } from "./state.js";
 
 const layer = $("#maze-layer");
@@ -45,6 +45,7 @@ const M = {
   renderer:null, scene:null, camera:null, dolly:null,
   walls:[], goal:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   npcs:[], nearCharacter:null, dialogueOpen:false, talk:false,
+  controllers:null, prevTrigger:false,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
   snapReady:true, inVR:false, clock:null,
 };
@@ -91,11 +92,27 @@ function buildMaze(){
 }
 
 /* --- main loop --- */
+/* any controller trigger currently held (VR) */
+function triggerHeld(){
+  const session = M.renderer.xr.getSession && M.renderer.xr.getSession();
+  if (!session) return false;
+  for (const src of session.inputSources)
+    if (src.gamepad && src.gamepad.buttons[0] && src.gamepad.buttons[0].pressed) return true;
+  return false;
+}
+
 function mazeLoop(){
   const dt = Math.min(M.clock.getDelta(), 0.1);
-  if (!M.dialogueOpen){          // freeze the world while a conversation is open
+  if (M.dialogueOpen){            // freeze the world while a conversation is open
+    if (M.inVR) updateDialogueXR(M, three, dt);
+  } else {
     updatePlayer(three, M, dt);
     updateInteractions(M);
+    if (M.inVR){                  // trigger near a character starts the conversation
+      const t = triggerHeld();
+      if (t && !M.prevTrigger && M.nearCharacter) openDialogue(M, M.nearCharacter.character);
+      M.prevTrigger = t;
+    }
   }
 
   // spinners + goal check
@@ -132,9 +149,12 @@ async function launchMaze(){
     M.camera.rotation.order = "YXZ";
     M.dolly  = new three.Group();
     M.dolly.add(M.camera);
+    M.controllers = [M.renderer.xr.getController(0), M.renderer.xr.getController(1)];
+    M.controllers.forEach(c => M.dolly.add(c));
     M.clock  = new three.Clock();
     bindInput(M, layer, exitMaze);
     initDialogue(M);                 // build the dialogue box DOM once
+    initPanel(three, M.dolly);       // build the in-world VR dialogue panel
     rollStats();                     // randomise the player's attributes (placeholder for char creation)
     addEventListener("resize", sizeMaze);
 
