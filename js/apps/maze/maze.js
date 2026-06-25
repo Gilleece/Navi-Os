@@ -10,16 +10,20 @@
      environment.js — fog, lights, floor, ceiling, walls
      entities.js    — goal gate + floating relics
      player.js      — movement, collision, camera, input
-   Placeholders (structure only, not yet wired):
+     characters.js  — Character class, roster, spawning
+     dialogue.js    — portrait dialogue box + interaction prompt
+     state.js       — player RPG state (attributes, inventory)
+   Placeholder (structure only, not yet wired):
      menu.js        — save / load / settings
-     characters.js  — reusable Character class + dialogue
-     state.js       — RPG game state (levels, skills, inventory)
    ============================================================ */
 import { $ } from "../../utils.js";
-import { buildEnvironment } from "./environment.js";
+import { buildEnvironment, wallKey } from "./environment.js";
 import { buildEntities } from "./entities.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
+import { spawnCharacters, buildCharacters } from "./characters.js";
+import { initDialogue, updateInteractions, closeDialogue } from "./dialogue.js";
+import { rollStats } from "./state.js";
 
 const layer = $("#maze-layer");
 let three = null;
@@ -40,6 +44,7 @@ const M = {
   N: 9, CELL: 4, WALL_H: 3.4, WALL_T: 0.5, R: 0.45,
   renderer:null, scene:null, camera:null, dolly:null,
   walls:[], goal:null, spinners:[], depth:1, lamp:null, cyberMat:null,
+  npcs:[], nearCharacter:null, dialogueOpen:false, talk:false,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
   snapReady:true, inVR:false, clock:null,
 };
@@ -53,7 +58,11 @@ function buildMaze(){
   const cells = genMaze(M.N);
   const goalCell = findGoalCell(cells);   // furthest dead-end from start
 
-  const { walls, cyberMat } = buildEnvironment(three, M.scene, M, cells, goalCell);
+  // decide where characters appear, then turn their host walls into windows
+  const spawns = spawnCharacters(cells, goalCell, M.depth, M);
+  const windows = new Set(spawns.map(s => wallKey(s.wall.x, s.wall.z, s.wall.alongX)));
+
+  const { walls, cyberMat } = buildEnvironment(three, M.scene, M, cells, goalCell, windows);
   M.walls.push(...walls);
   M.cyberMat = cyberMat;
 
@@ -69,6 +78,10 @@ function buildMaze(){
   M.goal = goal;
   M.spinners.push(...spinners);
 
+  // characters behind their windows
+  M.npcs = buildCharacters(three, M.scene, spawns);
+  M.nearCharacter = null;
+
   // player start
   M.dolly.position.set(cellCenter(0, M.CELL), 0, cellCenter(0, M.CELL));
   M.yaw = Math.PI; M.pitch = 0; // face into the maze
@@ -78,13 +91,16 @@ function buildMaze(){
 /* --- main loop --- */
 function mazeLoop(){
   const dt = Math.min(M.clock.getDelta(), 0.1);
-  updatePlayer(three, M, dt);
+  if (!M.dialogueOpen){          // freeze the world while a conversation is open
+    updatePlayer(three, M, dt);
+    updateInteractions(M);
+  }
 
   // spinners + goal check
   for (const sp of M.spinners){ sp.rotation.y += dt*1.2; sp.rotation.x += dt*0.7; }
   // flicker the dissolving goal walls
   if (M.cyberMat) M.cyberMat.opacity = 0.55 + 0.35 * Math.sin(performance.now() * 0.004);
-  if (M.goal){
+  if (M.goal && !M.dialogueOpen){
     const d = M.dolly.position.distanceTo(new three.Vector3(M.goal.position.x, 0, M.goal.position.z));
     if (d < 1.3){
       M.goal = null;
@@ -116,6 +132,8 @@ async function launchMaze(){
     M.dolly.add(M.camera);
     M.clock  = new three.Clock();
     bindInput(M, layer, exitMaze);
+    initDialogue(M);                 // build the dialogue box DOM once
+    rollStats();                     // randomise the player's attributes (placeholder for char creation)
     addEventListener("resize", sizeMaze);
 
     // WebXR availability
@@ -160,6 +178,8 @@ function exitMaze(){
   const s = M.renderer && M.renderer.xr.getSession && M.renderer.xr.getSession();
   if (s) s.end();
   if (M.renderer) M.renderer.setAnimationLoop(null);
+  if (M.dialogueOpen) closeDialogue(M);   // don't leave a conversation hanging
+  $("#maze-prompt") && $("#maze-prompt").classList.remove("on");
   layer.classList.remove("on");
 }
 

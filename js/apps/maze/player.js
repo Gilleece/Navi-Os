@@ -25,7 +25,9 @@ export function tryMove(M, dx, dz){
 export function bindInput(M, layer, onExit){
   addEventListener("keydown", e => {
     if (!layer.classList.contains("on")) return;
+    if (M.dialogueOpen) return;                 // dialogue owns input while open
     M.keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === "f") M.talk = true;
     if (e.key === "Escape") onExit();
   });
   addEventListener("keyup", e => M.keys[e.key.toLowerCase()] = false);
