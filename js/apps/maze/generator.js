@@ -25,3 +25,33 @@ export function genMaze(n){
   }
   return cells;
 }
+
+/* pick the goal cell: the dead-end (single opening) furthest by
+   path distance from the start (0,0). A perfect maze always has
+   at least one dead-end, so reaching the goal there leaves nowhere
+   to go but back. Returns {x,y}. */
+export function findGoalCell(cells){
+  const n = cells.length;
+  const dist = Array.from({length:n}, () => Array(n).fill(-1));
+  const DIRS = [["N",0,-1],["S",0,1],["E",1,0],["W",-1,0]];
+  const q = [[0,0]]; dist[0][0] = 0;
+  for (let head = 0; head < q.length; head++){
+    const [x,y] = q[head];
+    for (const [d,dx,dy] of DIRS){
+      if (cells[y][x][d]) continue;            // wall present -> blocked
+      const nx = x+dx, ny = y+dy;
+      if (nx<0 || ny<0 || nx>=n || ny>=n || dist[ny][nx] !== -1) continue;
+      dist[ny][nx] = dist[y][x] + 1;
+      q.push([nx, ny]);
+    }
+  }
+  let best = {x:n-1, y:n-1}, bestD = -1;
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++){
+      if (x === 0 && y === 0) continue;        // never the start
+      const c = cells[y][x];
+      const openings = (c.N?0:1) + (c.S?0:1) + (c.E?0:1) + (c.W?0:1);
+      if (openings === 1 && dist[y][x] > bestD){ bestD = dist[y][x]; best = {x, y}; }
+    }
+  return best;
+}

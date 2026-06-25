@@ -23,6 +23,41 @@ export function brickTexture(three){
   return t;
 }
 
+/* a wall that is "breaking down into cyberspace": intact dark
+   brick at the base dissolving upward into glowing data fragments
+   and transparent gaps. Use on a transparent MeshBasicMaterial. */
+export function cyberTexture(three){
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const g = c.getContext("2d");
+  g.clearRect(0,0,256,256);
+  const grid = 16;
+  for (let y = 0; y < 256; y += grid){
+    const solid = y / 256;                 // 0 at top (broken) -> 1 at base (intact)
+    for (let x = 0; x < 256; x += grid){
+      const r = Math.random();
+      if (r < solid * 0.85 + 0.05){
+        // surviving wall block
+        const s = 6 + Math.random()*10 | 0;
+        g.fillStyle = `rgb(${s},${22 + Math.random()*22|0},${s + 8})`;
+        g.fillRect(x, y, grid - 1, grid - 1);
+      } else if (r < solid * 0.85 + 0.22){
+        // data fragment peeling off into the wired
+        const a = 0.5 + Math.random()*0.5;
+        g.fillStyle = Math.random() < 0.5 ? `rgba(70,255,180,${a})` : `rgba(120,255,230,${a})`;
+        g.fillRect(x, y, grid - 1, grid - 1);
+      }
+      // else: transparent gap — wall has broken away
+    }
+  }
+  // vertical data-rain streaks
+  g.fillStyle = "rgba(70,255,180,.5)";
+  for (let i = 0; i < 4; i++)
+    g.fillRect((Math.random()*16|0)*grid, Math.random()*120, grid - 1, 40 + Math.random()*120);
+  const t = new three.CanvasTexture(c);
+  t.wrapS = t.wrapT = three.RepeatWrapping;
+  return t;
+}
+
 export function floorTexture(three){
   const c = document.createElement("canvas"); c.width = c.height = 256;
   const g = c.getContext("2d");

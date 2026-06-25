@@ -3,15 +3,16 @@
    The level shell: fog, ambient light, floor, ceiling, walls.
    Returns the wall collision boxes the player tests against.
    ============================================================ */
-import { genMaze, cellCenter } from "./generator.js";
-import { brickTexture, floorTexture } from "./textures.js";
+import { cellCenter } from "./generator.js";
+import { brickTexture, floorTexture, cyberTexture } from "./textures.js";
 
-/* builds the static environment into `scene`, returns
-   { walls } — an array of axis-aligned boxes for collision */
-export function buildEnvironment(three, scene, cfg){
+/* builds the static environment into `scene` from the given maze
+   `cells`. Walls bordering `goalCell` get the dissolving "cyber"
+   material. Returns { walls, cyberMat } — `walls` are axis-aligned
+   collision boxes, `cyberMat` is exposed so the loop can pulse it. */
+export function buildEnvironment(three, scene, cfg, cells, goalCell){
   const { N, CELL, WALL_H, WALL_T } = cfg;
   const size = N * CELL;
-  const cells = genMaze(N);
 
   scene.fog = new three.Fog(0x020604, 2, 26);
   scene.add(new three.AmbientLight(0x1a4d30, 0.9));
@@ -35,24 +36,28 @@ export function buildEnvironment(three, scene, cfg){
   const walls = [];
   const bTex = brickTexture(three); bTex.repeat.set(1.4, 1);
   const wallMat = new three.MeshLambertMaterial({map:bTex});
+  // dissolving wall around the goal — unlit & transparent so the
+  // glowing fragments read as a beacon through the fog
+  const cyberMat = new three.MeshBasicMaterial({map:cyberTexture(three), transparent:true, fog:false});
   const geoH = new three.BoxGeometry(CELL + WALL_T, WALL_H, WALL_T); // runs along X
   const geoV = new three.BoxGeometry(WALL_T, WALL_H, CELL + WALL_T); // runs along Z
-  function addWall(geo, x, z, alongX){
-    const m = new three.Mesh(geo, wallMat);
+  function addWall(geo, x, z, alongX, cyber){
+    const m = new three.Mesh(geo, cyber ? cyberMat : wallMat);
     m.position.set(x, WALL_H/2, z);
     scene.add(m);
     const hx = alongX ? (CELL + WALL_T)/2 : WALL_T/2;
     const hz = alongX ? WALL_T/2 : (CELL + WALL_T)/2;
     walls.push({minX:x-hx, maxX:x+hx, minZ:z-hz, maxZ:z+hz});
   }
+  const gx = goalCell.x, gy = goalCell.y;
   for (let y = 0; y < N; y++)
     for (let x = 0; x < N; x++){
       const c = cells[y][x];
-      if (y === 0 && c.N) addWall(geoH, cellCenter(x, CELL), 0, true);
-      if (c.S)            addWall(geoH, cellCenter(x, CELL), (y+1)*CELL, true);
-      if (x === 0 && c.W) addWall(geoV, 0, cellCenter(y, CELL), false);
-      if (c.E)            addWall(geoV, (x+1)*CELL, cellCenter(y, CELL), false);
+      if (y === 0 && c.N) addWall(geoH, cellCenter(x, CELL), 0, true, x === gx && gy === 0);
+      if (c.S)            addWall(geoH, cellCenter(x, CELL), (y+1)*CELL, true, x === gx && (y === gy || y+1 === gy));
+      if (x === 0 && c.W) addWall(geoV, 0, cellCenter(y, CELL), false, y === gy && gx === 0);
+      if (c.E)            addWall(geoV, (x+1)*CELL, cellCenter(y, CELL), false, y === gy && (x === gx || x+1 === gx));
     }
 
-  return { walls, cells };
+  return { walls, cyberMat };
 }

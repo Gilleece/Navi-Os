@@ -18,7 +18,7 @@
 import { $ } from "../../utils.js";
 import { buildEnvironment } from "./environment.js";
 import { buildEntities } from "./entities.js";
-import { cellCenter } from "./generator.js";
+import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
 
 const layer = $("#maze-layer");
@@ -39,7 +39,7 @@ function loadThree(){
 const M = {
   N: 9, CELL: 4, WALL_H: 3.4, WALL_T: 0.5, R: 0.45,
   renderer:null, scene:null, camera:null, dolly:null,
-  walls:[], goal:null, spinners:[], depth:1, lamp:null,
+  walls:[], goal:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
   snapReady:true, inVR:false, clock:null,
 };
@@ -50,8 +50,12 @@ function buildMaze(){
   M.spinners.length = 0;
   while (M.scene.children.length) M.scene.remove(M.scene.children[0]);
 
-  const { walls } = buildEnvironment(three, M.scene, M);
+  const cells = genMaze(M.N);
+  const goalCell = findGoalCell(cells);   // furthest dead-end from start
+
+  const { walls, cyberMat } = buildEnvironment(three, M.scene, M, cells, goalCell);
   M.walls.push(...walls);
+  M.cyberMat = cyberMat;
 
   // player lamp — travels with the dolly, persists across rebuilds
   if (!M.lamp){
@@ -61,7 +65,7 @@ function buildMaze(){
   }
   M.scene.add(M.dolly);
 
-  const { goal, spinners } = buildEntities(three, M.scene, M);
+  const { goal, spinners } = buildEntities(three, M.scene, M, goalCell);
   M.goal = goal;
   M.spinners.push(...spinners);
 
@@ -78,6 +82,8 @@ function mazeLoop(){
 
   // spinners + goal check
   for (const sp of M.spinners){ sp.rotation.y += dt*1.2; sp.rotation.x += dt*0.7; }
+  // flicker the dissolving goal walls
+  if (M.cyberMat) M.cyberMat.opacity = 0.55 + 0.35 * Math.sin(performance.now() * 0.004);
   if (M.goal){
     const d = M.dolly.position.distanceTo(new three.Vector3(M.goal.position.x, 0, M.goal.position.z));
     if (d < 1.3){
