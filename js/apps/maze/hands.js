@@ -1,12 +1,12 @@
 /* ============================================================
-   MAZE.EXE — VR hands + pointer
+   MAZE.EXE - VR hands + pointer
    Gives the controllers a visible presence: a simple low-poly hand
    on each grip whose fingers curl with the trigger (index) and grip
    (the other fingers + thumb), in the usual VR way. A pointer ray
-   emanates from whichever controller most recently pulled its
-   trigger ("active"), to make aiming at the dialogue choices easy.
+   comes out of whichever controller most recently pulled its
+   trigger ("active"), to make aiming at the dialogue choices easier.
 
-   Hands sit on the grip spaces (getControllerGrip); the pointer rides
+   Hands sit on the grip spaces (getControllerGrip). The pointer rides
    the target-ray spaces (getController) so it matches the panel
    raycast in panel.js. Everything self-hides when there's no XR
    session, so nothing shows on desktop.
@@ -96,7 +96,7 @@ export function buildHands(three, M){
 
 /* per-frame: curl fingers from the live gamepad, track the active
    controller (last trigger press), and show its pointer. Safe to call
-   every frame — it hides everything when there's no XR session. */
+   every frame, it hides everything when there's no XR session. */
 export function updateHands(M){
   const H = M.hands;
   if (!H) return;

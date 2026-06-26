@@ -1,9 +1,9 @@
 /* ============================================================
-   MAZE.EXE — VR centre banner
+   MAZE.EXE - VR centre banner
    The DOM HUD isn't composited into an immersive-vr view, so messages
-   like "ENTERED DEPTH 2" need to live in the world. This is a small
+   like "ENTERED DEPTH 2" have to live in the world. This is a small
    canvas-textured plane parented to the camera, so it stays centred in
-   the player's view, shown briefly on descent and then faded out.
+   the player's view, shown briefly on descent and then faded back out.
    ============================================================ */
 
 let banner = null;      // { canvas, ctx, tex, mesh, group }

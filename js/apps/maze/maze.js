@@ -1,21 +1,21 @@
 /* ============================================================
-   MAZE.EXE — screensaver labyrinth (desktop / touch / WebXR)
-   Main entry + orchestrator: loads three.js, owns the engine
-   state, composes the world from its parts, and runs the
+   MAZE.EXE - screensaver labyrinth (desktop / touch / WebXR)
+   Main entry + orchestrator. Loads three.js, owns the engine
+   state, builds the world up from its parts and runs the
    lifecycle and render loop.
 
    Parts:
-     generator.js   — maze grid algorithm (no three.js)
-     textures.js    — procedural wall / floor textures
-     environment.js — fog, lights, floor, ceiling, walls
-     entities.js    — goal gate + floating relics
-     player.js      — movement, collision, camera, input
-     characters/    — Character class, roster, spawning, idle anim
+     generator.js   : maze grid algorithm (no three.js)
+     textures.js    : procedural wall / floor textures
+     environment.js : fog, lights, floor, ceiling, walls
+     entities.js    : goal gate + floating relics
+     player.js      : movement, collision, camera, input
+     characters/    : Character class, roster, spawning, idle anim
                       (characters.js engine + one file per character)
-     dialogue.js    — portrait dialogue box + interaction prompt
-     state.js       — player RPG state (attributes, inventory)
-   Placeholder (structure only, not yet wired):
-     menu.js        — save / load / settings
+     dialogue.js    : portrait dialogue box + interaction prompt
+     state.js       : player RPG state (attributes, inventory)
+   Placeholder (structure only, not wired up yet):
+     menu.js        : save / load / settings
    ============================================================ */
 import { $ } from "../../utils.js";
 import { buildEnvironment, wallKey } from "./environment.js";
@@ -73,7 +73,7 @@ function buildMaze(){
   M.walls.push(...walls);
   M.cyberMat = cyberMat;
 
-  // player lamp — travels with the dolly, persists across rebuilds
+  // player lamp, rides along with the dolly and persists across rebuilds
   if (!M.lamp){
     M.lamp = new three.PointLight(0x46ff8e, 1.1, 14);
     M.lamp.position.set(0, 2.2, 0);
@@ -173,7 +173,7 @@ async function launchMaze(){
     M.controllers.forEach(c => {
       M.dolly.add(c);
       // tag each controller space with its hand so the debug panel
-      // (left to summon, right to point/click) can tell them apart
+      // (left to summon, right to point/click) can tell em apart
       c.addEventListener("connected", e => { c.userData.handedness = e.data.handedness; });
     });
     // grip spaces carry the hand models (the controllers above carry the pointer)
@@ -187,7 +187,7 @@ async function launchMaze(){
     initDebugPanel(three, M.dolly);  // in-world VR debug panel (no-op unless DEBUG)
     buildHands(three, M);            // VR hands on the grips + pointer rays on the controllers
     initVRBanner(three, M.camera);   // head-locked "ENTERED DEPTH N" banner
-    rollStats();                     // randomise the player's attributes (placeholder for char creation)
+    rollStats();                     // randomise the player's attribtues (placeholder for char creation)
     addEventListener("resize", sizeMaze);
 
     // WebXR availability

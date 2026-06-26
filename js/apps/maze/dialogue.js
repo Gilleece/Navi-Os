@@ -1,9 +1,9 @@
 /* ============================================================
-   MAZE.EXE — dialogue + interaction
+   MAZE.EXE - dialogue + interaction
    The RPG front-end. A conversation is built once into a view model
    (text + a list of choices) and rendered two ways:
-     • desktop / touch — the HTML dialogue box (#maze-dialogue)
-     • VR             — a canvas textured onto a 3D panel in front of
+     • desktop / touch : the HTML dialogue box (#maze-dialogue)
+     • VR             : a canvas textured onto a 3D panel in front of
                         the player (panel.js), driven by the controllers
    Choices can be gated on player attributes, shift affinity, and make
    a character hand over an item. The portrait switches mood
@@ -62,7 +62,7 @@ export function initDialogue(state){
     foot:     box.querySelector(".dlg-foot"),
   });
 
-  // keyboard control while the box is open (desktop)
+  // keyboard controll while the box is open (desktop)
   addEventListener("keydown", e => {
     if (!M.dialogueOpen) return;
     if (e.key === "Escape"){ e.preventDefault(); close(); return; }
@@ -91,7 +91,7 @@ export function initPanel(three_, dolly){
 /* ---------- VR panel placement ----------
    The panel sits at a fixed spot in front of the head. If the user turns
    away from it for longer than REGRAB_DELAY, it eases back to in front of
-   them and re-locks once it's centred again — so it can't get stranded
+   them and re-locks once it's centred again, so it can't get stranded
    out of view, but also doesn't jitter with every small head movement. */
 const PANEL_DIST   = 1.5;    // metres in front of the head
 const PANEL_DROP   = 0.05;   // sit a touch below eye level
@@ -102,7 +102,7 @@ const PLACE_EASE   = 7;      // higher = snappier slide
 let place = { away: 0, locked: true };
 
 /* head pose expressed in dolly-local space (the panel lives under the dolly,
-   which is itself rotated by snap-turn — so we can't assume identity). */
+   which is itself rotated by snap-turn, so we can't assume identity). */
 function headLocalPose(outPos, outQuat){
   const xrCam = M.renderer.xr.getCamera ? M.renderer.xr.getCamera(M.camera) : M.camera;
   scratch.m.copy(M.dolly.matrixWorld).invert().multiply(xrCam.matrixWorld);
@@ -191,7 +191,7 @@ function present(text, choices){
 }
 
 function renderHub(){
-  // hostile characters refuse normal conversation — unless you bring an
+  // hostile characters refuse normal conversation, unless you bring an
   // item they covet (won from another character) to thaw them out
   if (current.wontTalk){
     const wanted = current.wants.map(id => player.inventory.find(it => it.id === id)).find(Boolean);

@@ -1,21 +1,21 @@
 /* ============================================================
-   MAZE.EXE — characters (engine)
+   MAZE.EXE - characters (engine)
    A single reusable Character class plus the roster, spawning, the
-   2.5D in-world build, and the idle animation. Each character's own
-   data — portrait drawing, dialogue, inventory — lives in its own
-   file (e.g. scally.js) and is wrapped here in a Character instance.
+   2.5D in-world build and the idle animation. Each character's own
+   data (portrait drawing, dialogue, inventory) lives in its own
+   file (e.g. scally.js) and gets wrapped here in a Character instance.
 
    Each character carries their own affinity toward the player
    (0..100, persists across levels), a per-level dialogue tree whose
-   tone shifts with that affinity, a description, a procedurally-drawn
+   tone shifts with that affinity, a description, a procedurally drawn
    portrait, and an inventory they can offer from through dialogue.
 
-   Spawning: every character appears on every level at a random spot,
+   Spawning: every character shows up on every level at a random spot,
    except those flagged `firstLevelNearStart` (Scally) who are
-   guaranteed within the first five squares on level 1.
+   guarenteed within the first five squares on level 1.
 
-   Adding a character: create a new file exporting a def (see
-   scally.js), import it below, and add it to DEFS.
+   Adding a character: make a new file exporting a def (see
+   scally.js), import it below and add it to DEFS.
    ============================================================ */
 import { cellCenter, bfsDistances, exteriorSides } from "../generator.js";
 import { scally } from "./scally.js";
@@ -56,10 +56,10 @@ export class Character {
     this.color       = def.color ?? 0x46ff8e;
     this.affinity    = def.affinity ?? 50;          // 0..100, mutated by dialogue, persists across levels (new game = 50)
     this.seen        = new Map();                    // level -> Set of exhausted topic ids (conversations are fresh each level)
-    this.wants       = def.wants ?? [];              // item ids this character covets — gifting one thaws a hostile mood
+    this.wants       = def.wants ?? [];              // item ids this character covets, gift one to thaw a hostile mood
     this.inventory   = (def.inventory ?? []).map(i => ({ ...i }));
-    this.portrait    = def.portrait;                // (ctx, w, h, mood) => void  — flat portrait
-    this.drawLayer   = def.drawLayer ?? null;       // (ctx, w, h, mood, layer) => void  — one depth slice
+    this.portrait    = def.portrait;                // (ctx, w, h, mood) => void   flat portrait
+    this.drawLayer   = def.drawLayer ?? null;       // (ctx, w, h, mood, layer) => void   one depth slice
     this.layerCount  = def.layerCount ?? 1;         // number of depth slices for the 2.5D figure
     this._dialogue   = def.dialogue;                // (ctx) => rootNode
     this.firstLevelNearStart = !!def.firstLevelNearStart;
@@ -72,7 +72,7 @@ export class Character {
   /* relationship label shown next to the name in dialogue */
   get standing(){ return (STANDINGS.find(([max]) => this.affinity <= max) ?? STANDINGS.at(-1))[1]; }
 
-  /* too cold for normal conversation — needs a gift to thaw */
+  /* too cold for normal conversation, needs a gift to thaw first */
   get wontTalk(){ return this.affinity < HOSTILE; }
 
   /* topic exhaustion is tracked per maze level, so each level is a fresh conversation */
@@ -95,7 +95,7 @@ export class Character {
   }
 }
 
-/* the full roster — one Character instance per def, created once so
+/* the full roster, one Character instance per def, created once so
    affinity and seen-topics persist across maze levels */
 const DEFS = [scally];
 export const ROSTER = DEFS.map(def => new Character(def));
@@ -132,8 +132,8 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
   const used = new Set();
 
   // valid host cells: not the start, not the goal, and with a wall facing
-  // outside the grid — the only walls whose far side the player can never
-  // reach, so the window can't be flanked from the character's side
+  // outside the grid. those are the only walls whose far side the player
+  // can never reach, so the window can't be flanked from behind
   const candidates = [];
   for (let y = 0; y < N; y++)
     for (let x = 0; x < N; x++){
@@ -166,8 +166,8 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
    (x,z) is the windowed wall.
 
    Each figure is a small stack of cutout planes at increasing depth
-   (body / head / hands) facing the cell, giving real parallax — so
-   in VR stereo, and when moving in 2D, the character reads as solid
+   (body / head / hands) facing the cell, giving real parallax, so
+   in VR stereo (and when moving in 2D) the character reads as solid
    rather than a flat decal. */
 export function buildCharacters(three, scene, spawns){
   const npcs = [];
@@ -201,7 +201,7 @@ export function buildCharacters(three, scene, spawns){
 
     const baseY = 1.3;
     figure.position.set(s.npc.x, baseY, s.npc.z);
-    // +Z (the layer stack) faces the cell — i.e. toward the player. Heights
+    // +Z (the layer stack) faces the cell, i.e. toward the player. Heights
     // match, so the orientation is a pure yaw we can drive each frame.
     const restYaw = Math.atan2(s.face.x - s.npc.x, s.face.z - s.npc.z);
     figure.rotation.y = restYaw;
@@ -212,7 +212,7 @@ export function buildCharacters(three, scene, spawns){
     scene.add(glow);
 
     npcs.push({
-      character: ch, x: s.wall.x, z: s.wall.z,   // wall position — used for proximity
+      character: ch, x: s.wall.x, z: s.wall.z,   // wall position, used for proximity
       figure, fx: s.npc.x, fz: s.npc.z, baseY,    // figure stands a little behind the wall
       restYaw, yaw: restYaw,                       // rest = facing the cell; yaw = current, smoothed
       anim: makeIdleMotion(ch.id),                 // breathing rhythm unique to this character
@@ -224,7 +224,7 @@ export function buildCharacters(three, scene, spawns){
 /* ---------- idle animation ---------- */
 
 /* deterministic per-character motion: the same character always breathes
-   to the same rhythm, but each character gets their own. */
+   to the same rythm, but each one gets their own. */
 function hashStr(s){
   let h = 2166136261;
   for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -245,13 +245,13 @@ function makeIdleMotion(id){
   return {
     phase:      r() * Math.PI * 2,    // desync the breath...
     phase2:     r() * Math.PI * 2,    // ...and the sway, per character
-    breatheRate: pick(1.1, 1.8),      // ~3.5–5.7s per breath
+    breatheRate: pick(1.1, 1.8),      // ~3.5-5.7s per breath
     breathAmp:   pick(0.010, 0.018),  // gentle vertical squash/stretch
     bobAmp:      pick(0.014, 0.018),  // subtle rise/fall with the breath
     swayRate:    pick(0.25, 0.65),    // slow weight-shift, slower than the breath
     yawSwayAmp:  pick(0.018, 0.030),  // a faint turn in the shoulders
     rollAmp:     pick(0.012, 0.024),  // a faint lean into the weight-shift
-    maxTurn:     pick(0.6, 0.85),     // ~34–49°: how far they'll crane toward you
+    maxTurn:     pick(0.6, 0.85),     // ~34-49°: how far they'll crane toward you
     track:       pick(0.62, 0.78),    // commit a bit more, but keep the gaze loose
     response:    pick(4.5, 6.0),      // higher = snappier turn toward the player
   };

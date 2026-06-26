@@ -1,9 +1,9 @@
 /* ============================================================
-   MAZE.EXE — 3D dialogue panel (VR)
+   MAZE.EXE - 3D dialogue panel (VR)
    The DOM dialogue box isn't composited into an immersive-vr view,
-   so in VR the same conversation is drawn onto a canvas textured
+   so in VR the same conversation gets drawn onto a canvas textured
    onto a plane that floats in front of the player. This module owns
-   the mesh / texture and the controller raycast; dialogue.js draws
+   the mesh / texture and the controller raycast. dialogue.js draws
    the UI into `panel.ctx` and maps ray hits to choices.
    ============================================================ */
 
