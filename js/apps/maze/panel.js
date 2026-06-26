@@ -19,7 +19,10 @@ export function createPanel(three){
   const tex = new three.CanvasTexture(canvas);
   const mesh = new three.Mesh(
     new three.PlaneGeometry(1.3, 1.3 * PANEL_H / PANEL_W),
-    new three.MeshBasicMaterial({ map: tex, transparent: true, fog: false }));
+    // depthTest off + high renderOrder: the panel always draws on top, so it
+    // can't be obscured by a wall or window it happens to overlap
+    new three.MeshBasicMaterial({ map: tex, transparent: true, fog: false, depthTest: false, depthWrite: false }));
+  mesh.renderOrder = 999;
 
   const group = new three.Group();
   group.add(mesh);

@@ -177,16 +177,22 @@ export function buildCharacters(three, scene, spawns){
     const layers = ch.layerCount;
 
     for (let li = 0; li < layers; li++){
+      // supersample: the art is drawn at a logical 256×320 but rasterised SS×
+      // larger, so the line work stays crisp viewed up close in VR stereo
+      const SS = 3, BW = 256, BH = 320;
       const cnv = document.createElement("canvas");
-      cnv.width = 256; cnv.height = 320;
+      cnv.width = BW * SS; cnv.height = BH * SS;
       const g = cnv.getContext("2d");
-      if (ch.drawLayer) ch.drawLayer(g, cnv.width, cnv.height, "neutral", li);
-      else              ch.portrait(g, cnv.width, cnv.height, "neutral");
+      g.scale(SS, SS);
+      if (ch.drawLayer) ch.drawLayer(g, BW, BH, "neutral", li);
+      else              ch.portrait(g, BW, BH, "neutral");
 
+      const tex = new three.CanvasTexture(cnv);
+      tex.anisotropy = 8;                  // sharpen at grazing angles
       const plane = new three.Mesh(
         new three.PlaneGeometry(1.9, 2.4),
         new three.MeshBasicMaterial({
-          map: new three.CanvasTexture(cnv), transparent: true,
+          map: tex, transparent: true,
           depthWrite: false, side: three.DoubleSide,
         }));
       plane.position.z = li * 0.13;        // push nearer layers toward the viewer

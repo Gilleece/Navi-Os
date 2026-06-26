@@ -26,6 +26,8 @@ import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters } f
 import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue } from "./dialogue.js";
 import { rollStats } from "./state.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
+import { buildHands, updateHands } from "./hands.js";
+import { initVRBanner, showVRBanner, updateVRBanner } from "./vrbanner.js";
 
 const layer = $("#maze-layer");
 let three = null;
@@ -47,7 +49,7 @@ const M = {
   renderer:null, scene:null, camera:null, dolly:null,
   walls:[], goal:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   npcs:[], nearCharacter:null, dialogueOpen:false, talk:false,
-  controllers:null, prevTrigger:false,
+  controllers:null, grips:null, hands:null, prevTrigger:false,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
   snapReady:true, inVR:false, clock:null,
 };
@@ -98,6 +100,7 @@ function debugNextLevel(){
   if (M.dialogueOpen) return;
   M.depth++;
   buildMaze();
+  if (M.inVR) showVRBanner(`ENTERED DEPTH ${M.depth}`);
 }
 
 /* --- main loop --- */
@@ -126,6 +129,9 @@ function mazeLoop(){
     }
   }
 
+  updateHands(M);                 // animate the VR hands + active-controller pointer (self-hides off-VR)
+  updateVRBanner();               // hide the depth banner once its time is up
+
   // spinners + goal check
   for (const sp of M.spinners){ sp.rotation.y += dt*1.2; sp.rotation.x += dt*0.7; }
   // flicker the dissolving goal walls
@@ -136,7 +142,10 @@ function mazeLoop(){
       M.goal = null;
       const msg = $("#hud-msg");
       msg.textContent = "GATE REACHED — DESCENDING"; msg.classList.add("show");
-      setTimeout(() => { msg.classList.remove("show"); M.depth++; buildMaze(); }, 1400);
+      setTimeout(() => {
+        msg.classList.remove("show"); M.depth++; buildMaze();
+        if (M.inVR) showVRBanner(`ENTERED DEPTH ${M.depth}`);
+      }, 1400);
     }
   }
   M.renderer.render(M.scene, M.camera);
@@ -167,12 +176,17 @@ async function launchMaze(){
       // (left to summon, right to point/click) can tell them apart
       c.addEventListener("connected", e => { c.userData.handedness = e.data.handedness; });
     });
+    // grip spaces carry the hand models (the controllers above carry the pointer)
+    M.grips = [M.renderer.xr.getControllerGrip(0), M.renderer.xr.getControllerGrip(1)];
+    M.grips.forEach(g => M.dolly.add(g));
     M.clock  = new three.Clock();
     bindInput(M, layer, exitMaze);
     initDialogue(M);                 // build the dialogue box DOM once
     initPanel(three, M.dolly);       // build the in-world VR dialogue panel
     initDebugUI(debugNextLevel);     // desktop/touch debug button (no-op unless DEBUG)
     initDebugPanel(three, M.dolly);  // in-world VR debug panel (no-op unless DEBUG)
+    buildHands(three, M);            // VR hands on the grips + pointer rays on the controllers
+    initVRBanner(three, M.camera);   // head-locked "ENTERED DEPTH N" banner
     rollStats();                     // randomise the player's attributes (placeholder for char creation)
     addEventListener("resize", sizeMaze);
 

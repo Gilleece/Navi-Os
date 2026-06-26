@@ -75,10 +75,75 @@ export function initDialogue(state){
 }
 
 /* ---------- build the VR panel (once renderer/dolly exist) ---------- */
+let scratch = null;          // reused math objects for panel placement
 export function initPanel(three_, dolly){
   three = three_;
   panel = createPanel(three);
   dolly.add(panel.group);
+  scratch = {
+    m: new three.Matrix4(), s: new three.Vector3(),
+    hp: new three.Vector3(), hq: new three.Quaternion(),
+    tp: new three.Vector3(), tq: new three.Quaternion(),
+    a:  new three.Vector3(), b:  new three.Vector3(), e: new three.Euler(),
+  };
+}
+
+/* ---------- VR panel placement ----------
+   The panel sits at a fixed spot in front of the head. If the user turns
+   away from it for longer than REGRAB_DELAY, it eases back to in front of
+   them and re-locks once it's centred again — so it can't get stranded
+   out of view, but also doesn't jitter with every small head movement. */
+const PANEL_DIST   = 1.5;    // metres in front of the head
+const PANEL_DROP   = 0.05;   // sit a touch below eye level
+const LOSE_ANGLE   = 0.6;    // >~34° off-centre counts as "looked away"
+const RELOCK_ANGLE = 0.12;   // settles when back within ~7° of centre
+const REGRAB_DELAY = 0.5;    // seconds out of view before it follows
+const PLACE_EASE   = 7;      // higher = snappier slide
+let place = { away: 0, locked: true };
+
+/* head pose expressed in dolly-local space (the panel lives under the dolly,
+   which is itself rotated by snap-turn — so we can't assume identity). */
+function headLocalPose(outPos, outQuat){
+  const xrCam = M.renderer.xr.getCamera ? M.renderer.xr.getCamera(M.camera) : M.camera;
+  scratch.m.copy(M.dolly.matrixWorld).invert().multiply(xrCam.matrixWorld);
+  scratch.m.decompose(outPos, outQuat, scratch.s);
+}
+
+function updatePanelPlacement(dt, snap){
+  if (!panel || !scratch || !M.inVR) return;
+  headLocalPose(scratch.hp, scratch.hq);
+
+  // forward (flattened to horizontal so the panel stays upright)
+  const fwd = scratch.a.set(0, 0, -1).applyQuaternion(scratch.hq);
+  fwd.y = 0;
+  if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+  fwd.normalize();
+
+  // target: ahead of the head, a touch below eye level, facing back at it
+  scratch.tp.copy(scratch.hp).addScaledVector(fwd, PANEL_DIST);
+  scratch.tp.y = scratch.hp.y - PANEL_DROP;
+  scratch.tq.setFromEuler(scratch.e.set(0, Math.atan2(-fwd.x, -fwd.z), 0));
+
+  if (snap){
+    panel.group.position.copy(scratch.tp);
+    panel.group.quaternion.copy(scratch.tq);
+    place.locked = true; place.away = 0;
+    return;
+  }
+
+  // how far the panel currently sits from the centre of the gaze
+  const toPanel = scratch.b.copy(panel.group.position).sub(scratch.hp);
+  const ang = toPanel.lengthSq() > 1e-6 ? fwd.angleTo(toPanel) : 0;
+
+  if (place.locked){
+    if (ang > LOSE_ANGLE){ place.away += dt; if (place.away >= REGRAB_DELAY) place.locked = false; }
+    else place.away = 0;
+  } else {
+    const k = 1 - Math.exp(-dt * PLACE_EASE);
+    panel.group.position.lerp(scratch.tp, k);
+    panel.group.quaternion.slerp(scratch.tq, k);
+    if (ang < RELOCK_ANGLE){ place.locked = true; place.away = 0; }
+  }
 }
 
 /* ---------- open / close ---------- */
@@ -100,7 +165,10 @@ export function openDialogue(state, character){
   renderHub();                       // builds the view + renders DOM + panel
   ui.prompt.classList.remove("on");
   ui.box.classList.add("on");
-  if (panel) panel.group.visible = !!M.inVR;
+  if (panel){
+    panel.group.visible = !!M.inVR;
+    if (M.inVR) updatePanelPlacement(0, true);   // snap in front of the head
+  }
 }
 
 function close(){
@@ -336,6 +404,9 @@ export function updateDialogueXR(state, three_, dt){
   if (!panel || !panel.group.visible || !M.dialogueOpen) return;
   const session = M.renderer.xr.getSession && M.renderer.xr.getSession();
   if (!session) return;
+
+  updatePanelPlacement(dt, false);   // keep it in front of the head (lazy follow)
+  panel.group.updateWorldMatrix(true, true);   // raycast collider must match where it's drawn this frame
 
   // controller ray vs panel
   let uv = null;
