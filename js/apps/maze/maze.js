@@ -10,7 +10,8 @@
      environment.js — fog, lights, floor, ceiling, walls
      entities.js    — goal gate + floating relics
      player.js      — movement, collision, camera, input
-     characters.js  — Character class, roster, spawning
+     characters/    — Character class, roster, spawning, idle anim
+                      (characters.js engine + one file per character)
      dialogue.js    — portrait dialogue box + interaction prompt
      state.js       — player RPG state (attributes, inventory)
    Placeholder (structure only, not yet wired):
@@ -21,7 +22,7 @@ import { buildEnvironment, wallKey } from "./environment.js";
 import { buildEntities } from "./entities.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
-import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters } from "./characters.js";
+import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters } from "./characters/characters.js";
 import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue } from "./dialogue.js";
 import { rollStats } from "./state.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
