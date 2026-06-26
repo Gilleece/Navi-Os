@@ -9,8 +9,9 @@
    a character hand over an item. The portrait switches mood
    (happy / angry / sad / neutral) to match what just happened.
    ============================================================ */
-import { player, STATS, meetsReq, addItem, removeItem } from "./state.js";
+import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens } from "./state.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
+import { refreshTokenHud } from "./entities.js";
 
 const STAT_ABBR = { strength:"STR", perception:"PER", endurance:"END",
                     charisma:"CHA", intelligence:"INT", agility:"AGI", luck:"LCK" };
@@ -226,24 +227,36 @@ function selectTopic(t){
   renderNode(typeof t.node === "function" ? t.node() : t.node);
 }
 
+/* a choice can be gated on an attribute (req) and/or a token price
+   (effects.cost); it's only selectable when both are satisfied */
+function canSelect(c){
+  if (c.req && !meetsReq(c.req)) return false;
+  const cost = c.effects?.cost;
+  if (cost != null && !canAfford(cost)) return false;
+  return true;
+}
+
 function renderNode(node){
   const list = (node.choices && node.choices.length) ? node.choices : [{ text: "(Continue)" }];
   const choices = list.map(c => ({
-    label: c.text, req: c.req, disabled: c.req && !meetsReq(c.req), onSelect: () => chooseChoice(c),
+    label: c.text, req: c.req, cost: c.effects?.cost ?? null,
+    disabled: !canSelect(c), onSelect: () => chooseChoice(c),
   }));
   present(node.text, choices);
 }
 
 function chooseChoice(choice){
-  if (choice.req && !meetsReq(choice.req)) return;
+  if (!canSelect(choice)) return;
   const fx = choice.effects;
   if (fx){
     if (typeof fx.like === "number") current.like(fx.like);
+    if (typeof fx.cost === "number" && fx.cost > 0){ spendTokens(fx.cost); refreshTokenHud(); }  // pay LT
+    if (fx.take) removeItem(fx.take);                // barter: hand the character one of your items
     if (fx.give){                                    // giving is self-limiting (item is removed)
       const item = current.takeItem(fx.give);
       if (item){
         addItem(item);
-        current.recordTrade(hub.level);              // start the trade cooldown (once per character per ~2 levels)
+        if (fx.gift) current.recordTrade(hub.level); // only free affinity gifts go on the cooldown
         toast(`RECEIVED — ${item.name.toUpperCase()}`);
       }
     }
@@ -297,6 +310,12 @@ function domChoiceButton(index, c){
     const tag = document.createElement("span");
     tag.className = "req";
     tag.textContent = `[${STAT_ABBR[c.req.attr]} ${c.req.level}] `;
+    btn.appendChild(tag);
+  }
+  if (c.cost != null){
+    const tag = document.createElement("span");
+    tag.className = "req lt";
+    tag.textContent = `[${c.cost} LT] `;
     btn.appendChild(tag);
   }
   btn.appendChild(document.createTextNode(`${index}. ${c.label}`));
@@ -377,6 +396,11 @@ function drawPanel(hover = -1){
     if (c.req){
       g.fillStyle = c.disabled ? "#ff3b3b" : "#46ff8e";
       const tag = `[${STAT_ABBR[c.req.attr]} ${c.req.level}] `;
+      g.fillText(tag, tx, y + ROW_H / 2); tx += g.measureText(tag).width;
+    }
+    if (c.cost != null){
+      g.fillStyle = c.disabled ? "#ff3b3b" : "#ffd24a";   // gold, red when you can't afford it
+      const tag = `[${c.cost} LT] `;
       g.fillText(tag, tx, y + ROW_H / 2); tx += g.measureText(tag).width;
     }
     g.fillStyle = c.disabled ? "#1f7a4a" : "#cfffe0";

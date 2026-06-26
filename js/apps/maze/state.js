@@ -29,7 +29,16 @@ export const player = {
   name: "OPERATOR",
   stats: Object.fromEntries(STATS.map(([k]) => [k, 5])),
   inventory: [],   // [{ id, name, desc }]
+  tokens: 0,       // Labyrinth Tokens (LT): the world's currency, picked up in the maze
 };
+
+/* --- Labyrinth Tokens (LT) ---------------------------------------------
+   LT are the currency of the Labyrinth Protocol: collected from the
+   floating shapes in the maze and spent with characters for the goods
+   they only part with for coin. The balance persists across levels. */
+export function addTokens(n){ player.tokens += n; return player.tokens; }
+export function spendTokens(n){ player.tokens = Math.max(0, player.tokens - n); return player.tokens; }
+export function canAfford(n){ return player.tokens >= (n ?? 0); }
 
 /* randomise the player's attributes (placeholder for character
    creation). Values land in 3..8 — enough spread that skill-gated

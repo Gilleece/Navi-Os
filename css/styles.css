@@ -233,6 +233,7 @@ a{color:var(--green)}
 .hud{position:absolute;pointer-events:none;font-family:var(--font-d);letter-spacing:2px}
 #hud-top{top:12px;left:14px;font-size:20px;color:var(--green)}
 #hud-top b{color:var(--orange);font-weight:normal}
+#hud-lt{top:38px;left:14px;font-size:18px;color:var(--green);text-shadow:0 0 8px var(--green-dim)}
 #hud-msg{
   top:42%;left:0;right:0;text-align:center;font-size:clamp(26px,6vw,52px);
   color:var(--orange);opacity:0;transition:opacity .3s;
@@ -317,6 +318,7 @@ a{color:var(--green)}
 }
 #maze-dialogue .dlg-choices button:hover:not(:disabled){background:var(--green); color:var(--bg); text-shadow:none}
 #maze-dialogue .dlg-choices button .req{font-family:var(--font-d); letter-spacing:1px; color:var(--green)}
+#maze-dialogue .dlg-choices button .req.lt{color:#ffd24a}
 #maze-dialogue .dlg-choices button:disabled{opacity:.55; cursor:not-allowed; border-style:dashed}
 #maze-dialogue .dlg-choices button:disabled .req{color:var(--red)}
 #maze-dialogue .dlg-foot{

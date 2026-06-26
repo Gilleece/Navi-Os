@@ -19,7 +19,8 @@
    ============================================================ */
 import { $ } from "../../utils.js";
 import { buildEnvironment, wallKey } from "./environment.js";
-import { buildEntities } from "./entities.js";
+import { buildEntities, updateTokens } from "./entities.js";
+import { themeFor } from "./palette.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
 import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters } from "./characters/characters.js";
@@ -48,6 +49,7 @@ const M = {
   N: 9, CELL: 4, WALL_H: 3.4, WALL_T: 0.5, R: 0.45,
   renderer:null, scene:null, camera:null, dolly:null,
   walls:[], goal:null, spinners:[], depth:1, lamp:null, cyberMat:null,
+  tokens:[], bursts:[], theme:null,
   npcs:[], nearCharacter:null, dialogueOpen:false, talk:false,
   controllers:null, grips:null, hands:null, prevTrigger:false,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
@@ -61,6 +63,7 @@ function buildMaze(){
   while (M.scene.children.length) M.scene.remove(M.scene.children[0]);
 
   recoverAffinity();                       // enraged characters thaw a little each level
+  M.theme = themeFor(M.depth);             // walls / fog / lights recolour as you descend
 
   const cells = genMaze(M.N);
   const goalCell = findGoalCell(cells);   // furthest dead-end from start
@@ -75,15 +78,17 @@ function buildMaze(){
 
   // player lamp, rides along with the dolly and persists across rebuilds
   if (!M.lamp){
-    M.lamp = new three.PointLight(0x46ff8e, 1.1, 14);
+    M.lamp = new three.PointLight(M.theme.neon, 1.1, 14);
     M.lamp.position.set(0, 2.2, 0);
     M.dolly.add(M.lamp);
   }
+  M.lamp.color.setHex(M.theme.neon);       // tint the lamp to this level's palette
   M.scene.add(M.dolly);
 
-  const { goal, spinners } = buildEntities(three, M.scene, M, goalCell);
+  const { goal, spinners, tokens } = buildEntities(three, M.scene, M, goalCell);
   M.goal = goal;
   M.spinners.push(...spinners);
+  M.tokens = tokens;
 
   // characters behind their windows
   M.npcs = buildCharacters(three, M.scene, spawns);
@@ -121,6 +126,7 @@ function mazeLoop(){
     updatePlayer(three, M, dt);
     updateInteractions(M);
     updateCharacters(M, dt);      // subtle breathing + loose gaze toward the player
+    updateTokens(three, M.scene, M, dt);   // float/spin LT and collect any the player walks into
     if (M.inVR){                  // trigger near a character starts the conversation
       const t = triggerHeld();
       if (t && !M.prevTrigger && M.nearCharacter) openDialogue(M, M.nearCharacter.character);

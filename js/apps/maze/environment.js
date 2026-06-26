@@ -18,14 +18,14 @@ export const wallKey = (x, z, alongX) => `${alongX ? "H" : "V"}|${x.toFixed(2)}|
    axis-aligned collision boxes, `cyberMat` is exposed so the loop
    can pulse it. */
 export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = new Set()){
-  const { N, CELL, WALL_H, WALL_T } = cfg;
+  const { N, CELL, WALL_H, WALL_T, theme } = cfg;
   const size = N * CELL;
 
-  scene.fog = new three.Fog(0x020604, 2, 26);
-  scene.add(new three.AmbientLight(0x1a4d30, 0.9));
+  scene.fog = new three.Fog(theme.fog, 2, 26);
+  scene.add(new three.AmbientLight(theme.ambient, 0.9));
 
   // floor + ceiling
-  const fTex = floorTexture(three); fTex.repeat.set(N, N);
+  const fTex = floorTexture(three, theme); fTex.repeat.set(N, N);
   const floor = new three.Mesh(
     new three.PlaneGeometry(size, size),
     new three.MeshLambertMaterial({map:fTex}));
@@ -34,20 +34,20 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   scene.add(floor);
   const ceil = new three.Mesh(
     new three.PlaneGeometry(size, size),
-    new three.MeshLambertMaterial({color:0x03130a}));
+    new three.MeshLambertMaterial({color:theme.ceil}));
   ceil.rotation.x = Math.PI/2;
   ceil.position.set(size/2, WALL_H, size/2);
   scene.add(ceil);
 
   // walls
   const walls = [];
-  const bTex = brickTexture(three); bTex.repeat.set(1.4, 1);
+  const bTex = brickTexture(three, theme); bTex.repeat.set(1.4, 1);
   const wallMat = new three.MeshLambertMaterial({map:bTex});
-  // dissolving wall around the goal — unlit & transparent so the
+  // dissolving wall around the goal: unlit & transparent so the
   // glowing fragments read as a beacon through the fog
-  const cyberMat = new three.MeshBasicMaterial({map:cyberTexture(three), transparent:true, fog:false});
-  // glowing translucent window pane — characters stand behind it
-  const paneMat = new three.MeshBasicMaterial({color:0x46ff8e, transparent:true, opacity:0.16, side:three.DoubleSide, fog:false});
+  const cyberMat = new three.MeshBasicMaterial({map:cyberTexture(three, theme), transparent:true, fog:false});
+  // glowing translucent window pane - characters stand behind it
+  const paneMat = new three.MeshBasicMaterial({color:theme.neon, transparent:true, opacity:0.16, side:three.DoubleSide, fog:false});
   const geoH = new three.BoxGeometry(CELL + WALL_T, WALL_H, WALL_T); // runs along X
   const geoV = new three.BoxGeometry(WALL_T, WALL_H, CELL + WALL_T); // runs along Z
 

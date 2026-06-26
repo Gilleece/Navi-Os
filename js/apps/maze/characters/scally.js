@@ -133,11 +133,14 @@ function drawScallyLayer(g, w, h, mood, layer){
                  returns one (use a function when it depends on state)
 
    The "trade" topic stays open every level (oneShot:false, no `available`)
-   so the player can always ask, but the hand-over itself obeys the shared
-   trade cooldown via character.canTrade(depth) (see characters.js). When
-   it's on cooldown Scally refuses in-character, flavoured by affinity. */
+   and builds its choices from the shared economy on the base class (see
+   characters.js): a token sale of his priced item, a barter for anything
+   he covets that the player happens to be carrying, a riddly swap if they
+   hold his hidden desire, and a free trinket for a friend (the only path
+   on the trade cooldown). Scally is the casual sort and calls the tokens
+   "LT"; the level-1 "tokens" topic is where he explains them. */
 function scallyDialogue(ctx){
-  const { depth, character } = ctx;
+  const { depth, character, player } = ctx;
 
   const greet = {
     hostile:  "Eh. You again. Mamma mia... whaddya want?",
@@ -157,6 +160,11 @@ function scallyDialogue(ctx){
       { id: "place", label: "Well met, friend — what is this place?", effects: { like: +4 },
         node: { text: "Heh — 'friend', he says. I like-a this one. They call her the Labyrinth Protocol, amico — the maze that is not a maze, the in-between. You walk, you talk to Scally, you no get lost. Capisce?" } },
 
+      // level-1 only: the tutorial on Labyrinth Tokens (Scally calls them "LT")
+      { id: "tokens", label: "Anything I should know while travelling through this place?",
+        available: () => depth === 1, effects: { like: +3 },
+        node: { text: "Ahh, smart, smart to ask! See the little shapes, floating, spinning in the halls? LT, amico — Labyrinth Tokens. The coin of this place! The big fat crystals, they are five LT each. The middle ones, three. The little ones, just one. You walk into them, *poof*, they are yours. And everybody down here wants LT — me, the others, all of us. Some things, amico, money is the only language they speak. So you grab every one you see, eh? Every. Single. One." } },
+
       { id: "others", label: "Who else wanders down here?",
         node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Scally — I am the only honest one. *grin*" } },
 
@@ -171,36 +179,56 @@ function scallyDialogue(ctx){
       { id: "rude", label: "Get out of my way, little man.", effects: { like: -12 },
         node: { text: "*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene." } },
 
-      // Trade is always askable (no `available`), so the player can ask any
-      // level. The hand-over itself is gated by the base-class trade cooldown
-      // (character.canTrade / TRADE_COOLDOWN): once Scally gives you something
-      // he is tapped out for a couple of levels and brushes you off, with the
-      // refusal flavoured by how much he likes you.
+      // Always askable. The menu is built from the shared economy on the
+      // base class: a coin-only sale, item-for-item barter, the riddly
+      // hidden-desire swap, and a free gift for friends (cooldown-limited).
       { id: "trade", label: "Do you want to trade?", oneShot: false,
         node: () => {
-          if (character.affinity < 55)
-            return { text: "*He squints, sizing you up.* Trade? Mmm, no. Scally, he does not open his coat for just-a anybody, eh. You warm up to me first, then maybe we talk-a business." };
+          const choices = [];
 
-          if (!character.canTrade(depth)){
-            const brushOff = {
-              neutral:  "*Scally spreads his hands.* Mamma mia, not right now, amico. The pickings, they are thin in the Labyrinth Protocol these days. Give it a level or two, eh?",
-              friendly: "*He clasps your shoulder.* For you I would in a heartbeat, my friend — but Scally, he is cleaned out! The Labyrinth Protocol, she has been unkind. Soon, eh? Soon.",
-              warm:     "*He sighs, all theatrical.* Caro mio, you wound me! I have nothing left to give. Even Scally must wait for the Labyrinth Protocol to refill his pockets. Come find me in a level or two.",
-            }[character.tone] ?? "Not right now, amico. Things are-a scarce in the Labyrinth Protocol.";
-            return { text: brushOff };
+          // 1) his prized piece, Labyrinth Tokens only (not on the cooldown)
+          const sale = character.forSale[0];
+          if (sale)
+            choices.push({ text: `Buy the ${sale.name}.`,
+                           effects: { give: sale.id, cost: sale.price, like: +2 } });
+
+          // 2) barter: hand over something he openly covets for a trinket
+          const swapFor = character.giftable[0];
+          for (const id of character.interestsOpen){
+            const held = player.inventory.find(it => it.id === id);
+            if (held && swapFor)
+              choices.push({ text: `Trade your ${held.name} for the ${swapFor.name}.`,
+                             effects: { take: held.id, give: swapFor.id, like: +6 } });
           }
 
-          if (!character.inventory.length)
-            return { text: "*He turns his pockets inside out.* Ahh, you cleaned me out already, furbo! Scally has nothing left for now. The Labyrinth Protocol, she gives slow." };
+          // 3) the hidden desire: only shows if the player actually holds it
+          const secret = character.hiddenDesire && player.inventory.find(it => it.id === character.hiddenDesire);
+          if (secret){
+            const prize = character.giftable[0];
+            choices.push({ text: `Offer the ${secret.name}. *(He keeps stealing glances at it.)*`,
+              effects: { take: secret.id, give: prize?.id, like: +18 },
+              next: { text: "*His hands tremble as he takes it, voice dropping to nothing.* ...the little saint, she comes home at last. You did not see this, eh? Here — take it, take it. Is the least Scally can do. *He will not meet your eyes.*" } });
+          }
 
-          const item = character.inventory[0];
-          return {
-            text: `*Scally leans close, glancing around.* For you, my friend — take this, a '${item.name}'. No charge... this-a time. *winks*`,
-            choices: [
-              { text: `Take the ${item.name}.`, effects: { give: item.id, like: +3 } },
-              { text: "No, thank you — I travel light." },
-            ],
-          };
+          // 4) a free trinket for a friend - the one path on the trade cooldown
+          const freebie = character.giftable[0];
+          if (character.affinity >= 55 && character.canTrade(depth) && freebie)
+            choices.push({ text: "Anything spare for a friend?",
+                           effects: { give: freebie.id, like: +3, gift: true } });
+
+          choices.push({ text: "(Maybe later.)" });
+
+          // intro line: cagey when you're poor company, apologetic when on
+          // cooldown, and always dropping a riddle about the thing he craves
+          let text;
+          if (character.affinity < 40)
+            text = "*He keeps the goods close to his chest.* Trade? With you, amico, only the coin talks. You show Scally the LT, eh?";
+          else if (character.affinity >= 55 && !character.canTrade(depth))
+            text = "*Scally pats his coat, apologetic.* Favours you must wait for, my friend — things are-a scarce in the Labyrinth Protocol right now. But coin? Coin always talks. *winks*";
+          else
+            text = "*He spreads his little wares.* Eh, let us deal! And... *his voice drops* ...if ever the maze gives up a little bone the old saints left behind, you bring it to Scally, eh? I ask-a no more. *He looks quickly away.*";
+
+          return { text, choices };
         } },
     ],
   };
@@ -220,6 +248,15 @@ export const scally = {
   inventory: [
     { id: "sausage", name: "Cured Sausage", desc: "Greasy, fragrant, faintly glowing. 'Real Italiano,' Scally insists." },
     { id: "coin",    name: "Brass Token",   desc: "A worn token stamped with a maze. Opens... something, somewhere." },
-    { id: "charm",   name: "Tin Cornicello",desc: "A little tin horn against the evil eye. Scally swears by it." },
+    // his prized piece: Labyrinth Tokens only, never gifted (price = LT cost)
+    { id: "charm",   name: "Tin Cornicello",desc: "A little tin horn against the evil eye. Scally swears by it.", price: 4 },
   ],
+  // what Scally wants from the player. `open` he'll haggle for out loud;
+  // `hidden` he craves but won't name, and only hints at in riddles.
+  // (These reference items future characters drop, so the barter paths
+  //  light up once such an item is in the player's inventory.)
+  interests: {
+    open:   ["relic-shard", "data-vial"],
+    hidden: "saints-finger",
+  },
 };

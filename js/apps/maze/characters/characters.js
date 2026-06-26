@@ -72,8 +72,10 @@ export class Character {
     this.affinity    = def.affinity ?? 50;          // 0..100, mutated by dialogue, persists across levels (new game = 50)
     this.seen        = new Map();                    // level -> Set of exhausted topic ids (conversations are fresh each level)
     this.wants       = def.wants ?? [];              // item ids this character covets, gift one to thaw a hostile mood
-    this.inventory   = (def.inventory ?? []).map(i => ({ ...i }));
-    this.lastTradeLevel = null;                      // last level we handed the player an item (trade cooldown; null = never traded)
+    this.inventory   = (def.inventory ?? []).map(i => ({ ...i }));  // items[]; an item with a `price` is token-only (see economy note)
+    this.interestsOpen = def.interests?.open ?? [];  // item ids this character openly wants from the player (barter)
+    this.hiddenDesire  = def.interests?.hidden ?? null;  // the one item they crave but won't name; they speak of it in riddles
+    this.lastTradeLevel = null;                      // last level we handed the player a gift (trade cooldown; null = never)
     this.portrait    = def.portrait;                // (ctx, w, h, mood) => void   flat portrait
     this.drawLayer   = def.drawLayer ?? null;       // (ctx, w, h, mood, layer) => void   one depth slice
     this.layerCount  = def.layerCount ?? 1;         // number of depth slices for the 2.5D figure
@@ -105,17 +107,42 @@ export class Character {
     return i < 0 ? null : this.inventory.splice(i, 1)[0];
   }
 
-  /* --- trading (base behaviour, shared by every character) ---------------
-     A character hands the player an item at most once every TRADE_COOLDOWN
-     maze levels. A trade on level N blocks any further trade with this
-     character until level N + TRADE_COOLDOWN, so trading on level 1 is
-     unavailable again until level 3. The engine records the trade for you
-     (dialogue.js calls recordTrade whenever a `give` effect fires), so a
-     character's dialogue only has to gate its trade offer on canTrade():
-     when that's false the character should still answer, but with an
-     in-character, affinity-aware brush-off (something like "things are
-     scarce in the Labyrinth Protocol right now"). New characters inherit
-     all of this; they just write the flavour lines. */
+  /* --- the economy (base behaviour, shared by every character) -----------
+     Every character's pockets hold a mix of items the player can come by
+     three different ways:
+
+       1. TOKEN-ONLY items. An inventory item with a `price` is sold for
+          Labyrinth Tokens (LT) only, never gifted or bartered. Each
+          character has one prized item like this (see `forSale`). LT are
+          the world's currency, picked up as floating shapes in the maze.
+
+       2. AFFINITY GIFTS. The other (un-priced) items can be given away for
+          free once the player is liked enough. This is the only path on
+          the TRADE_COOLDOWN: a gift on level N blocks the next gift from
+          this character until level N + TRADE_COOLDOWN (so a gift on level
+          1 is unavailable again until level 3). dialogue.js records it for
+          you when a `gift` effect fires; just gate the offer on canTrade()
+          and, when it's false, brush the player off in character ("things
+          are scarce in the Labyrinth Protocol right now").
+
+       3. BARTER. Those same un-priced items can also be traded for a
+          specific item the character wants from the player. Each character
+          lists what they want: a handful they'll name openly
+          (`interestsOpen`) plus one `hiddenDesire` they're cagey about and
+          will only hint at in riddles. Barter and token sales are explicit
+          exchanges and are NOT on the cooldown; they're self-limiting (the
+          item or the LT is spent).
+
+     New characters get all of this for free from the def: mark one item
+     with a `price`, and supply `interests: { open:[...], hidden:"id" }`.
+     Note: characters refer to the tokens however suits them; some say "LT"
+     casually, others the full "Labyrinth Tokens". */
+  get forSale(){ return this.inventory.filter(it => it.price != null); }   // token-only items
+  get giftable(){ return this.inventory.filter(it => it.price == null); }  // affinity-gift / barter pool
+  wantsOpenly(id){ return this.interestsOpen.includes(id); }
+  desiresSecretly(id){ return this.hiddenDesire != null && this.hiddenDesire === id; }
+  isInterestedIn(id){ return this.wantsOpenly(id) || this.desiresSecretly(id); }
+
   canTrade(level){ return this.lastTradeLevel == null || level - this.lastTradeLevel >= TRADE_COOLDOWN; }
   recordTrade(level){ this.lastTradeLevel = level; }
 
