@@ -70,7 +70,7 @@ function scallyFace(g, hx, hy, hr, mood){
     g.lineWidth = 3;                                     // downturned mouth
     g.beginPath(); g.moveTo(hx-hr*0.3, hy+hr*0.64); g.quadraticCurveTo(hx+hr*0.1, hy+hr*0.38, hx+hr*0.5, hy+hr*0.64); g.stroke();
     scallyMustache(g, hx, hy, hr, -0.7);
-  } else {                                               // neutral — sly and sneaky
+  } else {                                               // neutral, sly and sneaky
     g.lineWidth = 2.5;
     g.beginPath(); g.moveTo(hx-hr*0.45, hy-hr*0.05); g.lineTo(hx-hr*0.08, hy+hr*0.04); g.stroke();
     g.beginPath(); g.moveTo(hx+hr*0.18, hy-hr*0.02); g.lineTo(hx+hr*0.5,  hy+hr*0.06); g.stroke();
@@ -128,9 +128,14 @@ function drawScallyLayer(g, w, h, mood, layer){
      - req       gate on a player attribute (shown disabled if unmet)
      - effects   applied once, when the topic is selected (e.g. like)
      - oneShot   default true; false topics persist (driven by state)
-     - available optional predicate for dynamic topics (e.g. trade)
+     - available optional predicate that hides the topic until it's true
      - node      the line(s) Scally speaks; an object, or a function that
-                 returns one (use a function when it depends on state) */
+                 returns one (use a function when it depends on state)
+
+   The "trade" topic stays open every level (oneShot:false, no `available`)
+   so the player can always ask, but the hand-over itself obeys the shared
+   trade cooldown via character.canTrade(depth) (see characters.js). When
+   it's on cooldown Scally refuses in-character, flavoured by affinity. */
 function scallyDialogue(ctx){
   const { depth, character } = ctx;
 
@@ -150,7 +155,7 @@ function scallyDialogue(ctx){
     hostile: "*He turns his back, muttering in Italian.* Pah! I got nothing for you. You bring Scally something nice, eh — then maybe we talk again.",
     topics: [
       { id: "place", label: "Well met, friend — what is this place?", effects: { like: +4 },
-        node: { text: "Heh — 'friend', he says. I like-a this one. This is the in-between, amico — the maze that is not a maze. You walk, you talk to Scally, you no get lost. Capisce?" } },
+        node: { text: "Heh — 'friend', he says. I like-a this one. They call her the Labyrinth Protocol, amico — the maze that is not a maze, the in-between. You walk, you talk to Scally, you no get lost. Capisce?" } },
 
       { id: "others", label: "Who else wanders down here?",
         node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Scally — I am the only honest one. *grin*" } },
@@ -166,9 +171,28 @@ function scallyDialogue(ctx){
       { id: "rude", label: "Get out of my way, little man.", effects: { like: -12 },
         node: { text: "*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene." } },
 
-      { id: "trade", label: "Got anything to trade?", oneShot: false,
-        available: () => character.affinity >= 55 && character.inventory.length > 0,
+      // Trade is always askable (no `available`), so the player can ask any
+      // level. The hand-over itself is gated by the base-class trade cooldown
+      // (character.canTrade / TRADE_COOLDOWN): once Scally gives you something
+      // he is tapped out for a couple of levels and brushes you off, with the
+      // refusal flavoured by how much he likes you.
+      { id: "trade", label: "Do you want to trade?", oneShot: false,
         node: () => {
+          if (character.affinity < 55)
+            return { text: "*He squints, sizing you up.* Trade? Mmm, no. Scally, he does not open his coat for just-a anybody, eh. You warm up to me first, then maybe we talk-a business." };
+
+          if (!character.canTrade(depth)){
+            const brushOff = {
+              neutral:  "*Scally spreads his hands.* Mamma mia, not right now, amico. The pickings, they are thin in the Labyrinth Protocol these days. Give it a level or two, eh?",
+              friendly: "*He clasps your shoulder.* For you I would in a heartbeat, my friend — but Scally, he is cleaned out! The Labyrinth Protocol, she has been unkind. Soon, eh? Soon.",
+              warm:     "*He sighs, all theatrical.* Caro mio, you wound me! I have nothing left to give. Even Scally must wait for the Labyrinth Protocol to refill his pockets. Come find me in a level or two.",
+            }[character.tone] ?? "Not right now, amico. Things are-a scarce in the Labyrinth Protocol.";
+            return { text: brushOff };
+          }
+
+          if (!character.inventory.length)
+            return { text: "*He turns his pockets inside out.* Ahh, you cleaned me out already, furbo! Scally has nothing left for now. The Labyrinth Protocol, she gives slow." };
+
           const item = character.inventory[0];
           return {
             text: `*Scally leans close, glancing around.* For you, my friend — take this, a '${item.name}'. No charge... this-a time. *winks*`,

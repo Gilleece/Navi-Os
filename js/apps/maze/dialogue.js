@@ -241,7 +241,11 @@ function chooseChoice(choice){
     if (typeof fx.like === "number") current.like(fx.like);
     if (fx.give){                                    // giving is self-limiting (item is removed)
       const item = current.takeItem(fx.give);
-      if (item){ addItem(item); toast(`RECEIVED — ${item.name.toUpperCase()}`); }
+      if (item){
+        addItem(item);
+        current.recordTrade(hub.level);              // start the trade cooldown (once per character per ~2 levels)
+        toast(`RECEIVED — ${item.name.toUpperCase()}`);
+      }
     }
   }
   if (choice.next) renderNode(choice.next);

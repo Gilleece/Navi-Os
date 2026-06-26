@@ -14,6 +14,11 @@
    except those flagged `firstLevelNearStart` (Scally) who are
    guarenteed within the first five squares on level 1.
 
+   The world is called the "Labyrinth Protocol" and characters speak of
+   it by that name. Trading is rate-limited for everyone (see
+   TRADE_COOLDOWN and Character.canTrade), so that rule lives here in the
+   base class rather than being re-invented in each character's file.
+
    Adding a character: make a new file exporting a def (see
    scally.js), import it below and add it to DEFS.
    ============================================================ */
@@ -48,6 +53,16 @@ const STANDINGS = [
 /* below this affinity a character refuses normal conversation */
 export const HOSTILE = 20;
 
+/* the world's name; characters refer to it by this in their dialogue */
+export const WORLD = "Labyrinth Protocol";
+
+/* trade cooldown, measured in maze levels. A character will hand the
+   player an item at most once every TRADE_COOLDOWN levels: a trade on
+   level N is locked until level N + TRADE_COOLDOWN, so trading on level 1
+   means the next trade with that character is level 3 (level 2 is the
+   cool-down gap). See Character.canTrade / recordTrade. */
+export const TRADE_COOLDOWN = 2;
+
 export class Character {
   constructor(def){
     this.id          = def.id;
@@ -58,6 +73,7 @@ export class Character {
     this.seen        = new Map();                    // level -> Set of exhausted topic ids (conversations are fresh each level)
     this.wants       = def.wants ?? [];              // item ids this character covets, gift one to thaw a hostile mood
     this.inventory   = (def.inventory ?? []).map(i => ({ ...i }));
+    this.lastTradeLevel = null;                      // last level we handed the player an item (trade cooldown; null = never traded)
     this.portrait    = def.portrait;                // (ctx, w, h, mood) => void   flat portrait
     this.drawLayer   = def.drawLayer ?? null;       // (ctx, w, h, mood, layer) => void   one depth slice
     this.layerCount  = def.layerCount ?? 1;         // number of depth slices for the 2.5D figure
@@ -88,6 +104,20 @@ export class Character {
     const i = this.inventory.findIndex(it => it.id === id);
     return i < 0 ? null : this.inventory.splice(i, 1)[0];
   }
+
+  /* --- trading (base behaviour, shared by every character) ---------------
+     A character hands the player an item at most once every TRADE_COOLDOWN
+     maze levels. A trade on level N blocks any further trade with this
+     character until level N + TRADE_COOLDOWN, so trading on level 1 is
+     unavailable again until level 3. The engine records the trade for you
+     (dialogue.js calls recordTrade whenever a `give` effect fires), so a
+     character's dialogue only has to gate its trade offer on canTrade():
+     when that's false the character should still answer, but with an
+     in-character, affinity-aware brush-off (something like "things are
+     scarce in the Labyrinth Protocol right now"). New characters inherit
+     all of this; they just write the flavour lines. */
+  canTrade(level){ return this.lastTradeLevel == null || level - this.lastTradeLevel >= TRADE_COOLDOWN; }
+  recordTrade(level){ this.lastTradeLevel = level; }
 
   /* the dialogue tree root for this maze level, flavoured by affinity */
   dialogueFor(depth, player){
