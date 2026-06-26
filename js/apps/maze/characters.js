@@ -9,7 +9,7 @@
 
    This module also handles spawning: every character appears on
    every level at a random spot, except those flagged
-   `firstLevelNearStart` (Zit) who are guaranteed within the first
+   `firstLevelNearStart` (Scally) who are guaranteed within the first
    five squares on level 1.
    ============================================================ */
 import { cellCenter, bfsDistances, exteriorSides } from "./generator.js";
@@ -89,7 +89,7 @@ export class Character {
   }
 }
 
-/* ---------- Zit: a small, sneaky, very Italian fixer ----------
+/* ---------- Scally: a small, sneaky, very Italian fixer ----------
    Drawn from composable parts so the same figure can be rendered as
    one flat portrait (for the dialogue box) or split across depth
    layers (for the 2.5D in-world figure), and so the face can switch
@@ -97,14 +97,14 @@ export class Character {
 
 const FILL = "#0c2b1a", LINE = "#46ff8e";
 
-function zitGlow(g, w, h){
+function scallyGlow(g, w, h){
   const grd = g.createRadialGradient(w/2, h*0.55, 12, w/2, h*0.55, w*0.62);
   grd.addColorStop(0, "rgba(70,255,142,.20)");
   grd.addColorStop(1, "rgba(70,255,142,0)");
   g.fillStyle = grd; g.fillRect(0, 0, w, h);
 }
 
-function zitBody(g, w, h){
+function scallyBody(g, w, h){
   g.lineJoin = "round"; g.lineCap = "round";
   g.strokeStyle = LINE; g.lineWidth = 3; g.fillStyle = FILL;
   const cx = w / 2;
@@ -115,7 +115,7 @@ function zitBody(g, w, h){
   g.closePath(); g.fill(); g.stroke();
 }
 
-function zitMustache(g, hx, hy, hr, curl){   // curl > 0 = tips up (cheerful), < 0 = droop
+function scallyMustache(g, hx, hy, hr, curl){   // curl > 0 = tips up (cheerful), < 0 = droop
   g.strokeStyle = LINE; g.lineCap = "round"; g.lineWidth = 4.5;
   const base = hy + hr*0.52, tip = hy + hr*(0.52 - 0.34*curl);
   g.beginPath();
@@ -126,7 +126,7 @@ function zitMustache(g, hx, hy, hr, curl){   // curl > 0 = tips up (cheerful), <
   g.stroke();
 }
 
-function zitFace(g, hx, hy, hr, mood){
+function scallyFace(g, hx, hy, hr, mood){
   g.strokeStyle = LINE; g.lineCap = "round"; g.lineJoin = "round";
   if (mood === "happy"){
     g.lineWidth = 2.5;                                   // arched, smiling eyes ^ ^
@@ -134,7 +134,7 @@ function zitFace(g, hx, hy, hr, mood){
     g.beginPath(); g.moveTo(hx+hr*0.16, hy+hr*0.02); g.quadraticCurveTo(hx+hr*0.36, hy-hr*0.22, hx+hr*0.56, hy+hr*0.02); g.stroke();
     g.lineWidth = 3;                                     // big grin
     g.beginPath(); g.moveTo(hx-hr*0.4, hy+hr*0.42); g.quadraticCurveTo(hx+hr*0.1, hy+hr*0.92, hx+hr*0.6, hy+hr*0.42); g.stroke();
-    zitMustache(g, hx, hy, hr, 1);
+    scallyMustache(g, hx, hy, hr, 1);
   } else if (mood === "angry"){
     g.lineWidth = 3;                                     // brows furrowed down-and-in
     g.beginPath(); g.moveTo(hx-hr*0.52, hy-hr*0.28); g.lineTo(hx-hr*0.1, hy-hr*0.04); g.stroke();
@@ -144,7 +144,7 @@ function zitFace(g, hx, hy, hr, mood){
     g.beginPath(); g.moveTo(hx+hr*0.16, hy+hr*0.1); g.lineTo(hx+hr*0.46, hy+hr*0.08); g.stroke();
     g.lineWidth = 3;                                     // bared grimace
     g.beginPath(); g.moveTo(hx-hr*0.34, hy+hr*0.62); g.quadraticCurveTo(hx+hr*0.1, hy+hr*0.34, hx+hr*0.54, hy+hr*0.64); g.stroke();
-    zitMustache(g, hx, hy, hr, -0.5);
+    scallyMustache(g, hx, hy, hr, -0.5);
   } else if (mood === "sad"){
     g.lineWidth = 2.5;                                   // brows raised at the inner corners
     g.beginPath(); g.moveTo(hx-hr*0.46, hy-hr*0.08); g.lineTo(hx-hr*0.1, hy-hr*0.3); g.stroke();
@@ -153,18 +153,18 @@ function zitFace(g, hx, hy, hr, mood){
     g.beginPath(); g.arc(hx+hr*0.3,  hy+hr*0.08, hr*0.07, 0, Math.PI*2); g.stroke();
     g.lineWidth = 3;                                     // downturned mouth
     g.beginPath(); g.moveTo(hx-hr*0.3, hy+hr*0.64); g.quadraticCurveTo(hx+hr*0.1, hy+hr*0.38, hx+hr*0.5, hy+hr*0.64); g.stroke();
-    zitMustache(g, hx, hy, hr, -0.7);
+    scallyMustache(g, hx, hy, hr, -0.7);
   } else {                                               // neutral — sly and sneaky
     g.lineWidth = 2.5;
     g.beginPath(); g.moveTo(hx-hr*0.45, hy-hr*0.05); g.lineTo(hx-hr*0.08, hy+hr*0.04); g.stroke();
     g.beginPath(); g.moveTo(hx+hr*0.18, hy-hr*0.02); g.lineTo(hx+hr*0.5,  hy+hr*0.06); g.stroke();
     g.lineWidth = 3;
     g.beginPath(); g.moveTo(hx-hr*0.35, hy+hr*0.5); g.quadraticCurveTo(hx+hr*0.1, hy+hr*0.82, hx+hr*0.6, hy+hr*0.38); g.stroke();
-    zitMustache(g, hx, hy, hr, 0.2);
+    scallyMustache(g, hx, hy, hr, 0.2);
   }
 }
 
-function zitHead(g, w, h, mood){
+function scallyHead(g, w, h, mood){
   g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = LINE; g.fillStyle = FILL;
   const hx = w/2 + 12, hy = h*0.32, hr = w*0.16;
   g.lineWidth = 3;
@@ -175,10 +175,10 @@ function zitHead(g, w, h, mood){
   g.quadraticCurveTo(hx+hr*1.7, hy-hr*0.6, hx+hr*1.25, hy-hr*0.2);
   g.quadraticCurveTo(hx, hy-hr*0.5, hx-hr*1.05, hy-hr*0.45);
   g.closePath(); g.fill(); g.stroke();
-  zitFace(g, hx, hy, hr, mood);
+  scallyFace(g, hx, hy, hr, mood);
 }
 
-function zitHands(g, w, h){
+function scallyHands(g, w, h){
   g.lineJoin = "round"; g.strokeStyle = LINE; g.lineWidth = 3; g.fillStyle = FILL;
   const px = w/2 + 16, py = h*0.68;
   g.beginPath(); g.ellipse(px-11, py,   w*0.075, w*0.05, -0.35, 0, Math.PI*2); g.fill(); g.stroke();
@@ -186,24 +186,24 @@ function zitHands(g, w, h){
 }
 
 /* full flat portrait — used by the dialogue box */
-function drawZit(g, w, h, mood = "neutral"){
+function drawScally(g, w, h, mood = "neutral"){
   g.clearRect(0, 0, w, h);
-  zitGlow(g, w, h);
-  zitBody(g, w, h);
-  zitHead(g, w, h, mood);
-  zitHands(g, w, h);
+  scallyGlow(g, w, h);
+  scallyBody(g, w, h);
+  scallyHead(g, w, h, mood);
+  scallyHands(g, w, h);
 }
 
 /* one depth layer of the figure — used for the 2.5D in-world build.
    0 = body (back), 1 = head/face (mid), 2 = hands (front, nearest). */
-function drawZitLayer(g, w, h, mood, layer){
+function drawScallyLayer(g, w, h, mood, layer){
   g.clearRect(0, 0, w, h);
-  if (layer === 0){ zitGlow(g, w, h); zitBody(g, w, h); }
-  else if (layer === 1){ zitHead(g, w, h, mood); }
-  else { zitHands(g, w, h); }
+  if (layer === 0){ scallyGlow(g, w, h); scallyBody(g, w, h); }
+  else if (layer === 1){ scallyHead(g, w, h, mood); }
+  else { scallyHands(g, w, h); }
 }
 
-/* Zit's dialogue is a hub of topics. The dialogue engine shows the
+/* Scally's dialogue is a hub of topics. The dialogue engine shows the
    available topics as choices; once a topic is used it is recorded
    in `character.seen` and never offered again, and when nothing
    engageable is left the hub falls back to the `exhausted` line.
@@ -213,9 +213,9 @@ function drawZitLayer(g, w, h, mood, layer){
      - effects   applied once, when the topic is selected (e.g. like)
      - oneShot   default true; false topics persist (driven by state)
      - available optional predicate for dynamic topics (e.g. trade)
-     - node      the line(s) Zit speaks; an object, or a function that
+     - node      the line(s) Scally speaks; an object, or a function that
                  returns one (use a function when it depends on state) */
-function zitDialogue(ctx){
+function scallyDialogue(ctx){
   const { depth, character } = ctx;
 
   const greet = {
@@ -223,29 +223,29 @@ function zitDialogue(ctx){
     wary:     "Mmm. Ciao. I am-a watching you, amico.",
     neutral:  "Ahh, ciao ciao! A little mouse, lost in the wires, eh?",
     friendly: "Amico! Bellissimo to see your face again!",
-    warm:     "Mio caro amico! Come, come — Zit, he has been waiting for you!",
+    warm:     "Mio caro amico! Come, come — Scally, he has been waiting for you!",
   }[character.tone];
 
   return {
     hub: true,
     level: depth,                 // conversations are tracked (and exhausted) per level
-    greet: `${greet} Down here on level ${depth}, eh, is dangerous. But Zit, he knows-a things.`,
-    exhausted: "Eh, amico — we have-a talked enough for now. Go, go! The maze, she is waiting. *Zit rubs his hands and melts back into the static.*",
-    hostile: "*He turns his back, muttering in Italian.* Pah! I got nothing for you. You bring Zit something nice, eh — then maybe we talk again.",
+    greet: `${greet} Down here on level ${depth}, eh, is dangerous. But Scally, he knows-a things.`,
+    exhausted: "Eh, amico — we have-a talked enough for now. Go, go! The maze, she is waiting. *Scally rubs his hands and melts back into the static.*",
+    hostile: "*He turns his back, muttering in Italian.* Pah! I got nothing for you. You bring Scally something nice, eh — then maybe we talk again.",
     topics: [
       { id: "place", label: "Well met, friend — what is this place?", effects: { like: +4 },
-        node: { text: "Heh — 'friend', he says. I like-a this one. This is the in-between, amico — the maze that is not a maze. You walk, you talk to Zit, you no get lost. Capisce?" } },
+        node: { text: "Heh — 'friend', he says. I like-a this one. This is the in-between, amico — the maze that is not a maze. You walk, you talk to Scally, you no get lost. Capisce?" } },
 
       { id: "others", label: "Who else wanders down here?",
-        node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Zit — I am the only honest one. *grin*" } },
+        node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Scally — I am the only honest one. *grin*" } },
 
       { id: "charm", label: "*Flatter him* A man of your style must run this whole place.",
         req: { attr: "charisma", level: 6 }, effects: { like: +10 },
-        node: { text: "*He puffs up, twirling the mustache.* Ahhh, you have-a the eye! Nothing it moves in these wires without Zit knowing. We are friends now, eh? And friends — friends help each other." } },
+        node: { text: "*He puffs up, twirling the mustache.* Ahhh, you have-a the eye! Nothing it moves in these wires without Scally knowing. We are friends now, eh? And friends — friends help each other." } },
 
       { id: "smart", label: "This is a recursive lattice — where does it terminate?",
         req: { attr: "intelligence", level: 6 }, effects: { like: +2 },
-        node: { text: "*Zit blinks, then cackles.* Clever mouse! It 'terminates' at the broken wall — where everything it falls into the static. Follow the glow, amico. And watch your step, eh." } },
+        node: { text: "*Scally blinks, then cackles.* Clever mouse! It 'terminates' at the broken wall — where everything it falls into the static. Follow the glow, amico. And watch your step, eh." } },
 
       { id: "rude", label: "Get out of my way, little man.", effects: { like: -12 },
         node: { text: "*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene." } },
@@ -255,7 +255,7 @@ function zitDialogue(ctx){
         node: () => {
           const item = character.inventory[0];
           return {
-            text: `*Zit leans close, glancing around.* For you, my friend — take this, a '${item.name}'. No charge... this-a time. *winks*`,
+            text: `*Scally leans close, glancing around.* For you, my friend — take this, a '${item.name}'. No charge... this-a time. *winks*`,
             choices: [
               { text: `Take the ${item.name}.`, effects: { give: item.id, like: +3 } },
               { text: "No, thank you — I travel light." },
@@ -266,25 +266,25 @@ function zitDialogue(ctx){
   };
 }
 
-const ZIT = new Character({
-  id:   "zit",
-  name: "ZIT",
+const SCALLY = new Character({
+  id:   "scally",
+  name: "SCALLY",
   description: "A small, hunched Italian fixer who haunts the wired. Forever rubbing his hands and smiling like he knows something you don't. Honest, he swears.",
   color: 0x46ff8e,
   firstLevelNearStart: true,
-  portrait: drawZit,
-  drawLayer: drawZitLayer,
+  portrait: drawScally,
+  drawLayer: drawScallyLayer,
   layerCount: 3,
-  dialogue: zitDialogue,
+  dialogue: scallyDialogue,
   inventory: [
-    { id: "sausage", name: "Cured Sausage", desc: "Greasy, fragrant, faintly glowing. 'Real Italiano,' Zit insists." },
+    { id: "sausage", name: "Cured Sausage", desc: "Greasy, fragrant, faintly glowing. 'Real Italiano,' Scally insists." },
     { id: "coin",    name: "Brass Token",   desc: "A worn token stamped with a maze. Opens... something, somewhere." },
-    { id: "charm",   name: "Tin Cornicello",desc: "A little tin horn against the evil eye. Zit swears by it." },
+    { id: "charm",   name: "Tin Cornicello",desc: "A little tin horn against the evil eye. Scally swears by it." },
   ],
 });
 
-/* the full roster (just Zit for now) */
-export const ROSTER = [ZIT];
+/* the full roster (just Scally for now) */
+export const ROSTER = [SCALLY];
 
 /* passive recovery, applied once per maze level: a character who is
    almost murderous (affinity < 10) warms by 5, capped at 10, so an
