@@ -21,7 +21,7 @@ import { buildEnvironment, wallKey } from "./environment.js";
 import { buildEntities } from "./entities.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
-import { spawnCharacters, buildCharacters, recoverAffinity } from "./characters.js";
+import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters } from "./characters.js";
 import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue } from "./dialogue.js";
 import { rollStats } from "./state.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
@@ -116,6 +116,7 @@ function mazeLoop(){
   } else {
     updatePlayer(three, M, dt);
     updateInteractions(M);
+    updateCharacters(M, dt);      // subtle breathing + loose gaze toward the player
     if (M.inVR){                  // trigger near a character starts the conversation
       const t = triggerHeld();
       if (t && !M.prevTrigger && M.nearCharacter) openDialogue(M, M.nearCharacter.character);

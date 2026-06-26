@@ -379,15 +379,91 @@ export function buildCharacters(three, scene, spawns){
       figure.add(plane);
     }
 
-    figure.position.set(s.npc.x, 1.3, s.npc.z);
-    figure.lookAt(s.face.x, 1.3, s.face.z);  // front (+Z, and the layer stack) faces the player
+    const baseY = 1.3;
+    figure.position.set(s.npc.x, baseY, s.npc.z);
+    // +Z (the layer stack) faces the cell — i.e. toward the player. Heights
+    // match, so the orientation is a pure yaw we can drive each frame.
+    const restYaw = Math.atan2(s.face.x - s.npc.x, s.face.z - s.npc.z);
+    figure.rotation.y = restYaw;
     scene.add(figure);
 
     const glow = new three.PointLight(ch.color, 0.8, 5);
     glow.position.set(s.npc.x, 1.7, s.npc.z);
     scene.add(glow);
 
-    npcs.push({ character: ch, x: s.wall.x, z: s.wall.z });
+    npcs.push({
+      character: ch, x: s.wall.x, z: s.wall.z,   // wall position — used for proximity
+      figure, fx: s.npc.x, fz: s.npc.z, baseY,    // figure stands a little behind the wall
+      restYaw, yaw: restYaw,                       // rest = facing the cell; yaw = current, smoothed
+      anim: makeIdleMotion(ch.id),                 // breathing rhythm unique to this character
+    });
   }
   return npcs;
+}
+
+/* ---------- idle animation ---------- */
+
+/* deterministic per-character motion: the same character always breathes
+   to the same rhythm, but each character gets their own. */
+function hashStr(s){
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function seededRng(seed){
+  return () => {
+    seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function makeIdleMotion(id){
+  const r = seededRng(hashStr(id ?? "npc"));
+  const pick = (lo, hi) => lo + (hi - lo) * r();
+  return {
+    phase:      r() * Math.PI * 2,    // desync the breath...
+    phase2:     r() * Math.PI * 2,    // ...and the sway, per character
+    breatheRate: pick(1.1, 1.8),      // ~3.5–5.7s per breath
+    breathAmp:   pick(0.010, 0.018),  // gentle vertical squash/stretch
+    bobAmp:      pick(0.014, 0.018),  // subtle rise/fall with the breath
+    swayRate:    pick(0.25, 0.65),    // slow weight-shift, slower than the breath
+    yawSwayAmp:  pick(0.018, 0.030),  // a faint turn in the shoulders
+    rollAmp:     pick(0.012, 0.024),  // a faint lean into the weight-shift
+    maxTurn:     pick(0.6, 0.85),     // ~34–49°: how far they'll crane toward you
+    track:       pick(0.62, 0.78),    // commit a bit more, but keep the gaze loose
+    response:    pick(4.5, 6.0),      // higher = snappier turn toward the player
+  };
+}
+
+/* shortest signed angle, wrapped to (-π, π] */
+function wrapAngle(a){ return Math.atan2(Math.sin(a), Math.cos(a)); }
+
+/* drive the in-world figures: a subtle breathing/sway idle loop plus a
+   loose, lazy turn toward the player as they pass. Call once per frame
+   (skip while a conversation is open, like the rest of the world). */
+export function updateCharacters(M, dt){
+  if (!M.npcs || !M.npcs.length) return;
+  const t  = performance.now() * 0.001;
+  const px = M.dolly.position.x, pz = M.dolly.position.z;
+
+  for (const npc of M.npcs){
+    const f = npc.figure, a = npc.anim;
+    if (!f) continue;
+
+    // loose facing: aim toward the player, but only crane part-way from rest
+    // and ease into it, so the tracking lags and never snaps to a hard lock
+    const want = Math.atan2(px - npc.fx, pz - npc.fz);
+    const off  = Math.max(-a.maxTurn, Math.min(a.maxTurn, wrapAngle(want - npc.restYaw)));
+    const target = npc.restYaw + off * a.track;
+    npc.yaw += wrapAngle(target - npc.yaw) * (1 - Math.exp(-dt * a.response));
+
+    // breathing + idle sway, each character to their own rhythm
+    const breath = Math.sin(t * a.breatheRate + a.phase);
+    const sway   = Math.sin(t * a.swayRate   + a.phase2);
+    f.rotation.set(0, npc.yaw + sway * a.yawSwayAmp, sway * a.rollAmp);
+    f.position.y = npc.baseY + breath * a.bobAmp;
+    f.scale.set(1, 1 + breath * a.breathAmp, 1);
+  }
 }
