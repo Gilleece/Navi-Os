@@ -42,5 +42,7 @@ export function raycastPanel(three, panel, controller, _ray = new three.Raycaste
   _ray.set(origin, dir);
   const hit = _ray.intersectObject(panel.mesh, false)[0];
   if (!hit || !hit.uv) return null;
-  return { x: hit.uv.x, y: 1 - hit.uv.y };   // flip V so y runs top->bottom like the canvas
+  // flip V so y runs top->bottom like the canvas; distance lets the caller
+  // end the pointer ray exactly on the panel surface
+  return { x: hit.uv.x, y: 1 - hit.uv.y, distance: hit.distance };
 }

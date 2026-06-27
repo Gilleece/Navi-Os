@@ -445,6 +445,13 @@ export function updateDialogueXR(state, three_, dt){
   }
   const hover = uv ? panelChoiceAt(uv) : -1;
 
+  // tell the hands how far the visible (active) controller's ray reaches the
+  // panel, so the pointer can stop at the menu instead of passing through it
+  const ai = (M.hands && M.hands.active) || 0;
+  const ac = (M.controllers || [])[ai];
+  const ah = ac ? raycastPanel(three, panel, ac) : null;
+  M.pointerReach = ah ? ah.distance : null;
+
   // thumbstick + trigger across input sources
   let thumb = 0, trigger = false;
   for (const src of session.inputSources){

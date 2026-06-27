@@ -13,6 +13,9 @@
    ============================================================ */
 
 const NEON = 0x46ff8e;
+const HAND_OPACITY      = 0.6;    // normal gameplay
+const HAND_OPACITY_MENU = 0.22;   // faded while a dialogue panel is open, so it
+                                  // doesn't obscure the choices you're aiming at
 
 function box(three, w, h, d, mat){ return new three.Mesh(new three.BoxGeometry(w, h, d), mat); }
 
@@ -61,9 +64,11 @@ function makeHand(three, mat){
   };
 }
 
+const POINTER_LEN = 3;   // full reach when not pointing at a panel
+
 function makePointer(three){
   const group = new three.Group();
-  const L = 3;
+  const L = POINTER_LEN;
   // depthTest off + high renderOrder so the ray/cursor draw over the
   // (always-on-top) dialogue panel and the hands, giving clear aim feedback.
   // Stack (back->front): world < panel(999) < hands(1000) < pointer(1002/1003)
@@ -81,13 +86,22 @@ function makePointer(three){
   tip.renderOrder = 1003;
   group.add(tip);
   group.visible = false;
+  group.userData = { ray, tip };          // refs so the reach can be set per frame
   return group;
+}
+
+/* shorten (or restore) a pointer so its ray + dot end `dist` metres out */
+function setReach(pointer, dist){
+  const { ray, tip } = pointer.userData;
+  ray.scale.y    = dist / POINTER_LEN;    // cylinder height is along local Y
+  ray.position.z = -dist / 2;
+  tip.position.z = -dist;
 }
 
 /* build the hands (on grips) and pointers (on controllers); stash on M.hands */
 export function buildHands(three, M){
   const mat = new three.MeshBasicMaterial({
-    color: NEON, transparent: true, opacity: 0.6, side: three.DoubleSide, depthWrite: false });
+    color: NEON, transparent: true, opacity: HAND_OPACITY, side: three.DoubleSide, depthWrite: false });
 
   const models   = (M.grips || []).map(g => {
     const h = makeHand(three, mat); h.group.visible = false;
@@ -98,7 +112,7 @@ export function buildHands(three, M){
   });
   const pointers = (M.controllers || []).map(c => { const p = makePointer(three); c.add(p); return p; });
 
-  M.hands = { models, pointers, active: 1, prev: [false, false] };
+  M.hands = { models, pointers, mat, active: 1, prev: [false, false] };
 }
 
 /* per-frame: curl fingers from the live gamepad, track the active
@@ -113,6 +127,10 @@ export function updateHands(M){
     H.pointers.forEach(p => p.visible = false);
     return;
   }
+
+  // fade the hands while a dialogue panel is up so they don't cover the menu
+  // (they still draw in front of it, just see-through); solid again in play
+  H.mat.opacity = M.dialogueOpen ? HAND_OPACITY_MENU : HAND_OPACITY;
 
   H.models.forEach(h => h.group.visible = false);        // show only hands we have input for
 
@@ -136,6 +154,11 @@ export function updateHands(M){
     H.prev[i] = pressed;
   }
 
-  // pointer only appears while a conversation is open, on the active controller
-  H.pointers.forEach((p, i) => { p.visible = (i === H.active && M.dialogueOpen); });
+  // pointer only appears while a conversation is open, on the active controller;
+  // when it's hitting the panel, stop it at that surface (else full reach)
+  H.pointers.forEach((p, i) => {
+    const vis = (i === H.active && M.dialogueOpen);
+    p.visible = vis;
+    setReach(p, (vis && M.pointerReach) ? M.pointerReach : POINTER_LEN);
+  });
 }

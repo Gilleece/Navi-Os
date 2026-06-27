@@ -29,6 +29,7 @@ import { rollStats } from "./state.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
 import { buildHands, updateHands } from "./hands.js";
 import { initVRBanner, showVRBanner, updateVRBanner } from "./vrbanner.js";
+import { initAudio } from "./audio.js";
 
 const layer = $("#maze-layer");
 let three = null;
@@ -177,6 +178,7 @@ function mazeLoop(){
 
 /* --- lifecycle --- */
 async function launchMaze(){
+  initAudio();                          // start the audio context on this click gesture
   $("#btn-launch-maze").textContent = "[ LOADING... ]";
   try { await loadThree(); }
   catch(e){ $("#btn-launch-maze").textContent = "[ LOAD FAILED — CHECK NET ]"; return; }
