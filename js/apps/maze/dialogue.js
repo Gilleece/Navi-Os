@@ -11,7 +11,7 @@
    ============================================================ */
 import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens } from "./state.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
-import { setVRPrompt } from "./vrbanner.js";
+import { setVRPrompt, showVRBanner } from "./vrbanner.js";
 
 /* touch device -> tap the prompt rather than press a key (mirrors maze.js) */
 const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
@@ -71,13 +71,18 @@ export function initDialogue(state){
   // keyboard controll while the box is open (desktop)
   addEventListener("keydown", e => {
     if (!M.dialogueOpen) return;
-    if (e.key === "Escape"){ e.preventDefault(); close(); return; }
+    const k = e.key.toLowerCase();
+    if (e.key === "Escape" || k === "b"){ e.preventDefault(); close(); return; }
     const n = parseInt(e.key, 10);
     if (n >= 1 && n <= 9){
       const btn = ui.choices.children[n-1];
       if (btn && !btn.disabled){ e.preventDefault(); btn.click(); }
     }
   });
+
+  // click on the 3D view (i.e. outside the box) dismisses the dialogue
+  const cv = document.querySelector("#maze-canvas");
+  if (cv) cv.addEventListener("click", () => { if (M.dialogueOpen) close(); });
 }
 
 /* ---------- build the VR panel (once renderer/dolly exist) ---------- */
@@ -154,6 +159,7 @@ function updatePanelPlacement(dt, snap){
 
 /* ---------- open / close ---------- */
 let trig = { down:false, dragged:false, startY:null, startScroll:0 };
+let bDown = false;        // VR "B"/"Y" button edge (closes the dialogue)
 
 export function openDialogue(state, character){
   M = state;
@@ -164,6 +170,7 @@ export function openDialogue(state, character){
   M.talk = false;
   shownAffinity = null;              // no pulse on the opening render
   trig = { down:true, dragged:true, startY:null, startScroll:0 };  // ignore the trigger press that opened us
+  bDown = true;                      // require a fresh B press before it can close
 
   ui.name.textContent = character.name;
   ui.foot.textContent = STATS.map(([k]) => `${STAT_ABBR[k]} ${player.stats[k]}`).join("  ·  ");
@@ -463,14 +470,19 @@ export function updateDialogueXR(state, three_, dt){
   // end the visible (active) pointer at the panel surface, if it's on it
   M.pointerReach = activeHit ? activeHit.distance : null;
 
-  // thumbstick + trigger across input sources
-  let thumb = 0, trigger = false;
+  // thumbstick + trigger + B/Y across input sources
+  let thumb = 0, trigger = false, bPressed = false;
   for (const src of session.inputSources){
     const gp = src.gamepad; if (!gp) continue;
     const ty = (gp.axes[3] ?? 0) || (gp.axes[1] ?? 0);
     if (Math.abs(ty) > 0.18) thumb += ty;
     if (gp.buttons[0] && gp.buttons[0].pressed) trigger = true;
+    if (gp.buttons[5] && gp.buttons[5].pressed) bPressed = true;   // B (right) / Y (left)
   }
+
+  // B/Y closes the dialogue (edge-triggered)
+  if (bPressed && !bDown){ bDown = true; close(); return; }
+  bDown = bPressed;
 
   // thumbstick scroll while pointing at the panel
   if (uv && Math.abs(thumb) > 0.18) scrollTop = clampScroll(scrollTop + thumb * 900 * dt);
@@ -486,14 +498,18 @@ export function updateDialogueXR(state, three_, dt){
     }
   } else if (!trigger && trig.down){
     trig.down = false;
-    if (!trig.dragged && hover >= 0) selectByIndex(hover);
+    if (trig.dragged) { /* was a scroll-drag, ignore */ }
+    else if (hover >= 0) selectByIndex(hover);
+    else if (!uv) { close(); return; }    // tapped off the panel -> dismiss
   }
 
   drawPanel(hover);
 }
 
-/* reuse the maze's centre banner for pickups */
+/* player notification (item received/given, etc.): the desktop HUD flash plus,
+   in VR, the shared head-locked banner — the same one used for "+N LT" */
 function toast(msg){
+  if (M && M.inVR) showVRBanner(msg, 1600);
   const el = document.querySelector("#hud-msg");
   if (!el) return;
   el.textContent = msg; el.classList.add("show");

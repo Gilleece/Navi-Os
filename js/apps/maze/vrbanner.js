@@ -4,7 +4,7 @@
    - a head-locked BANNER for transient messages ("ENTERED DEPTH 2",
      "+1 LT") that stays centred in view, and
    - a world-anchored PROMPT ("PULL TRIGGER — SPEAK WITH X") that
-     floats above the character you're near.
+     floats just below the character you're near.
 
    Both are parented to the dolly (which persists across level rebuilds)
    and placed each frame from the REAL XR camera pose (xr.getCamera),
@@ -40,7 +40,7 @@ function headPose(){
   scratch.m.decompose(scratch.hp, scratch.hq, scratch.s);
 }
 
-function makeTextPlane(planeW, canvasH){
+function makeTextPlane(planeW, canvasH, renderOrder = 999){
   const canvas = document.createElement("canvas");
   canvas.width = 1024; canvas.height = canvasH;
   const ctx = canvas.getContext("2d");
@@ -48,7 +48,7 @@ function makeTextPlane(planeW, canvasH){
   const mesh = new three.Mesh(
     new three.PlaneGeometry(planeW, planeW * canvasH / 1024),
     new three.MeshBasicMaterial({ map: tex, transparent: true, fog: false, depthTest: false }));
-  mesh.renderOrder = 999;
+  mesh.renderOrder = renderOrder;
   const group = new three.Group();
   group.add(mesh);
   group.visible = false;
@@ -76,7 +76,9 @@ function drawText(obj, text, baseSize){
 export function initVRBanner(threeRef, state){
   three = threeRef; M = state;
   ensureScratch();
-  banner = makeTextPlane(1.2, 256);
+  // renderOrder above the dialogue panel (999) so item/pickup messages
+  // received mid-conversation aren't hidden behind the box
+  banner = makeTextPlane(1.2, 256, 1010);
 }
 
 export function initVRPrompt(){
@@ -103,9 +105,9 @@ export function updateVRBanner(){
   banner.group.quaternion.copy(scratch.hq);        // glued square to the view
 }
 
-/* show/refresh the interaction prompt floating above the character at world
-   (wx,_,wz), billboarded to face the player. Pass falsy text to hide. Cheap
-   to call every frame: the texture is only redrawn when the text changes. */
+/* show/refresh the interaction prompt floating just below the character at
+   world (wx,_,wz), billboarded to face the player. Pass falsy text to hide.
+   Cheap to call every frame: the texture is only redrawn when text changes. */
 export function setVRPrompt(text, wx, wz){
   if (!prompt) return;
   if (!text){ prompt.group.visible = false; lastPromptText = null; return; }
@@ -113,7 +115,7 @@ export function setVRPrompt(text, wx, wz){
 
   headPose();                                      // refreshes the dolly matrix + head pos
   scratch.v.set(wx, PROMPT_Y, wz);
-  M.dolly.worldToLocal(scratch.v);                 // world spot above the character -> dolly-local
+  M.dolly.worldToLocal(scratch.v);                 // world spot below the character -> dolly-local
   prompt.group.position.copy(scratch.v);
   // billboard around Y so the text stays upright and faces the head
   prompt.group.rotation.set(0, Math.atan2(scratch.hp.x - scratch.v.x, scratch.hp.z - scratch.v.z), 0);

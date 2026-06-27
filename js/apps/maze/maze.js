@@ -167,6 +167,7 @@ function mazeLoop(){
       M.goal = null;
       const msg = $("#hud-msg");
       msg.textContent = "GATE REACHED — DESCENDING"; msg.classList.add("show");
+      if (M.inVR) showVRBanner("GATE REACHED — DESCENDING", 1400);
       setTimeout(() => {
         msg.classList.remove("show"); M.depth++; buildMaze();
         if (M.inVR) showVRBanner(`ENTERED DEPTH ${M.depth}`);
