@@ -20,7 +20,7 @@
 import { $ } from "../../utils.js";
 import { buildEnvironment, wallKey } from "./environment.js";
 import { buildEntities, updateTokens } from "./entities.js";
-import { themeFor } from "./palette.js";
+import { themeFor, animate, liveScene } from "./palette.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
 import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters } from "./characters/characters.js";
@@ -49,7 +49,7 @@ const M = {
   N: 9, CELL: 4, WALL_H: 3.4, WALL_T: 0.5, R: 0.45,
   renderer:null, scene:null, camera:null, dolly:null,
   walls:[], goal:null, spinners:[], depth:1, lamp:null, cyberMat:null,
-  tokens:[], bursts:[], theme:null,
+  tokens:[], bursts:[], theme:null, ambient:null, paneMat:null,
   npcs:[], nearCharacter:null, dialogueOpen:false, talk:false,
   controllers:null, grips:null, hands:null, prevTrigger:false,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
@@ -72,17 +72,20 @@ function buildMaze(){
   const spawns = spawnCharacters(cells, goalCell, M.depth, M);
   const windows = new Set(spawns.map(s => wallKey(s.wall.x, s.wall.z, s.wall.alongX)));
 
-  const { walls, cyberMat } = buildEnvironment(three, M.scene, M, cells, goalCell, windows);
+  const { walls, cyberMat, paneMat, ambient } = buildEnvironment(three, M.scene, M, cells, goalCell, windows);
   M.walls.push(...walls);
   M.cyberMat = cyberMat;
+  M.paneMat = paneMat;
+  M.ambient = ambient;
 
   // player lamp, rides along with the dolly and persists across rebuilds
   if (!M.lamp){
-    M.lamp = new three.PointLight(M.theme.neon, 1.1, 14);
+    M.lamp = new three.PointLight(M.theme.neon, 1.5, 18);
     M.lamp.position.set(0, 2.2, 0);
     M.dolly.add(M.lamp);
   }
   M.lamp.color.setHex(M.theme.neon);       // tint the lamp to this level's palette
+  M.lamp.intensity = 1.5;                   // reset (animated bands drive this per-frame)
   M.scene.add(M.dolly);
 
   const { goal, spinners, tokens } = buildEntities(three, M.scene, M, goalCell);
@@ -120,6 +123,21 @@ function triggerHeld(){
 
 function mazeLoop(){
   const dt = Math.min(M.clock.getDelta(), 0.1);
+
+  // animated colour bands (shift / transition / flicker): recolour the
+  // lamp, ambient, fog and unlit materials each frame. Runs even during
+  // dialogue so the world keeps breathing. Static bands have no .anim.
+  if (M.theme && M.theme.anim){
+    const a  = animate(M.theme, performance.now() / 1000);
+    const sc = liveScene(a.rgb, a.bright);
+    M.lamp.color.setHex(sc.lamp);
+    M.lamp.intensity = sc.intensity;
+    M.ambient.color.setHex(sc.ambient);
+    M.scene.fog.color.setHex(sc.fog);
+    M.paneMat.color.setHex(sc.pane);
+    if (M.cyberMat) M.cyberMat.color.setHex(sc.cyber);
+  }
+
   if (M.dialogueOpen){            // freeze the world while a conversation is open
     if (M.inVR) updateDialogueXR(M, three, dt);
   } else {

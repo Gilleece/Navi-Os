@@ -1,16 +1,18 @@
 /* ============================================================
    MAZE.EXE - procedural textures
    Canvas-generated wall + floor maps, returned as three textures.
-   Each takes the level `theme` (see palette.js) so the maze recolours
-   as you descend; with the green theme they look as they always did.
+   Each reads the level's *texture* colour (theme.texRgb / texBase /
+   texFog — see palette.js): on solid levels these are the neon itself,
+   on every other band they are neutral grey so the colour is supplied
+   later by the lights/fog/materials and can ramp or animate.
    ============================================================ */
 import { cssHex } from "./palette.js";
 
 export function brickTexture(three, theme){
-  const [nr, ng, nb] = theme.rgb;
+  const [nr, ng, nb] = theme.texRgb;
   const c = document.createElement("canvas"); c.width = c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = cssHex(theme.base); g.fillRect(0,0,256,256);
+  g.fillStyle = cssHex(theme.texBase); g.fillRect(0,0,256,256);
   const bw = 64, bh = 32;
   for (let y = 0; y < 256/bh; y++){
     const off = (y % 2) * bw/2;
@@ -31,7 +33,7 @@ export function brickTexture(three, theme){
    brick at the base dissolving upward into glowing data fragments
    and transparent gaps. Use on a transparent MeshBasicMaterial. */
 export function cyberTexture(three, theme){
-  const [nr, ng, nb] = theme.rgb;
+  const [nr, ng, nb] = theme.texRgb;
   const c = document.createElement("canvas"); c.width = c.height = 256;
   const g = c.getContext("2d");
   g.clearRect(0,0,256,256);
@@ -66,10 +68,10 @@ export function cyberTexture(three, theme){
 }
 
 export function floorTexture(three, theme){
-  const [nr, ng, nb] = theme.rgb;
+  const [nr, ng, nb] = theme.texRgb;
   const c = document.createElement("canvas"); c.width = c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = cssHex(theme.fog); g.fillRect(0,0,256,256);
+  g.fillStyle = cssHex(theme.texFog); g.fillRect(0,0,256,256);
   g.strokeStyle = `rgba(${nr},${ng},${nb},.25)`; g.lineWidth = 2;
   g.strokeRect(4,4,248,248);
   g.strokeStyle = `rgba(${nr},${ng},${nb},.08)`;

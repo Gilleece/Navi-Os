@@ -14,6 +14,7 @@
 import { cellCenter } from "./generator.js";
 import { $ } from "../../utils.js";
 import { player, addTokens } from "./state.js";
+import { showVRBanner } from "./vrbanner.js";
 
 const PICKUP_R    = 0.9;   // how close the player must get to collect
 const COLLECT_TIME = 0.55; // seconds of spin-and-shrink before it's gone
@@ -86,7 +87,8 @@ export function updateTokens(three, scene, cfg, dt){
       if (Math.hypot(px - m.position.x, pz - m.position.z) < PICKUP_R){
         tk.collecting = true; tk.t = 0;
         addTokens(tk.value); refreshTokenHud();
-        toast(`+${tk.value} LT`);
+        toast(`+${tk.value} LT`);                                  // desktop/touch HUD flash
+        if (cfg.inVR) showVRBanner(`+${tk.value} LT`, 1100);      // same head-locked banner as depth changes
         spawnBurst(three, scene, cfg, tk);
       }
     } else {

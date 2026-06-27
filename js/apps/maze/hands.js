@@ -65,19 +65,20 @@ function makePointer(three){
   const group = new three.Group();
   const L = 3;
   // depthTest off + high renderOrder so the ray/cursor draw over the
-  // (always-on-top) dialogue panel, giving clear aim feedback
+  // (always-on-top) dialogue panel and the hands, giving clear aim feedback.
+  // Stack (back->front): world < panel(999) < hands(1000) < pointer(1002/1003)
   const ray = new three.Mesh(
     new three.CylinderGeometry(0.0035, 0.0035, L, 6),
     new three.MeshBasicMaterial({ color: NEON, transparent: true, opacity: 0.5, depthTest: false, depthWrite: false }));
   ray.rotation.x = Math.PI / 2;                          // lay the cylinder along -Z
   ray.position.z = -L / 2;
-  ray.renderOrder = 1000;
+  ray.renderOrder = 1002;
   group.add(ray);
   const tip = new three.Mesh(
     new three.SphereGeometry(0.012, 10, 10),
     new three.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false }));
   tip.position.z = -L;
-  tip.renderOrder = 1001;
+  tip.renderOrder = 1003;
   group.add(tip);
   group.visible = false;
   return group;
@@ -88,7 +89,13 @@ export function buildHands(three, M){
   const mat = new three.MeshBasicMaterial({
     color: NEON, transparent: true, opacity: 0.6, side: three.DoubleSide, depthWrite: false });
 
-  const models   = (M.grips || []).map(g => { const h = makeHand(three, mat); h.group.visible = false; g.add(h.group); return h; });
+  const models   = (M.grips || []).map(g => {
+    const h = makeHand(three, mat); h.group.visible = false;
+    // draw the hands after the dialogue panel (renderOrder 999) so they sit on
+    // top of it; depthTest stays on, so they're still occluded by the world.
+    h.group.traverse(o => { if (o.isMesh) o.renderOrder = 1000; });
+    g.add(h.group); return h;
+  });
   const pointers = (M.controllers || []).map(c => { const p = makePointer(three); c.add(p); return p; });
 
   M.hands = { models, pointers, active: 1, prev: [false, false] };

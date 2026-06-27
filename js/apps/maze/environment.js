@@ -21,8 +21,9 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   const { N, CELL, WALL_H, WALL_T, theme } = cfg;
   const size = N * CELL;
 
-  scene.fog = new three.Fog(theme.fog, 2, 26);
-  scene.add(new three.AmbientLight(theme.ambient, 0.9));
+  scene.fog = new three.Fog(theme.sceneFog, 2, 26);
+  const ambient = new three.AmbientLight(theme.ambient, 1.15);
+  scene.add(ambient);
 
   // floor + ceiling
   const fTex = floorTexture(three, theme); fTex.repeat.set(N, N);
@@ -44,8 +45,12 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   const bTex = brickTexture(three, theme); bTex.repeat.set(1.4, 1);
   const wallMat = new three.MeshLambertMaterial({map:bTex});
   // dissolving wall around the goal: unlit & transparent so the
-  // glowing fragments read as a beacon through the fog
-  const cyberMat = new three.MeshBasicMaterial({map:cyberTexture(three, theme), transparent:true, fog:false});
+  // glowing fragments read as a beacon through the fog. On neutral
+  // (non-solid) levels the map is grey, so tint it via .color.
+  const cyberMat = new three.MeshBasicMaterial({
+    map:cyberTexture(three, theme), transparent:true, fog:false,
+    color: theme.neutral ? theme.neon : 0xffffff,
+  });
   // glowing translucent window pane - characters stand behind it
   const paneMat = new three.MeshBasicMaterial({color:theme.neon, transparent:true, opacity:0.16, side:three.DoubleSide, fog:false});
   const geoH = new three.BoxGeometry(CELL + WALL_T, WALL_H, WALL_T); // runs along X
@@ -104,5 +109,5 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
       if (c.E)            place(geoV, (x+1)*CELL, cellCenter(y, CELL), false, y === gy && (x === gx || x+1 === gx));
     }
 
-  return { walls, cyberMat };
+  return { walls, cyberMat, paneMat, ambient };
 }
