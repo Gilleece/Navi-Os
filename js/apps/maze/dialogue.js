@@ -437,20 +437,26 @@ export function updateDialogueXR(state, three_, dt){
   updatePanelPlacement(dt, false);   // keep it in front of the head (lazy follow)
   panel.group.updateWorldMatrix(true, true);   // raycast collider must match where it's drawn this frame
 
-  // controller ray vs panel
-  let uv = null;
-  for (const c of (M.controllers || [])){
-    const u = raycastPanel(three, panel, c);
-    if (u){ uv = u; break; }
+  // Raycast the ACTIVE controller first — its pointer is the one shown and the
+  // one you're aiming. Looking left used to let the (non-aiming) left
+  // controller's ray clip the panel first and steal the hover from the right
+  // hand; prioritising the active controller fixes that. Fall back to the
+  // other controller only when the active one isn't on the panel.
+  const ctrls = M.controllers || [];
+  const ai = (M.hands && M.hands.active) || 0;
+  const activeHit = ctrls[ai] ? raycastPanel(three, panel, ctrls[ai]) : null;
+  let uv = activeHit;
+  if (!uv){
+    for (let i = 0; i < ctrls.length; i++){
+      if (i === ai) continue;
+      const u = raycastPanel(three, panel, ctrls[i]);
+      if (u){ uv = u; break; }
+    }
   }
   const hover = uv ? panelChoiceAt(uv) : -1;
 
-  // tell the hands how far the visible (active) controller's ray reaches the
-  // panel, so the pointer can stop at the menu instead of passing through it
-  const ai = (M.hands && M.hands.active) || 0;
-  const ac = (M.controllers || [])[ai];
-  const ah = ac ? raycastPanel(three, panel, ac) : null;
-  M.pointerReach = ah ? ah.distance : null;
+  // end the visible (active) pointer at the panel surface, if it's on it
+  M.pointerReach = activeHit ? activeHit.distance : null;
 
   // thumbstick + trigger across input sources
   let thumb = 0, trigger = false;
