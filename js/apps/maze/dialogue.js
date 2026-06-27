@@ -11,6 +11,10 @@
    ============================================================ */
 import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens } from "./state.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
+import { setVRPrompt } from "./vrbanner.js";
+
+/* touch device -> tap the prompt rather than press a key (mirrors maze.js) */
+const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
 import { refreshTokenHud } from "./entities.js";
 import { characterInk } from "./palette.js";
 
@@ -166,6 +170,7 @@ export function openDialogue(state, character){
 
   renderHub();                       // builds the view + renders DOM + panel
   ui.prompt.classList.remove("on");
+  setVRPrompt(null);                 // clear the proximity prompt while talking
   ui.box.classList.add("on");
   if (panel){
     panel.group.visible = !!M.inVR;
@@ -499,7 +504,7 @@ function toast(msg){
 /* ---------- proximity prompt (called from the main loop) ---------- */
 export function updateInteractions(state){
   M = state;
-  if (M.dialogueOpen){ ui.prompt.classList.remove("on"); return; }
+  if (M.dialogueOpen){ ui.prompt.classList.remove("on"); setVRPrompt(null); return; }
 
   const p = M.dolly.position;
   let near = null, best = TALK_RADIUS;
@@ -509,13 +514,22 @@ export function updateInteractions(state){
   }
   M.nearCharacter = near;
 
-  if (near){
-    ui.prompt.textContent = M.inVR
-      ? `TRIGGER — SPEAK WITH ${near.character.name}`
-      : `PRESS [F] — SPEAK WITH ${near.character.name}`;
-    ui.prompt.classList.add("on");
-  } else {
+  const name = near && near.character.name;
+  if (M.inVR){
+    // DOM prompt isn't visible in immersive-vr — float one above the character
     ui.prompt.classList.remove("on");
+    if (near) setVRPrompt(`PULL TRIGGER — SPEAK WITH ${name}`, near.x, near.z);
+    else      setVRPrompt(null);
+  } else {
+    setVRPrompt(null);
+    if (near){
+      ui.prompt.textContent = IS_TOUCH
+        ? `TAP HERE — SPEAK WITH ${name}`
+        : `PRESS [F] — SPEAK WITH ${name}`;
+      ui.prompt.classList.add("on");
+    } else {
+      ui.prompt.classList.remove("on");
+    }
   }
 
   if (M.talk){

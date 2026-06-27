@@ -28,7 +28,7 @@ import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialog
 import { rollStats } from "./state.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
 import { buildHands, updateHands } from "./hands.js";
-import { initVRBanner, showVRBanner, updateVRBanner } from "./vrbanner.js";
+import { initVRBanner, showVRBanner, updateVRBanner, initVRPrompt } from "./vrbanner.js";
 import { initAudio } from "./audio.js";
 
 const layer = $("#maze-layer");
@@ -212,7 +212,8 @@ async function launchMaze(){
     initDebugUI(debugNextLevel);     // desktop/touch debug button (no-op unless DEBUG)
     initDebugPanel(three, M.dolly);  // in-world VR debug panel (no-op unless DEBUG)
     buildHands(three, M);            // VR hands on the grips + pointer rays on the controllers
-    initVRBanner(three, M.camera);   // head-locked "ENTERED DEPTH N" banner
+    initVRBanner(three, M);          // head-locked banner ("ENTERED DEPTH N", "+N LT")
+    initVRPrompt();                  // world-anchored "PULL TRIGGER — SPEAK WITH X" prompt
     rollStats();                     // randomise the player's attribtues (placeholder for char creation)
     addEventListener("resize", sizeMaze);
 
