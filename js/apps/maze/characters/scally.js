@@ -167,7 +167,7 @@ function scallyDialogue(ctx){
     exhausted: "Eh, amico — we have-a talked enough for now. Go, go! The maze, she is waiting. *Scally rubs his hands and melts back into the static.*",
     hostile: "*He turns his back, muttering in Italian.* Pah! I got nothing for you. You bring Scally something nice, eh — then maybe we talk again.",
     topics: [
-      { id: "place", label: "Well met, friend — what is this place?", effects: { like: +4 },
+      { id: "place", label: "Well met, friend — what is this place?", effects: { like: +3 },
         node: { text: "Heh — 'friend', he says. I like-a this one. They call her the Labyrinth Protocol, amico — the maze that is not a maze, the in-between. You walk, you talk to Scally, you no get lost. Capisce?" } },
 
       // level-1 only: the tutorial on Labyrinth Tokens (Scally calls them "LT")
@@ -179,14 +179,14 @@ function scallyDialogue(ctx){
         node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Scally — I am the only honest one. *grin*" } },
 
       { id: "charm", label: "*Flatter him* A man of your style must run this whole place.",
-        req: { attr: "charisma", level: 6 }, effects: { like: +10 },
+        req: { attr: "charisma", level: 6 }, effects: { like: +3 },
         node: { text: "*He puffs up, twirling the mustache.* Ahhh, you have-a the eye! Nothing it moves in these wires without Scally knowing. We are friends now, eh? And friends — friends help each other." } },
 
       { id: "smart", label: "This is a recursive lattice — where does it terminate?",
         req: { attr: "intelligence", level: 6 }, effects: { like: +2 },
         node: { text: "*Scally blinks, then cackles.* Clever mouse! It 'terminates' at the broken wall — where everything it falls into the static. Follow the glow, amico. And watch your step, eh." } },
 
-      { id: "rude", label: "Get out of my way, little man.", effects: { like: -12 },
+      { id: "rude", label: "Get out of my way, little man.", effects: { like: -10 },
         node: { text: "*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene." } },
 
       // Always askable. The menu is built from the shared economy on the
@@ -258,7 +258,7 @@ export const scally = {
     { id: "sausage", name: "Cured Sausage", desc: "Greasy, fragrant, faintly glowing. 'Real Italiano,' Scally insists." },
     { id: "coin",    name: "Brass Token",   desc: "A worn token stamped with a maze. Opens... something, somewhere." },
     // his prized piece: Labyrinth Tokens only, never gifted (price = LT cost)
-    { id: "charm",   name: "Tin Cornicello",desc: "A little tin horn against the evil eye. Scally swears by it.", price: 4 },
+    { id: "charm",   name: "Tin Cornicello",desc: "A little tin horn against the evil eye. Scally swears by it.", price: 45 },
   ],
   // what Scally wants from the player. `open` he'll haggle for out loud;
   // `hidden` he craves but won't name, and only hints at in riddles.

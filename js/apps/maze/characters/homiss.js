@@ -302,7 +302,7 @@ function homissDialogue(ctx){
     exhausted: "Ah, don't be a stranger now, will ye? Sure I'll be here. ...I'm always here, amn't I. *a flicker of something behind the eyes, then the grin's back.* Go on, go on.",
     hostile: "*He won't quite meet your eye.* ...I think I'd sooner be on me own for a bit. If that's alright with ye.",
     topics: [
-      { id: "hello", label: "Homiss, how's the day treating you?", effects: { like: +4 },
+      { id: "hello", label: "Homiss, how's the day treating you?", effects: { like: +3 },
         node: { text: "Ah sure ye know yerself — up early, bit o' brekkie, bit o' practice. Same as any day. *he says it like a man steadyin' himself.* Lovely an' normal. Just a normal day, like every other normal day. ...an' how's yourself? No — actually — *he's already somewhere else* — here, can I ask ye somethin' mad?" } },
 
       { id: "music", label: "So what is it you do?", effects: { like: +3 },
@@ -327,18 +327,18 @@ function homissDialogue(ctx){
           ] } },
 
       { id: "charm", label: "*Warmly* There's a serious mind behind that bass.",
-        req: { attr: "charisma", level: 6 }, effects: { like: +10 },
+        req: { attr: "charisma", level: 6 }, effects: { like: +3 },
         node: { text: "*He goes pink to the very ears.* Ah, stop— stop now, ye'll have me blushin'. But a fella likes to hear it, I'll not lie to ye. *beams* D'ye know what, I've a good feelin' about you. We're goin' to be great pals, you an' me. Great pals entirely." } },
 
       { id: "smart", label: "Is your tuning just intonation, or equal temperament?",
-        req: { attr: "intelligence", level: 6 }, effects: { like: +6 },
+        req: { attr: "intelligence", level: 6 }, effects: { like: +3 },
         node: { text: "*His whole face lights up.* Oh ho — a head on ye! Just intonation, when I can get away with it — let the harmonics fall where nature wants 'em, none o' yer tempered compromise. ...d'ye know, talkin' to you is the most real thing's happened to me all day. *a beat* ...all day. Funny, that. Anyway!" } },
 
       // ties into the economy: his hidden desire is mayonnaise
       { id: "mayo", label: "You keep glancing at my pockets...", effects: { like: +1 },
         node: { text: "...ye wouldn't happen to have any mayonnaise on ye, would ye? *Far too fast.* It's only— there's NONE. Nowhere. I've looked the whole day an' there's not a drop to be found in this— in this town, an' sure a meal's only a tragedy without it, ye know yerself. A good dollop o' mayo'd set the whole world to rights. *deadly earnest* I'd do near anythin' for a jar. Anythin' at all." } },
 
-      { id: "rude", label: "Nobody actually cares about your music, man.", effects: { like: -14 },
+      { id: "rude", label: "Nobody actually cares about your music, man.", effects: { like: -10 },
         node: { text: "*The grin drops clean off him.* ...right. No, that's— that's fair, probably. Aye. *He turns back to the bass, gone quiet.* Sorry for botherin' ye." } },
 
       // Always askable. Built from the shared economy on the base class: a
@@ -410,7 +410,7 @@ export const homiss = {
     { id: "plectrum", name: "Bone Plectrum",  desc: "A worn bass plectrum carved from... something. Homiss won't be drawn on what." },
     { id: "napkin",   name: "Scrawled Napkin",desc: "A cafe napkin covered in frantic notation and, underlined three times, the words 'IS ANY OF THIS REAL'." },
     // his prized piece: Labyrinth Tokens only, never gifted (price = LT cost)
-    { id: "cassette", name: "Warped Cassette", desc: "A home-dubbed tape of Homiss's experimental bass works. The label just reads 'DREAD (live)'.", price: 3 },
+    { id: "cassette", name: "Warped Cassette", desc: "A home-dubbed tape of Homiss's experimental bass works. The label just reads 'DREAD (live)'.", price: 30 },
   ],
   // what Homiss wants from the player. `open` he'll barter for out loud — he's
   // a foodie and forever curious; `hidden` he craves but won't name outright,

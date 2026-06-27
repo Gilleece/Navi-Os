@@ -65,6 +65,25 @@ export const WORLD = "Labyrinth Protocol";
    cool-down gap). See Character.canTrade / recordTrade. */
 export const TRADE_COOLDOWN = 2;
 
+/* ---------- inter-character affinity ----------
+   How each character currently feels about each OTHER character (0..100),
+   directional — A->B may differ from B->A. A MISSING entry means they don't
+   know each other / have never met. Base values are mirrored in CLAUDE.md.
+
+   The plot: the trapped users used to converse freely between their windows
+   but have recently been isolated, so the player relaying messages and moving
+   items between them is meant to shift these values over time (see likePeer /
+   meetPeer). Copied onto each Character as `this.peers` so it can mutate and
+   persist across levels.
+
+   TODO: only Scally and Homiss exist so far. As each new character is added,
+   fill in their pairings here (and deliberately leave SOME pairs absent, for
+   characters who have never met, so "introducing" them is a player action). */
+const BASE_PEER_AFFINITY = {
+  scally: { homiss: 58 },   // knows him; cordial but always sizing him up
+  homiss: { scally: 64 },   // likes the wee fixer, a touch warmer than returned
+};
+
 export class Character {
   constructor(def){
     this.id          = def.id;
@@ -82,9 +101,22 @@ export class Character {
     this.layerCount  = def.layerCount ?? 1;         // number of depth slices for the 2.5D figure
     this._dialogue   = def.dialogue;                // (ctx) => rootNode
     this.firstLevelNearStart = !!def.firstLevelNearStart;
+    this.peers       = { ...(BASE_PEER_AFFINITY[def.id] ?? {}) };   // feelings toward other characters (see above)
   }
 
   like(delta){ this.affinity = Math.max(0, Math.min(100, this.affinity + delta)); }
+
+  /* --- inter-character affinity (this character's view of another) --- */
+  /* 0..100, or null if they've never met */
+  feelsToward(otherId){ return this.peers[otherId] ?? null; }
+  /* nudge that feeling (clamped); no-op if they don't know each other yet */
+  likePeer(otherId, delta){
+    if (this.peers[otherId] == null) return;
+    this.peers[otherId] = Math.max(0, Math.min(100, this.peers[otherId] + delta));
+  }
+  /* establish a relationship the first time they're introduced (e.g. the
+     player relays a message between two who had never met) */
+  meetPeer(otherId, initial = 50){ if (this.peers[otherId] == null) this.peers[otherId] = initial; }
 
   get tone(){ return (TONES.find(([max]) => this.affinity <= max) ?? TONES.at(-1))[1]; }
 

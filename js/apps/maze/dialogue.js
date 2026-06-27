@@ -262,7 +262,12 @@ function chooseChoice(choice){
   if (!canSelect(choice)) return;
   const fx = choice.effects;
   if (fx){
-    if (typeof fx.like === "number") current.like(fx.like);
+    if (typeof fx.like === "number"){
+      // general rule: a conversation moves affinity by at most +3, or down to
+      // -10. Trades (give/take) carry their own exchange bonus and are exempt.
+      const isTrade = fx.give != null || fx.take != null;
+      current.like(isTrade ? fx.like : Math.max(-10, Math.min(3, fx.like)));
+    }
     if (typeof fx.cost === "number" && fx.cost > 0){ spendTokens(fx.cost); refreshTokenHud(); }  // pay LT
     if (fx.take) removeItem(fx.take);                // barter: hand the character one of your items
     if (fx.give){                                    // giving is self-limiting (item is removed)
