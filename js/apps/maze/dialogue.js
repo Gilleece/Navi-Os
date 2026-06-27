@@ -12,6 +12,7 @@
 import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens } from "./state.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
 import { refreshTokenHud } from "./entities.js";
+import { characterInk } from "./palette.js";
 
 const STAT_ABBR = { strength:"STR", perception:"PER", endurance:"END",
                     charisma:"CHA", intelligence:"INT", agility:"AGI", luck:"LCK" };
@@ -284,7 +285,7 @@ function currentMood(){
 
 function syncHeader(){
   const mood = currentMood();
-  current.portrait(ui.portrait.getContext("2d"), ui.portrait.width, ui.portrait.height, mood);
+  current.portrait(ui.portrait.getContext("2d"), ui.portrait.width, ui.portrait.height, mood, characterInk(M.theme));
   refreshAffinity();
 }
 

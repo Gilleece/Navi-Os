@@ -13,15 +13,10 @@
 /* ten neons around the wheel, green first. No pure black or white. */
 const NEONS = [
   0x46ff8e,  // 1  green   (original)
-  0x2bffd1,  // 2  aqua
-  0x26c9ff,  // 3  cyan
-  0x5b8cff,  // 4  blue
-  0x9d6bff,  // 5  violet
-  0xff5ad8,  // 6  magenta
-  0xff5f8d,  // 7  rose
-  0xff5a3c,  // 8  coral
-  0xff9e2c,  // 9  amber
-  0xf4d13a,  // 10 gold
+  0x5b8cff,  // 2  blue
+  0xd61fff,  // 3  pink
+  0xff5a3c,  // 4  coral
+  0xf4d13a,  // 5  gold
 ];
 
 export const THEME_COUNT = NEONS.length;
@@ -45,5 +40,19 @@ export function themeFor(depth){
     fog:     hexOf(scale(rgb, 0.027)),   // fog / floor void
     ambient: hexOf(scale(rgb, 0.33)),    // ambient fill light
     ceil:    hexOf(scale(rgb, 0.06)),    // ceiling
+  };
+}
+
+/* Character ink for a level's theme. Every character is drawn in the level's
+   single neon — bright lines, a dark fill of the same hue, and a faint
+   matching glow — so the whole scene reads in one colour, like an old
+   single-phosphor monitor. The character art is handed this each draw. */
+export function characterInk(theme){
+  const [r, g, b] = theme.rgb;
+  return {
+    line:  cssHex(theme.neon),
+    fill:  cssHex(hexOf(scale(theme.rgb, 0.15))),
+    glow0: `rgba(${r},${g},${b},0.20)`,
+    glow1: `rgba(${r},${g},${b},0)`,
   };
 }

@@ -11,12 +11,20 @@
    moods: "neutral" | "happy" | "angry" | "sad".
    ============================================================ */
 
-const FILL = "#0c2b1a", LINE = "#46ff8e";
+/* drawing ink — defaults to the original green, but every draw call is handed
+   the current level's ink (see palette.characterInk / characters.js) so all
+   characters render in one colour, like an old single-phosphor monitor. */
+let LINE = "#46ff8e", FILL = "#0c2b1a";
+let GLOW0 = "rgba(70,255,142,.20)", GLOW1 = "rgba(70,255,142,0)";
+function applyInk(ink){
+  if (!ink) return;
+  LINE = ink.line; FILL = ink.fill; GLOW0 = ink.glow0; GLOW1 = ink.glow1;
+}
 
 function scallyGlow(g, w, h){
   const grd = g.createRadialGradient(w/2, h*0.55, 12, w/2, h*0.55, w*0.62);
-  grd.addColorStop(0, "rgba(70,255,142,.20)");
-  grd.addColorStop(1, "rgba(70,255,142,0)");
+  grd.addColorStop(0, GLOW0);
+  grd.addColorStop(1, GLOW1);
   g.fillStyle = grd; g.fillRect(0, 0, w, h);
 }
 
@@ -102,7 +110,8 @@ function scallyHands(g, w, h){
 }
 
 /* full flat portrait — used by the dialogue box */
-function drawScally(g, w, h, mood = "neutral"){
+function drawScally(g, w, h, mood = "neutral", ink){
+  applyInk(ink);
   g.clearRect(0, 0, w, h);
   scallyGlow(g, w, h);
   scallyBody(g, w, h);
@@ -112,7 +121,8 @@ function drawScally(g, w, h, mood = "neutral"){
 
 /* one depth layer of the figure — used for the 2.5D in-world build.
    0 = body (back), 1 = head/face (mid), 2 = hands (front, nearest). */
-function drawScallyLayer(g, w, h, mood, layer){
+function drawScallyLayer(g, w, h, mood, layer, ink){
+  applyInk(ink);
   g.clearRect(0, 0, w, h);
   if (layer === 0){ scallyGlow(g, w, h); scallyBody(g, w, h); }
   else if (layer === 1){ scallyHead(g, w, h, mood); }
@@ -239,7 +249,6 @@ export const scally = {
   id:   "scally",
   name: "SCALLY",
   description: "A small, hunched Italian fixer who haunts the wired. Forever rubbing his hands and smiling like he knows something you don't. Honest, he swears.",
-  color: 0x46ff8e,
   firstLevelNearStart: true,
   portrait: drawScally,
   drawLayer: drawScallyLayer,

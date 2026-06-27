@@ -8,7 +8,7 @@
    ============================================================ */
 import { raycastPanel } from "./panel.js";
 
-export const DEBUG = false;   // flip to true to enable the debug menu
+export const DEBUG = true;   // flip to true to enable the debug menu
 
 const PANEL_W = 480, PANEL_H = 220;
 const BTN = { x: 40, y: 76, w: PANEL_W - 80, h: 100 };

@@ -91,7 +91,7 @@ function buildMaze(){
   M.tokens = tokens;
 
   // characters behind their windows
-  M.npcs = buildCharacters(three, M.scene, spawns);
+  M.npcs = buildCharacters(three, M.scene, spawns, M.theme);
   M.nearCharacter = null;
 
   // player start

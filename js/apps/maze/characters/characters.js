@@ -23,7 +23,9 @@
    scally.js), import it below and add it to DEFS.
    ============================================================ */
 import { cellCenter, bfsDistances, exteriorSides } from "../generator.js";
+import { characterInk } from "../palette.js";
 import { scally } from "./scally.js";
+import { homiss } from "./homiss.js";
 
 /* affinity buckets -> tone key used to pick dialogue flavour */
 const TONES = [
@@ -68,7 +70,6 @@ export class Character {
     this.id          = def.id;
     this.name        = def.name;
     this.description = def.description;
-    this.color       = def.color ?? 0x46ff8e;
     this.affinity    = def.affinity ?? 50;          // 0..100, mutated by dialogue, persists across levels (new game = 50)
     this.seen        = new Map();                    // level -> Set of exhausted topic ids (conversations are fresh each level)
     this.wants       = def.wants ?? [];              // item ids this character covets, gift one to thaw a hostile mood
@@ -76,8 +77,8 @@ export class Character {
     this.interestsOpen = def.interests?.open ?? [];  // item ids this character openly wants from the player (barter)
     this.hiddenDesire  = def.interests?.hidden ?? null;  // the one item they crave but won't name; they speak of it in riddles
     this.lastTradeLevel = null;                      // last level we handed the player a gift (trade cooldown; null = never)
-    this.portrait    = def.portrait;                // (ctx, w, h, mood) => void   flat portrait
-    this.drawLayer   = def.drawLayer ?? null;       // (ctx, w, h, mood, layer) => void   one depth slice
+    this.portrait    = def.portrait;                // (ctx, w, h, mood, ink) => void   flat portrait
+    this.drawLayer   = def.drawLayer ?? null;       // (ctx, w, h, mood, layer, ink) => void   one depth slice
     this.layerCount  = def.layerCount ?? 1;         // number of depth slices for the 2.5D figure
     this._dialogue   = def.dialogue;                // (ctx) => rootNode
     this.firstLevelNearStart = !!def.firstLevelNearStart;
@@ -154,7 +155,7 @@ export class Character {
 
 /* the full roster, one Character instance per def, created once so
    affinity and seen-topics persist across maze levels */
-const DEFS = [scally];
+const DEFS = [scally, homiss];
 export const ROSTER = DEFS.map(def => new Character(def));
 
 /* passive recovery, applied once per maze level: a character who is
@@ -200,17 +201,31 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
       candidates.push({ x, y });
     }
 
+  // ROSTER order matters on level 1: the `firstLevelNearStart` character
+  // (Scally) is placed first, as near the start as possible, and every other
+  // character is then pushed strictly farther in — so Scally is always the
+  // first one the player meets. (Exactly one character should carry the flag.)
   const spawns = [];
+  let firstMetDist = null;
   for (const ch of ROSTER){
     let pool = candidates.filter(c => !used.has(c.x + "," + c.y));
+
     if (depth === 1 && ch.firstLevelNearStart){
       const near = pool.filter(c => dist[c.y][c.x] >= 1 && dist[c.y][c.x] <= 5);
-      if (near.length) pool = near;   // guarantee within the first five squares
+      if (near.length){
+        const dmin = Math.min(...near.map(c => dist[c.y][c.x]));
+        pool = near.filter(c => dist[c.y][c.x] === dmin);   // the closest tier (random among ties)
+      }
+    } else if (depth === 1 && firstMetDist != null){
+      const far = pool.filter(c => dist[c.y][c.x] > firstMetDist);
+      if (far.length) pool = far;     // keep everyone else deeper than Scally
     }
     if (!pool.length) continue;
 
     const cell  = pool[Math.random()*pool.length | 0];
     used.add(cell.x + "," + cell.y);
+    if (depth === 1 && ch.firstLevelNearStart) firstMetDist = dist[cell.y][cell.x];
+
     const sides = exteriorSides(cells, cell.x, cell.y);
     const side  = sides[Math.random()*sides.length | 0];
     spawns.push(makeSpawn(ch, cell, side, CELL));
@@ -226,7 +241,8 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
    (body / head / hands) facing the cell, giving real parallax, so
    in VR stereo (and when moving in 2D) the character reads as solid
    rather than a flat decal. */
-export function buildCharacters(three, scene, spawns){
+export function buildCharacters(three, scene, spawns, theme){
+  const ink = characterInk(theme);   // every character drawn in this level's single colour
   const npcs = [];
   for (const s of spawns){
     const ch = s.character;
@@ -241,8 +257,8 @@ export function buildCharacters(three, scene, spawns){
       cnv.width = BW * SS; cnv.height = BH * SS;
       const g = cnv.getContext("2d");
       g.scale(SS, SS);
-      if (ch.drawLayer) ch.drawLayer(g, BW, BH, "neutral", li);
-      else              ch.portrait(g, BW, BH, "neutral");
+      if (ch.drawLayer) ch.drawLayer(g, BW, BH, "neutral", li, ink);
+      else              ch.portrait(g, BW, BH, "neutral", ink);
 
       const tex = new three.CanvasTexture(cnv);
       tex.anisotropy = 8;                  // sharpen at grazing angles
@@ -264,7 +280,7 @@ export function buildCharacters(three, scene, spawns){
     figure.rotation.y = restYaw;
     scene.add(figure);
 
-    const glow = new three.PointLight(ch.color, 0.8, 5);
+    const glow = new three.PointLight(theme.neon, 0.8, 5);
     glow.position.set(s.npc.x, 1.7, s.npc.z);
     scene.add(glow);
 
