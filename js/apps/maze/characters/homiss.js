@@ -334,6 +334,14 @@ function homissDialogue(ctx){
         req: { attr: "intelligence", level: 6 }, effects: { like: +3 },
         node: { text: "*His whole face lights up.* Oh ho — a head on ye! Just intonation, when I can get away with it — let the harmonics fall where nature wants 'em, none o' yer tempered compromise. ...d'ye know, talkin' to you is the most real thing's happened to me all day. *a beat* ...all day. Funny, that. Anyway!" } },
 
+      { id: "flask", label: "Got anything to drink back there?",
+        req: { attr: "endurance", level: 6 }, effects: { like: +3 },
+        node: { text: "*He waggles a battered flask through the gap.* Poitín. For the nerves. Go easy now, it's— *ye drain it in one, and hand it back without so much as a watering eye. He stares at ye, then at the flask, then at ye.* ...well HOLY God. I can barely LOOK at that stuff. Constitution of a cathedral on ye. Remind me never to get into a drinkin' match with yerself." } },
+
+      { id: "catch", label: "*His plectrum slips — snatch it out of the air.*",
+        req: { attr: "agility", level: 6 }, effects: { like: +2 },
+        node: { text: "*It never hits the ground. He looks at yer closed fist, delighted.* Reflexes like a cat, wha'! D'ye play? No — don't answer — ye SHOULD. Hands like that, wasted on all this... *he waves at the general everything* ...walkin' about. C'mere, I'll teach ye a run o' notes sometime, so I will." } },
+
       // ties into the economy: his hidden desire is mayonnaise
       { id: "mayo", label: "You keep glancing at my pockets...", effects: { like: +1 },
         node: { text: "...ye wouldn't happen to have any mayonnaise on ye, would ye? *Far too fast.* It's only— there's NONE. Nowhere. I've looked the whole day an' there's not a drop to be found in this— in this town, an' sure a meal's only a tragedy without it, ye know yerself. A good dollop o' mayo'd set the whole world to rights. *deadly earnest* I'd do near anythin' for a jar. Anythin' at all." } },
@@ -349,11 +357,11 @@ function homissDialogue(ctx){
         node: () => {
           const choices = [];
 
-          // 1) his prized piece, Labyrinth Tokens only (he doesn't dwell on what they are)
-          const sale = character.forSale[0];
-          if (sale)
+          // 1) everything priced, Labyrinth Tokens only (he doesn't dwell on what they are)
+          for (const sale of character.forSale)
             choices.push({ text: `Buy the ${sale.name}.`,
-                           effects: { give: sale.id, cost: sale.price, like: +2 } });
+                           effects: { give: sale.id, cost: sale.price, like: +2,
+                                      flag: `bought-${sale.id}` } });
 
           // 2) barter: hand over something he openly wants for a trinket
           const swapFor = character.giftable[0];
@@ -361,7 +369,8 @@ function homissDialogue(ctx){
             const held = player.inventory.find(it => it.id === id);
             if (held && swapFor)
               choices.push({ text: `Trade your ${held.name} for the ${swapFor.name}.`,
-                             effects: { take: held.id, give: swapFor.id, like: +6 } });
+                             effects: { take: held.id, give: swapFor.id, like: +6,
+                                        flag: `traded-${held.id}-to-${character.id}` } });
           }
 
           // 3) the hidden desire — mayonnaise — only shows if the player holds it
@@ -369,7 +378,7 @@ function homissDialogue(ctx){
           if (secret){
             const prize = character.giftable[0];
             choices.push({ text: `Offer the ${secret.name}. *(His eyes go wide as dinner plates.)*`,
-              effects: { take: secret.id, give: prize?.id, like: +25 },
+              effects: { take: secret.id, give: prize?.id, like: +25, flag: "gave-mayo" },
               next: { text: "*He takes it in both hands like a holy relic, barely breathin'.* ...mayonnaise. Real, actual mayonnaise. *His voice cracks.* Ye beautiful, beautiful creature. Whatever ye need off me — ever — it's yours. I mean that now. I'll never forget this. *He's not letting go of the jar.*" } });
           }
 

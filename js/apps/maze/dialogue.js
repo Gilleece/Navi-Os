@@ -9,7 +9,8 @@
    a character hand over an item. The portrait switches mood
    (happy / angry / sad / neutral) to match what just happened.
    ============================================================ */
-import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens } from "./state.js";
+import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens, setFlag } from "./state.js";
+import { characterById } from "./characters/characters.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
 import { setVRPrompt, showVRBanner } from "./vrbanner.js";
 
@@ -173,7 +174,7 @@ export function openDialogue(state, character){
   bDown = true;                      // require a fresh B press before it can close
 
   ui.name.textContent = character.name;
-  ui.foot.textContent = STATS.map(([k]) => `${STAT_ABBR[k]} ${player.stats[k]}`).join("  ·  ");
+  ui.foot.textContent = [player.name, ...STATS.map(([k]) => `${STAT_ABBR[k]} ${player.stats[k]}`)].join("  ·  ");
 
   renderHub();                       // builds the view + renders DOM + panel
   ui.prompt.classList.remove("on");
@@ -216,12 +217,19 @@ function renderHub(){
     return present(hub.hostile, [{ label: "(Leave)", onSelect: close }]);
   }
 
-  const topics = hub.topics.filter(t => !current.hasSeen(hub.level, t.id) && (!t.available || t.available()));
+  // a topic is offered unless it's spent for this level (seen), retired for
+  // the whole game (once + remembered), or its availability gate says no.
+  // Story topics (injected by story.js) sort to the top, pinned.
+  const topics = hub.topics
+    .filter(t => !current.hasSeen(hub.level, t.id)
+              && !(t.once && current.recalls(`topic-${t.id}`))
+              && (!t.available || t.available(hub.ctx)))
+    .sort((a, b) => (b.story ? 1 : 0) - (a.story ? 1 : 0));
   const engageable = topics.filter(t => meetsReq(t.req));
   if (!engageable.length) return present(hub.exhausted, [{ label: "(Leave)", onSelect: close }]);
 
   const choices = topics.map(t => ({
-    label: t.label, req: t.req, disabled: !meetsReq(t.req), onSelect: () => selectTopic(t),
+    label: t.label, req: t.req, story: t.story, disabled: !meetsReq(t.req), onSelect: () => selectTopic(t),
   }));
   choices.push({ label: "(Leave)", onSelect: close });
   present(hub.greet, choices);
@@ -236,8 +244,40 @@ function giftTo(item){
 function selectTopic(t){
   if (!meetsReq(t.req)) return;
   if (t.oneShot !== false) current.markSeen(hub.level, t.id);   // carried out -> not offered again this level
-  if (t.effects && typeof t.effects.like === "number") current.like(t.effects.like);
+  if (t.once) current.remember(`topic-${t.id}`);                // retired for the whole game (story beats)
+  applyEffects(t.effects);
   renderNode(typeof t.node === "function" ? t.node() : t.node);
+}
+
+/* ---------- effects ----------
+   One place applies everything a topic or choice can do: affinity (clamped
+   for pure conversation, free for trades), token cost, item exchange, story
+   flags, and inter-character (peer) affinity shifts from story beats. */
+function applyEffects(fx){
+  if (!fx) return;
+  if (typeof fx.like === "number"){
+    // general rule: a conversation moves affinity by at most +3, or down to
+    // -10. Trades (give/take) carry their own exchange bonus and are exempt.
+    const isTrade = fx.give != null || fx.take != null;
+    current.like(isTrade ? fx.like : Math.max(-10, Math.min(3, fx.like)));
+  }
+  if (typeof fx.cost === "number" && fx.cost > 0){ spendTokens(fx.cost); refreshTokenHud(); }  // pay LT
+  if (fx.take) removeItem(fx.take);                // barter: hand the character one of your items
+  if (fx.give){                                    // giving is self-limiting (item is removed)
+    const item = current.takeItem(fx.give);
+    if (item){
+      addItem(item);
+      if (fx.gift) current.recordTrade(hub.level); // only free affinity gifts go on the cooldown
+      toast(`RECEIVED — ${item.name.toUpperCase()}`);
+    }
+  }
+  if (fx.flag) for (const f of [].concat(fx.flag)) setFlag(f);   // story flags
+  if (fx.peers) for (const p of fx.peers){         // how the trapped feel about each other
+    const c = characterById(p.of);
+    if (!c) continue;
+    if (p.meet) c.meetPeer(p.toward, p.initial ?? 50);
+    if (p.delta) c.likePeer(p.toward, p.delta);
+  }
 }
 
 /* a choice can be gated on an attribute (req) and/or a token price
@@ -260,25 +300,7 @@ function renderNode(node){
 
 function chooseChoice(choice){
   if (!canSelect(choice)) return;
-  const fx = choice.effects;
-  if (fx){
-    if (typeof fx.like === "number"){
-      // general rule: a conversation moves affinity by at most +3, or down to
-      // -10. Trades (give/take) carry their own exchange bonus and are exempt.
-      const isTrade = fx.give != null || fx.take != null;
-      current.like(isTrade ? fx.like : Math.max(-10, Math.min(3, fx.like)));
-    }
-    if (typeof fx.cost === "number" && fx.cost > 0){ spendTokens(fx.cost); refreshTokenHud(); }  // pay LT
-    if (fx.take) removeItem(fx.take);                // barter: hand the character one of your items
-    if (fx.give){                                    // giving is self-limiting (item is removed)
-      const item = current.takeItem(fx.give);
-      if (item){
-        addItem(item);
-        if (fx.gift) current.recordTrade(hub.level); // only free affinity gifts go on the cooldown
-        toast(`RECEIVED — ${item.name.toUpperCase()}`);
-      }
-    }
-  }
+  applyEffects(choice.effects);
   if (choice.next) renderNode(choice.next);
   else renderHub();                                  // end of the topic -> back to the hub
 }
@@ -324,6 +346,7 @@ function refreshAffinity(){
 /* ---------- DOM renderer ---------- */
 function domChoiceButton(index, c){
   const btn = document.createElement("button");
+  if (c.story) btn.classList.add("story");   // pinned story beat — amber highlight
   if (c.req){
     const tag = document.createElement("span");
     tag.className = "req";
@@ -405,12 +428,19 @@ function drawPanel(hover = -1){
   view.choices.forEach((c, i) => {
     const y = CH_TOP - scrollTop + i * STRIDE;
     if (y + ROW_H < CH_TOP || y > CH_BOTTOM) return;
-    g.fillStyle = (i === hover && !c.disabled) ? "rgba(70,255,142,0.18)" : "rgba(4,8,10,0.6)";
+    g.fillStyle = (i === hover && !c.disabled)
+      ? (c.story ? "rgba(255,122,26,0.18)" : "rgba(70,255,142,0.18)")
+      : "rgba(4,8,10,0.6)";
     g.fillRect(PAD, y, W - 2 * PAD, ROW_H);
-    g.strokeStyle = c.disabled ? "#7a1f1f" : "#1f7a4a"; g.lineWidth = 2;
+    // story beats get the amber treatment so they read as "the plot is here"
+    g.strokeStyle = c.disabled ? "#7a1f1f" : (c.story ? "#ff7a1a" : "#1f7a4a"); g.lineWidth = 2;
     g.strokeRect(PAD, y, W - 2 * PAD, ROW_H);
     let tx = PAD + 12;
     g.font = "22px 'Share Tech Mono', monospace";
+    if (c.story){
+      g.fillStyle = "#ff7a1a";
+      g.fillText("◆ ", tx, y + ROW_H / 2); tx += g.measureText("◆ ").width;
+    }
     if (c.req){
       g.fillStyle = c.disabled ? "#ff3b3b" : "#46ff8e";
       const tag = `[${STAT_ABBR[c.req.attr]} ${c.req.level}] `;
@@ -421,7 +451,7 @@ function drawPanel(hover = -1){
       const tag = `[${c.cost} LT] `;
       g.fillText(tag, tx, y + ROW_H / 2); tx += g.measureText(tag).width;
     }
-    g.fillStyle = c.disabled ? "#1f7a4a" : "#cfffe0";
+    g.fillStyle = c.disabled ? "#1f7a4a" : (c.story ? "#ffd0a6" : "#cfffe0");
     g.fillText(`${i + 1}. ${c.label}`, tx, y + ROW_H / 2);
   });
   g.restore();
@@ -437,9 +467,9 @@ function drawPanel(hover = -1){
     g.fillStyle = "#1f7a4a"; g.fillRect(sx, ty, 6, th);
   }
 
-  // footer (player stats)
+  // footer (operator name + stats)
   g.fillStyle = "#1f7a4a"; g.font = "22px 'VT323', monospace";
-  g.fillText(STATS.map(([k]) => `${STAT_ABBR[k]} ${player.stats[k]}`).join("  ·  "), PAD, H - 26);
+  g.fillText([player.name, ...STATS.map(([k]) => `${STAT_ABBR[k]} ${player.stats[k]}`)].join("  ·  "), PAD, H - 26);
 
   panel.tex.needsUpdate = true;
 }

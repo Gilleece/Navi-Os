@@ -186,6 +186,18 @@ function scallyDialogue(ctx){
         req: { attr: "intelligence", level: 6 }, effects: { like: +2 },
         node: { text: "*Scally blinks, then cackles.* Clever mouse! It 'terminates' at the broken wall — where everything it falls into the static. Follow the glow, amico. And watch your step, eh." } },
 
+      { id: "muscle", label: "*Rap your knuckles hard on the wall beside his window.*",
+        req: { attr: "strength", level: 6 }, effects: { like: +1 },
+        node: { text: "EH! Eh eh eh — careful, gorilla! *He watches a hairline crack spider up the brick, then looks you up and down with new respect.* ...Madonna. Va bene. Okay, strong mouse. You break-a nothing else, and we stay friends, sì? *You can hear him already scheming how to use you.*" } },
+
+      { id: "sharp-eyes", label: "You can see out of there, can't you? More than you let on.",
+        req: { attr: "perception", level: 6 }, effects: { like: +2 },
+        node: { text: "*A long pause. The grin thins.* ...sharp eyes, amico. Sì. The window, she works both ways — Scally sees the halls. Scally sees who walks them. *He taps his nose.* And lately, somebody walks them who casts no shadow on the glass. Ask me no more tonight." } },
+
+      { id: "fortuna", label: "That little horn of yours — does it actually work?",
+        req: { attr: "luck", level: 6 }, effects: { like: +2 },
+        node: { text: "*He looks at you sideways, then chuckles, low.* You would know better than Scally, eh? Fortuna, she follows some people like a little dog. The maze feels it too — for the lucky ones she leaves doors where there were no doors, coins where there were no coins. *He polishes the cornicello on his sleeve.* Stay lucky, amico. Down here is a bad place to run out." } },
+
       { id: "rude", label: "Get out of my way, little man.", effects: { like: -10 },
         node: { text: "*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene." } },
 
@@ -196,11 +208,14 @@ function scallyDialogue(ctx){
         node: () => {
           const choices = [];
 
-          // 1) his prized piece, Labyrinth Tokens only (not on the cooldown)
-          const sale = character.forSale[0];
-          if (sale)
-            choices.push({ text: `Buy the ${sale.name}.`,
-                           effects: { give: sale.id, cost: sale.price, like: +2 } });
+          // 1) everything priced, Labyrinth Tokens only (not on the cooldown).
+          //    His stock can grow mid-game (the mayo arrives at depth 6).
+          for (const sale of character.forSale)
+            choices.push({ text: sale.id === "mayo"
+                             ? `Buy the ${sale.name}. *(He shields it like contraband.)*`
+                             : `Buy the ${sale.name}.`,
+                           effects: { give: sale.id, cost: sale.price, like: +2,
+                                      flag: `bought-${sale.id}` } });
 
           // 2) barter: hand over something he openly covets for a trinket
           const swapFor = character.giftable[0];
@@ -208,7 +223,8 @@ function scallyDialogue(ctx){
             const held = player.inventory.find(it => it.id === id);
             if (held && swapFor)
               choices.push({ text: `Trade your ${held.name} for the ${swapFor.name}.`,
-                             effects: { take: held.id, give: swapFor.id, like: +6 } });
+                             effects: { take: held.id, give: swapFor.id, like: +6,
+                                        flag: `traded-${held.id}-to-${character.id}` } });
           }
 
           // 3) the hidden desire: only shows if the player actually holds it
@@ -216,7 +232,7 @@ function scallyDialogue(ctx){
           if (secret){
             const prize = character.giftable[0];
             choices.push({ text: `Offer the ${secret.name}. *(He keeps stealing glances at it.)*`,
-              effects: { take: secret.id, give: prize?.id, like: +18 },
+              effects: { take: secret.id, give: prize?.id, like: +18, flag: "gave-saints-finger" },
               next: { text: "*His hands tremble as he takes it, voice dropping to nothing.* ...the little saint, she comes home at last. You did not see this, eh? Here — take it, take it. Is the least Scally can do. *He will not meet your eyes.*" } });
           }
 

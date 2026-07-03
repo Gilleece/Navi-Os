@@ -10,10 +10,15 @@
      5 LT - large icosahedron (gold), the original floating shape
    Walk into one and it spins up, shrinks away and bursts into
    particles while the LT lands in your balance.
+
+   The maze also sheds one-of-a-kind story items (story.js
+   WORLD_ITEMS) — pale solid shapes, collected the same way but
+   landing in the inventory instead of the LT balance.
    ============================================================ */
 import { cellCenter } from "./generator.js";
 import { $ } from "../../utils.js";
-import { player, addTokens } from "./state.js";
+import { player, addTokens, addItem, setFlag } from "./state.js";
+import { spawnableItems } from "./story.js";
 import { showVRBanner } from "./vrbanner.js";
 import { playPickup } from "./audio.js";
 
@@ -29,26 +34,52 @@ const KINDS = [
   { value: 5, color: 0xffd24a, r: 0.55, geo: three => new three.IcosahedronGeometry(0.55) },
 ];
 /* what spawns each level: a handful of small ones, fewer big ones */
-const SPAWN = [1, 1, 1, 3, 3, 5];   // 12 LT on the floor per level
+const SPAWN = [1, 1, 1, 3, 3, 5];   // 14 LT on the floor per level
+
+/* the one-of-a-kind story items (story.js WORLD_ITEMS) read as pale,
+   solid shapes — unmistakably not a wireframe token. Shape by `kind`. */
+const ITEM_COLOR = 0xf5f2e8;
+const ITEM_GEOS = {
+  shard: three => new three.TetrahedronGeometry(0.3),
+  vial:  three => new three.CylinderGeometry(0.11, 0.11, 0.46, 8),
+  bone:  three => new three.BoxGeometry(0.1, 0.44, 0.1),
+};
 
 /* builds the maze's props into `scene`, returns
-   { goal, spinners, tokens }. The gate sits in `goalCell` - the dead-end
-   where the walls are breaking down into cyberspace. */
+   { goal, goalLight, spinners, tokens }. The gate sits in `goalCell` -
+   the dead-end where the walls are breaking down into cyberspace. */
 export function buildEntities(three, scene, cfg, goalCell){
   const { N, CELL } = cfg;
   const spinners = [];
   cfg.bursts = [];                 // reset any particle bursts from the previous level
 
-  // goal gate - at the dead-end goal cell
+  // goal gate - at the dead-end goal cell. NOT in `spinners`: maze.js
+  // drives its pose (it lies flat on the floor until the level's story
+  // beats are heard — the narrative gate — then rises and tumbles).
   const gate = new three.Mesh(
     new three.TorusGeometry(1.1, 0.12, 10, 32),
     new three.MeshBasicMaterial({color:0xff7a1a}));
   gate.position.set(cellCenter(goalCell.x, CELL), 1.5, cellCenter(goalCell.y, CELL));
   scene.add(gate);
   const gateLight = new three.PointLight(0xff7a1a, 1.4, 9);
-  gateLight.position.copy(gate.position);
+  gateLight.position.set(gate.position.x, 1.5, gate.position.z);
   scene.add(gateLight);
-  spinners.push(gate);
+
+  // one interior cell per pickup, shuffled, so nothing spawns stacked on
+  // anything else (or inside the goal cell where the gate already sits)
+  const cells = [];
+  for (let cx = 1; cx < N - 1; cx++)
+    for (let cz = 1; cz < N - 1; cz++)
+      if (!(cx === goalCell.x && cz === goalCell.y)) cells.push([cx, cz]);
+  for (let i = cells.length - 1; i > 0; i--){
+    const j = Math.random() * (i + 1) | 0;
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+  const spot = () => {
+    const [cx, cz] = cells.length ? cells.pop() : [1 + (Math.random()*(N-2) | 0), 1 + (Math.random()*(N-2) | 0)];
+    return { x: cellCenter(cx, CELL) + (Math.random()*1.4 - 0.7),
+             z: cellCenter(cz, CELL) + (Math.random()*1.4 - 0.7) };
+  };
 
   // floating Labyrinth Tokens, scattered across interior cells
   const tokens = [];
@@ -56,9 +87,9 @@ export function buildEntities(three, scene, cfg, goalCell){
     const kind = KINDS.find(k => k.value === value);
     const mesh = new three.Mesh(kind.geo(three),
       new three.MeshBasicMaterial({ color: kind.color, wireframe: true }));
-    const cx = 1 + (Math.random()*(N-2) | 0), cz = 1 + (Math.random()*(N-2) | 0);
+    const { x, z } = spot();
     const baseY = 1.6;
-    mesh.position.set(cellCenter(cx, CELL), baseY, cellCenter(cz, CELL));
+    mesh.position.set(x, baseY, z);
     mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
     scene.add(mesh);
     tokens.push({ mesh, value, color: kind.color, baseY,
@@ -66,8 +97,21 @@ export function buildEntities(three, scene, cfg, goalCell){
                   collecting: false, t: 0 });
   }
 
+  // the one-of-a-kind story items due at this depth (until someone finds them)
+  for (const def of spawnableItems(cfg.depth)){
+    const mesh = new three.Mesh((ITEM_GEOS[def.kind] ?? ITEM_GEOS.shard)(three),
+      new three.MeshBasicMaterial({ color: ITEM_COLOR }));
+    const { x, z } = spot();
+    const baseY = 1.4;
+    mesh.position.set(x, baseY, z);
+    scene.add(mesh);
+    tokens.push({ mesh, value: 0, item: def, color: ITEM_COLOR, baseY,
+                  phase: Math.random()*Math.PI*2, spin: 0.5 + Math.random()*0.2,
+                  collecting: false, t: 0 });
+  }
+
   refreshTokenHud();
-  return { goal: gate, spinners, tokens };
+  return { goal: gate, goalLight: gateLight, spinners, tokens };
 }
 
 /* per-frame: float + spin the tokens, collect any the player walks into,
@@ -87,10 +131,20 @@ export function updateTokens(three, scene, cfg, dt){
       m.position.y = tk.baseY + Math.sin(now * 1.6 + tk.phase) * 0.12;   // idle bob
       if (Math.hypot(px - m.position.x, pz - m.position.z) < PICKUP_R){
         tk.collecting = true; tk.t = 0;
-        addTokens(tk.value); refreshTokenHud();
-        toast(`+${tk.value} LT`);                                  // desktop/touch HUD flash
-        if (cfg.inVR) showVRBanner(`+${tk.value} LT`, 1100);      // same head-locked banner as depth changes
-        playPickup(tk.value);                                      // synth blip, grander for bigger denominations
+        if (tk.item){
+          // a one-of-a-kind story item: into the inventory, never respawns
+          const { id, name, desc } = tk.item;
+          addItem({ id, name, desc });
+          setFlag(`found-${id}`);
+          toast(`FOUND — ${name.toUpperCase()}`);
+          if (cfg.inVR) showVRBanner(`FOUND — ${name.toUpperCase()}`, 1400);
+          playPickup(5);                                           // the grand chime — these are rare
+        } else {
+          addTokens(tk.value); refreshTokenHud();
+          toast(`+${tk.value} LT`);                                // desktop/touch HUD flash
+          if (cfg.inVR) showVRBanner(`+${tk.value} LT`, 1100);     // same head-locked banner as depth changes
+          playPickup(tk.value);                                    // synth blip, grander for bigger denominations
+        }
         spawnBurst(three, scene, cfg, tk);
       }
     } else {

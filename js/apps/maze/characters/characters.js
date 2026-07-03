@@ -24,6 +24,8 @@
    ============================================================ */
 import { cellCenter, bfsDistances, exteriorSides } from "../generator.js";
 import { characterInk } from "../palette.js";
+import { story } from "../state.js";
+import { applyStory } from "../story.js";
 import { scally } from "./scally.js";
 import { homiss } from "./homiss.js";
 
@@ -68,7 +70,7 @@ export const TRADE_COOLDOWN = 2;
 /* ---------- inter-character affinity ----------
    How each character currently feels about each OTHER character (0..100),
    directional — A->B may differ from B->A. A MISSING entry means they don't
-   know each other / have never met. Base values are mirrored in CLAUDE.md.
+   know each other / have never met. Base values are mirrored in STORY.md §5.
 
    The plot: the trapped users used to converse freely between their windows
    but have recently been isolated, so the player relaying messages and moving
@@ -86,12 +88,19 @@ const BASE_PEER_AFFINITY = {
 
 export class Character {
   constructor(def){
+    this._def        = def;                          // kept for reset() (new game / the Protocol rewinding)
     this.id          = def.id;
     this.name        = def.name;
     this.description = def.description;
     this.affinity    = def.affinity ?? 50;          // 0..100, mutated by dialogue, persists across levels (new game = 50)
     this.seen        = new Map();                    // level -> Set of exhausted topic ids (conversations are fresh each level)
-    this.wants       = def.wants ?? [];              // item ids this character covets, gift one to thaw a hostile mood
+    this.memory      = new Set();                    // whole-game memory: once-only topics, replay greetings (see remember/recalls)
+    // items this character covets — gift one to thaw a hostile mood. Unless a
+    // def says otherwise this is simply everything they're interested in
+    // (open wants + the hidden desire), so the thaw path always has fuel.
+    this.wants       = def.wants
+      ?? [ ...(def.interests?.open ?? []),
+           ...(def.interests?.hidden ? [def.interests.hidden] : []) ];
     this.inventory   = (def.inventory ?? []).map(i => ({ ...i }));  // items[]; an item with a `price` is token-only (see economy note)
     this.interestsOpen = def.interests?.open ?? [];  // item ids this character openly wants from the player (barter)
     this.hiddenDesire  = def.interests?.hidden ?? null;  // the one item they crave but won't name; they speak of it in riddles
@@ -105,6 +114,18 @@ export class Character {
   }
 
   like(delta){ this.affinity = Math.max(0, Math.min(100, this.affinity + delta)); }
+
+  /* back to the def's starting state — a new game rewinds the Protocol,
+     and the trapped users' worlds rewind with it (menu.js resetGame) */
+  reset(){
+    const def = this._def;
+    this.affinity = def.affinity ?? 50;
+    this.seen.clear();
+    this.memory.clear();
+    this.inventory = (def.inventory ?? []).map(i => ({ ...i }));
+    this.lastTradeLevel = null;
+    this.peers = { ...(BASE_PEER_AFFINITY[def.id] ?? {}) };
+  }
 
   /* --- inter-character affinity (this character's view of another) --- */
   /* 0..100, or null if they've never met */
@@ -125,6 +146,11 @@ export class Character {
 
   /* too cold for normal conversation, needs a gift to thaw first */
   get wontTalk(){ return this.affinity < HOSTILE; }
+
+  /* whole-game memory: `once` story topics, replay greetings — anything
+     that must never repeat, even on later levels (unlike `seen` below) */
+  remember(id){ this.memory.add(id); }
+  recalls(id){ return this.memory.has(id); }
 
   /* topic exhaustion is tracked per maze level, so each level is a fresh conversation */
   hasSeen(level, id){ return this.seen.get(level)?.has(id) ?? false; }
@@ -179,9 +205,17 @@ export class Character {
   canTrade(level){ return this.lastTradeLevel == null || level - this.lastTradeLevel >= TRADE_COOLDOWN; }
   recordTrade(level){ this.lastTradeLevel = level; }
 
-  /* the dialogue tree root for this maze level, flavoured by affinity */
+  /* the dialogue tree root for this maze level, flavoured by affinity.
+     The character file supplies the base hub; the story engine then
+     injects any live story beats (pinned to the top) and decorates the
+     greeting for the deep-zone loop / replays. `hub.ctx` is kept so
+     dialogue.js can pass it to topic `available(ctx)` predicates. */
   dialogueFor(depth, player){
-    return this._dialogue({ depth, player, affinity: this.affinity, tone: this.tone, character: this });
+    const ctx = { depth, player, affinity: this.affinity, tone: this.tone,
+                  character: this, run: story.run };
+    const hub = this._dialogue(ctx);
+    hub.ctx = ctx;
+    return applyStory(hub, ctx);
   }
 }
 
@@ -189,6 +223,12 @@ export class Character {
    affinity and seen-topics persist across maze levels */
 const DEFS = [scally, homiss];
 export const ROSTER = DEFS.map(def => new Character(def));
+
+/* look a character up by id (peer effects, level events) */
+export function characterById(id){ return ROSTER.find(c => c.id === id) ?? null; }
+
+/* new game: every character back to their starting state */
+export function resetRoster(){ for (const c of ROSTER) c.reset(); }
 
 /* passive recovery, applied once per maze level: a character who is
    almost murderous (affinity < 10) warms by 5, capped at 10, so an
@@ -318,6 +358,7 @@ export function buildCharacters(three, scene, spawns, theme){
 
     npcs.push({
       character: ch, x: s.wall.x, z: s.wall.z,   // wall position, used for proximity
+      cell: s.cell,                                // host cell (minimap letter placement)
       figure, fx: s.npc.x, fz: s.npc.z, baseY,    // figure stands a little behind the wall
       restYaw, yaw: restYaw,                       // rest = facing the cell; yaw = current, smoothed
       anim: makeIdleMotion(ch.id),                 // breathing rhythm unique to this character

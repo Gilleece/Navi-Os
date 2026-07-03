@@ -26,6 +26,7 @@ export function bindInput(M, layer, onExit){
   addEventListener("keydown", e => {
     if (!layer.classList.contains("on")) return;
     if (M.dialogueOpen) return;                 // dialogue owns input while open
+    if (e.target && e.target.tagName === "INPUT") return;   // typing (creation screen), not playing
     M.keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === "f") M.talk = true;
     if (e.key === "Escape") onExit();

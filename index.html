@@ -158,7 +158,14 @@
       <p class="dim">desktop&nbsp;: WASD / arrows to move, drag mouse to look<br>
       mobile&nbsp;&nbsp;: left joystick to move, right buttons to turn<br>
       headset&nbsp;: press ENTER VR inside the maze (WebXR)</p>
+      <button class="big" id="btn-continue-maze" hidden>[ CONTINUE ]</button>
       <button class="big" id="btn-launch-maze">[ INITIALISE MAZE ]</button>
+      <div class="save-row">
+        <button id="btn-export-save" disabled>[ EXPORT ]</button>
+        <button id="btn-import-save">[ IMPORT ]</button>
+        <input type="file" id="save-file" accept=".json,application/json" hidden>
+      </div>
+      <p class="dim save-note">one save slot — autosaves each depth · export to back a run up</p>
     </div>
   </section>
 </main>
@@ -180,6 +187,11 @@
     <button id="btn-vr" hidden>ENTER VR</button>
     <button id="btn-debug-next" hidden>[ DEBUG: NEXT LEVEL ]</button>
     <button id="btn-exit-maze">EXIT</button>
+  </div>
+  <div id="maze-rotate">
+    <span class="turn-glyph">&#8635;</span>
+    <span>ROTATE DEVICE</span>
+    <small>THE LABYRINTH RUNS IN LANDSCAPE</small>
   </div>
   <div id="joy"><div class="nub"></div></div>
   <div id="turnpad">

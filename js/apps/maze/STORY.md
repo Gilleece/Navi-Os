@@ -42,8 +42,11 @@ do not yet know the full picture. Their goals, in ascending order:
    trapped characters — and themselves.
 
 The player's RPG sheet (SPECIAL-style attributes, inventory, LT balance) lives
-in `state.js`. Attributes gate some dialogue choices; they are randomised for
-now (`rollStats`) pending a proper character-creation flow.
+in `state.js`. Attributes gate dialogue choices — **every one of the seven
+gates at least one conversation** (STR/PER/LCK with Scally, END/AGI with
+Homiss, CHA/INT with both). A new game starts at the **operator registration**
+screen (`creation.js`): pick a handle and spend a pool of **12 points** on top
+of base-3 attributes (max 9 each; the pool must be fully spent).
 
 ---
 
@@ -73,10 +76,29 @@ Established beats:
   being able to save a few of the characters, this will depend on items traded,
   what items they have at the end and also their affinity with different characters).
 
+### The relay chain (implemented — `story.js`)
+
+The first concrete go-between quest, running across depths 1+ (each step
+waits until the player next talks, so nothing is missable):
+
+1. **Depth 1 — Scally, "quiet-wires":** Scally tells the player the windows
+   went silent (flag `heard-isolation`). This roots the chain.
+2. **Homiss, "relay-1":** hearing Scally is alive, Homiss sends back a
+   message: *"the answer to his question is yes"* (flag `msg-h2s`).
+3. **Scally, "relay-2":** the delivery lands hard; he sends a reply — *"hold
+   on to it. Even down here"* (flags `msg-h2s-done`, `msg-s2h`).
+4. **Homiss, "relay-3":** the reply cracks his denial a hair — he almost says
+   "down here" (flag `msg-s2h-done`). What the question was stays unsaid:
+   *whether there is anything worth staying honest for* — a thread for the
+   plot spine to pick up later.
+
+Each delivery nudges the pair's **peer affinity** both ways (`likePeer`), so
+the relay loop is what heals — or could someday poison — their relationship.
+
 **TBD — the main plot spine.** The beat-by-beat story (who the hidden user is,
 what changed to isolate the characters, what the rewrite actually requires, the
-midpoint turn, the ending) is not yet decided. Fill in §6 (level events) as the
-plot solidifies.
+midpoint turn, the ending) is not yet decided. Depths 1–10 are authored (see
+§6); the spine picks up from there.
 
 Open questions to resolve (TBD):
 - Who/what is the hidden user, and are they friend, foe, or the system itself?
@@ -151,18 +173,29 @@ thawed (gift them something they covet).
   | `napkin` | Scrawled Napkin | giftable / barter | Notation + "IS ANY OF THIS REAL". |
   | `cassette` | Warped Cassette | **for sale (LT only)** | "DREAD (live)". **Price: 30 LT.** |
 - **Wants from the player:**
-  - `open`: `sausage`, `mayo`(a jar of mayonnaise)
-  - `hidden`: `data-vial` 
+  - `open`: `sausage`, `data-vial`
+  - `hidden`: `mayo` (a jar of mayonnaise — he won't name it, but he can't stop
+    bringing the conversation around to it)
 
-> **Cross-character barter already wired:** Homiss wants Scally's `sausage`;
-> both want a `data-vial` that no character carries yet. Barter paths only
-> light up once the wanted item is actually in the player's inventory, so
-> several of these stay dormant until the relevant item exists in the world.
+> **Cross-character barter:** Homiss wants Scally's `sausage`; both want a
+> `data-vial`. Barter paths only light up once the wanted item is actually in
+> the player's inventory.
 
-**TBD — items that don't exist yet** (referenced by `interests`, need a source):
-`relic-shard`, `data-vial`, `saints-finger` (Scally's hidden desire),
-`mayo` (Homiss's hidden desire). Decide which character drops each, or where in
-the maze they're found.
+**Item sources (decided).** The once-TBD items now exist in the world
+(`story.js WORLD_ITEMS` + `applyLevelEvents`); each is **one of a kind** —
+once found it never respawns:
+
+| Item id | Source | Notes |
+|---|---|---|
+| `relic-shard` | maze pickup, depth 4+ | pale solid shard among the tokens; barter fuel for Scally |
+| `mayo` | **Scally's stock**, depth 6+ | he acquires it at depth 6 and sells it for **35 LT** — the first brokering play (buy from Scally, gift to Homiss) |
+| `data-vial` | maze pickup, depth 8+ | both characters want it — the player must pick a side |
+| `saints-finger` | maze pickup, depth 9+ | Scally's hidden desire; triggers his riddly swap |
+
+Unfound maze items keep appearing on every later level until collected, so
+none of them is missable. The thaw rule (gift a coveted item to a hostile
+character) draws from `interests.open` + `interests.hidden` automatically —
+see §7.
 
 ---
 
@@ -196,23 +229,24 @@ each other / have never met.** Accessors: `feelsToward(id)`, `likePeer(id, d)`,
 
 ## 6. Levels 1–50 — significant events
 
-The visual band for each level is fixed by the palette. The **plot event**
-column is the per-level "what significant thing happens here" and is **TBD** —
-populate as the story is decided. Levels 31+ re-use earlier looks; story can
-still be unique.
+The visual band for each level is fixed by the palette. Depths 1–10 are
+**implemented** in `story.js` (`STORY_TOPICS`, `WORLD_ITEMS`,
+`applyLevelEvents`); keep this table and that file in sync. A depth here
+means "available FROM that depth" — story beats wait until the player next
+talks to the character, so none are missable. 11+ remain **TBD**.
 
 | Lvl | Visual band | Significant event |
 |---|---|---|
-| 1 | green (solid) | Meet Scally near the start. TBD |
-| 2 | solid | TBD |
-| 3 | solid | TBD |
-| 4 | solid | TBD |
-| 5 | solid | TBD |
-| 6 | gradient ×2 | TBD |
-| 7 | gradient ×2 | TBD |
-| 8 | gradient ×2 | TBD |
-| 9 | gradient ×2 | TBD |
-| 10 | gradient ×2 | TBD |
+| 1 | green (solid) | Meet Scally near the start. **"quiet-wires":** the windows went silent (`heard-isolation`). Relay step 1 (Homiss) opens the same level (see §3). |
+| 2 | solid | Relay step 2 (Scally) unlocks from here (min-depth 2 — one relay step per level, so the narrative gate paces the chain). |
+| 3 | solid | Relay step 3 (Homiss) unlocks from here (min-depth 3). |
+| 4 | solid | `relic-shard` starts appearing in the maze. Scally "shard-hint": the maze sheds pieces of the old Protocol. |
+| 5 | solid | Scally **"hidden-user"** warning: someone else walks the halls — *count the walls* (`warned-hidden`; unlocks graffiti). |
+| 6 | gradient ×2 | Scally stocks the impossible **jar of mayonnaise** (35 LT) + advertises it ("impossible-stock"). The brokering play. |
+| 7 | gradient ×2 | Homiss "pipes" (needs relay done): he used to hear the others through the walls. His denial thins. |
+| 8 | gradient ×2 | `data-vial` starts appearing. Scally "vial-rumor". Both want it — the player picks a side. |
+| 9 | gradient ×2 | `saints-finger` starts appearing. Homiss "bone-snap" if the player carries it. Scally's riddly swap awaits. |
+| 10 | gradient ×2 | Capstones: Scally "ten-deep" (the operators who stopped talking; `depth10`), Homiss "ten-normal" (the grin doesn't reach the eyes). |
 | 11 | gradient ×3 | TBD |
 | 12 | gradient ×3 | TBD |
 | 13 | gradient ×3 | TBD |
@@ -254,6 +288,41 @@ still be unique.
 | 49 | random | TBD |
 | 50 | random | **Base depth? Rewrite the code / escape (TBD).** |
 
+**The narrative gate.** The exit ring **lies flat on the floor** until every
+**highlighted (story) topic** on the level has been exhausted (`story.js
+pendingBeats`, polled by `maze.js` — the gate and the amber highlights read
+the same list, so they can never drift apart). Walking into the flat ring
+says who still has words for you ("THE WAY DOWN IS NOT YET OPEN — SPEAK WITH
+SCALLY"); once the level's story is done the ring rises and descending works
+as ever. This includes the deep-zone loop conversations — below depth 30 the
+maze only lets you descend if you keep talking, which is exactly what Scally
+warned about at depth 10. A topic can opt out with `gate: false`. Relay
+steps 2 and 3 carry min-depths 2 and 3 so the gate paces the exchange to one
+step per level rather than demanding it all on depth 1.
+
+**The deep zone (31+).** The palette re-runs earlier looks and the
+characters can feel it: greetings gain loop-aware lines and each level
+offers one rotating loop topic per character (`story.js LOOP_GREETS` /
+`LOOP_TOPICS`), so deep levels never go silent — and those conversations
+hold the gate like any other story beat.
+
+**Decay (walls & graffiti).** The maze decays as you descend
+(`environment.js chaosFor`): depth 1 is the original plain brick with clean
+walls; each level mixes in more wall variants (panels / vents / cracks) and
+more graffiti, until depth 30 — the last level before the loop zone — is
+fully chaotic (8–11 scrawls, walls a jumble). It stays that way below. The
+dissolving cyber wall around the exit ring is always its own pattern,
+untouched by the ramp.
+
+**Persistence & runs (`menu.js`).** One save slot in localStorage, autosaved
+on every level entered and on exit; the launcher offers **CONTINUE** (restore
+the slot at its depth) and **EXPORT / IMPORT** (the raw save as a JSON file).
+**NEW GAME rewinds the Protocol**: flags, characters and player reset, but
+the **run counter climbs** — so the trapped users keep a déjà vu of you and
+greet a returning operator once per run (`REPLAY_GREETS`). The story replays
+because the world rewound with you; only the feeling of having met before
+survives the rewind.
+
 ---
 
 ## 7. Systems — rules of thumb
@@ -275,10 +344,31 @@ General rules (enforced in `dialogue.js`; exceptions noted):
   nudge as part of the exchange.
 - **Coveted-gift thaw:** handing a hostile character an item they covet
   (`wants`) is a large one-time thaw — this is the intended way to recover a
-  ruined relationship (`giftTo`).
+  ruined relationship (`giftTo`). Unless a def overrides `wants`, it is
+  derived automatically from `interests.open` + `interests.hidden`, so the
+  thaw path always has fuel.
 
 > When you add a special case (a quest beat that grants a big affinity swing),
 > make it an explicit, documented exception here.
+
+### Story flags, beats & memory (`story.js` / `state.js`)
+
+- **Flags** (`state.js setFlag/hasFlag`) are the global "this happened"
+  record: relay steps, warnings heard, items found/bought/traded (trade
+  choices stamp `bought-<id>` / `traded-<id>-to-<char>` automatically).
+- **Story topics** are injected into a character's hub by
+  `applyStory()` — pinned to the top and rendered amber (topic
+  `story: true`). A topic with **`once: true`** retires for the whole game
+  when selected (per-character `memory`); plain topics still refresh per
+  level via `seen`.
+- Topic/choice `effects` support two story keys beyond the usual:
+  `flag: "id" | [ids]` sets global flags; `peers: [{ of, toward, delta,
+  meet }]` shifts inter-character affinity (§5) — deliveries in the relay
+  chain are what move those numbers.
+- **Graffiti** (`graffitiPool`) is lore: scrawls from previous users on
+  seeded walls. Some entries only join the pool after flags are set
+  (`warned-hidden`) or in the deep zone (31+). Add graffiti when you add
+  beats — the walls should remember what the player knows.
 
 ### Economy (Labyrinth Tokens, "LT")
 
@@ -306,8 +396,13 @@ General rules (enforced in `dialogue.js`; exceptions noted):
 1. Create `characters/<name>.js` exporting a def (copy `scally.js`'s shape).
 2. Import it and add to `DEFS` in `characters.js`.
 3. Give one inventory item a `price` in **[20, 100]** LT.
-4. Set `interests: { open: [...], hidden: "id" }`.
+4. Set `interests: { open: [...], hidden: "id" }` (these also fuel the
+   hostile-thaw path automatically).
 5. Add a §4 entry here (description, tone-by-band, item table, wants).
 6. Add their **peer affinities** to `BASE_PEER_AFFINITY` and §5 — fill some,
    leave some blank (never met).
 7. Keep conversational `like` effects within **+1..+3 / −10**.
+8. Wire them into the story: add their beats to `story.js` (`STORY_TOPICS`
+   with `char: "<id>"`, plus `LOOP_GREETS` / `LOOP_TOPICS` / `REPLAY_GREETS`
+   entries so the deep zone and replays don't fall silent around them), and
+   decide which world items or relay messages route through them.

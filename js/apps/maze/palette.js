@@ -89,8 +89,9 @@ const LIFTED = WHEEL.map(h => lift(rgbOf(h)));
 export const THEME_COUNT = LIFTED.length;
 
 /* tiny seeded PRNG (mulberry32). A level's palette is seeded from its
-   depth, so a given depth always looks the same descent to descent. */
-function rng(seed){
+   depth, so a given depth always looks the same descent to descent.
+   (Exported: environment.js seeds wall variants + graffiti the same way.) */
+export function rng(seed){
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6D2B79F5) | 0;
