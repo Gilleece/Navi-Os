@@ -6,14 +6,23 @@
    (server rack / big crate / terminal kiosk) parked against the
    back wall of a few dead-ends. Also owns the atmosphere layer:
    drifting neon "data motes" that give the fog a digital texture,
-   and a handful of ceiling light wells — one of them always a
-   faulty tube that cuts out.
+   and the ceiling light grid described below.
 
    Layout is seeded from the depth (same convention as the walls),
    skipping the start, the goal cell and any cell hosting a
    character window. Centrepieces get collision boxes (pushed into
    cfg.walls, the same list the player tests); the small junk is
    ankle-height and doesn't collide.
+
+   THE LIGHT GRID: nearly every cell carries a glowing ceiling
+   fixture (a cheap emissive panel), and a budget of real point
+   lights is spread among them so the maze reads as lit by its own
+   fixtures rather than by magic. Every fixture sits on one of a
+   few flicker CHANNELS: steady, stuttering, or faulty (cuts out
+   and re-strikes). How many fixtures misbehave ramps with depth
+   (chaosFor, like the walls): depth 1 has the odd stutter, depth
+   30 barely holds its light. The real lights follow their cell's
+   channel, so panel and pool die together.
 
    In VR the small junk is GRABBABLE: squeeze the grip near a
    piece to pick it up (the same squeeze that curls the hand in
@@ -30,6 +39,7 @@
    ============================================================ */
 import { cellCenter, solidSides } from "./generator.js";
 import { rng } from "./palette.js";
+import { chaosFor } from "./environment.js";
 import { crateTexture, screenTexture, ledTexture } from "./textures.js";
 
 const GRAB_R      = 0.5;    // how close the hand must be to grab a piece
@@ -280,40 +290,52 @@ export function buildProps(three, scene, cfg, cells, goalCell, spawns){
       }
     }
 
-  // ---- ceiling light wells: glowing panels over a few junctions --------
-  const wells = [];
-  let open = [];
-  for (let y = 0; y < N; y++)
-    for (let x = 0; x < N; x++)
-      if (!skip.has(x + "," + y) && solidSides(cells[y][x]).length <= 1) open.push({ x, y });
-  if (open.length < 2)                                          // rare: corridor-heavy maze
-    for (let y = 0; y < N; y++)
-      for (let x = 0; x < N; x++)
-        if (!skip.has(x + "," + y) && solidSides(cells[y][x]).length === 2) open.push({ x, y });
-  for (let i = open.length - 1; i > 0; i--){                    // seeded shuffle
+  // ---- the light grid: a ceiling fixture in nearly every cell ----------
+  // Panels are cheap emissive quads on shared per-channel materials, so a
+  // whole level of fixtures costs five materials. Channel 0 is steady;
+  // 1-2 stutter; 3-4 are faulty tubes that cut out. How many fixtures land
+  // on a misbehaving channel ramps with depth, like the wall decay.
+  const chaos     = chaosFor(depth);
+  const flickFrac = Math.min(0.85, 0.06 + 0.7 * chaos);   // fixtures that misbehave at all
+  const faultBias = 0.25 + 0.55 * chaos;                  // of those, how many cut out hard
+  const chans = Array.from({ length: 5 }, (_, i) => ({
+    kind: i === 0 ? "steady" : i <= 2 ? "stutter" : "faulty",
+    seed: r() * 100,
+    mat:  new three.MeshBasicMaterial({ color: theme.neon, transparent: true, opacity: 0.85 }),
+  }));
+  glow.push(...chans.map(c => c.mat));
+
+  const panelGeo = new three.PlaneGeometry(1.1, 1.1);
+  const fixtures = [];                                    // cells that got a fixture
+  for (let cy = 0; cy < N; cy++)
+    for (let cx = 0; cx < N; cx++){
+      if (cx === goalCell.x && cy === goalCell.y) continue;   // the gate lights itself
+      if (r() > 0.88) continue;                               // the odd dead socket
+      let ch = 0;
+      if (r() < flickFrac) ch = r() < faultBias ? 3 + (r() * 2 | 0) : 1 + (r() * 2 | 0);
+      const wx = cellCenter(cx, CELL), wz = cellCenter(cy, CELL);
+      const panel = new three.Mesh(panelGeo, chans[ch].mat);
+      panel.rotation.x = Math.PI/2;                           // face down, like the ceiling
+      panel.position.set(wx, WALL_H - 0.02, wz);
+      scene.add(panel);
+      fixtures.push({ x: cx, y: cy, wx, wz, ch });
+    }
+
+  // real point lights on a budget, spread across the grid so every stretch
+  // of corridor sits in somebody's pool; each follows its fixture's channel
+  for (let i = fixtures.length - 1; i > 0; i--){              // seeded shuffle
     const j = r() * (i + 1) | 0;
-    [open[i], open[j]] = [open[j], open[i]];
+    [fixtures[i], fixtures[j]] = [fixtures[j], fixtures[i]];
   }
-  const picked = [];
-  for (const c of open){
-    if (picked.length >= 3) break;
-    if (picked.some(p => Math.abs(p.x - c.x) + Math.abs(p.y - c.y) < 3)) continue;
-    picked.push(c);
-  }
-  picked.forEach((c, i) => {
-    const wx = cellCenter(c.x, CELL), wz = cellCenter(c.y, CELL);
-    const mat = new three.MeshBasicMaterial({ color: theme.neon, transparent: true, opacity: 0.85 });
-    glow.push(mat);
-    const panel = new three.Mesh(new three.PlaneGeometry(1.0, 1.0), mat);
-    panel.rotation.x = Math.PI/2;                               // face down, like the ceiling
-    panel.position.set(wx, WALL_H - 0.02, wz);
-    scene.add(panel);
-    const light = new three.PointLight(theme.neon, 0.9, 8);
-    light.position.set(wx, WALL_H - 0.75, wz);
+  const lights = [];
+  for (const f of fixtures){
+    if (lights.length >= 6) break;
+    if (lights.some(l => Math.abs(l.cx - f.x) + Math.abs(l.cy - f.y) < 3)) continue;
+    const light = new three.PointLight(theme.neon, 0.75, 9);
+    light.position.set(f.wx, WALL_H - 0.8, f.wz);
     scene.add(light);
-    // the last well is always the faulty tube that cuts out now and then
-    wells.push({ light, mat, base: 0.9, seed: r() * 100, faulty: i === picked.length - 1 });
-  });
+    lights.push({ light, base: 0.75, ch: f.ch, cx: f.x, cy: f.y });
+  }
 
   // ---- data motes: the fog, made digital ------------------------------
   // a slow upward drift of neon specks through the whole maze volume;
@@ -339,7 +361,7 @@ export function buildProps(three, scene, cfg, cells, goalCell, spawns){
   const motePts = new three.Points(geo, moteMat);
   scene.add(motePts);
 
-  return { props, fx: { glow, wells, motes: { geo, pos, vel, count: COUNT, size, top: WALL_H } } };
+  return { props, fx: { glow, chans, lights, motes: { geo, pos, vel, count: COUNT, size, top: WALL_H } } };
 }
 
 /* ---------- per-frame ----------
@@ -362,17 +384,16 @@ export function updateProps(three, M, dt){
     }
     mo.geo.attributes.position.needsUpdate = true;
 
+    // one brightness per channel per frame; panels and their pooled lights
+    // read the same value, so a fixture and its light die together
     const t = performance.now() * 0.001;
-    for (const w of fx.wells){
-      let k = 0.82 + 0.18 * Math.sin(t * 1.7 + w.seed);        // slow breathing
-      if (w.faulty){
-        const n = noise(t * 7 + w.seed);                        // the tube re-striking
-        if (n < 0.12) k *= 0.08;
-        else if (n < 0.26) k *= 0.5;
-      }
-      w.light.intensity = w.base * k;
-      w.light.color.copy(M.lamp.color);                         // follows the animated bands
-      w.mat.opacity = 0.25 + 0.65 * k;
+    for (const c of fx.chans){
+      c.k = channelK(c, t);
+      c.mat.opacity = 0.2 + 0.72 * c.k;
+    }
+    for (const l of fx.lights){
+      l.light.intensity = l.base * fx.chans[l.ch].k;
+      l.light.color.copy(M.lamp.color);                         // follows the animated bands
     }
   }
 
@@ -380,6 +401,24 @@ export function updateProps(three, M, dt){
     updateGrabs(three, M, dt);
     if (!M.dialogueOpen) stepPhysics(M, dt);
   }
+}
+
+/* brightness 0..~1 for a flicker channel at time t. Steady barely breathes;
+   stutter wobbles and occasionally dips; faulty mostly holds, then cuts to
+   near-black and re-strikes — brief and never to full black, same
+   photosensitivity care as the palette's flicker band. */
+function channelK(c, t){
+  if (c.kind === "steady") return 0.93 + 0.07 * Math.sin(t * 1.3 + c.seed);
+  if (c.kind === "stutter"){
+    let k = 0.78 + 0.22 * Math.sin(t * 2.1 + c.seed);
+    if (noise(t * 6 + c.seed) < 0.1) k *= 0.45;
+    return k;
+  }
+  let k = 0.85 + 0.15 * Math.sin(t * 1.9 + c.seed);   // faulty
+  const n = noise(t * 8 + c.seed);
+  if (n < 0.14) k *= 0.07;
+  else if (n < 0.26) k *= 0.5;
+  return k;
 }
 
 /* ---------- VR grabbing ---------- */

@@ -24,7 +24,7 @@ import { cellCenter } from "./generator.js";
 import { rng } from "./palette.js";
 import { graffitiPool, LOOP_DEPTH } from "./story.js";
 import { brickTexture, panelTexture, glyphTexture, crackedTexture,
-         graffitiTexture, floorTexture, cyberTexture } from "./textures.js";
+         graffitiTexture, floorTexture, ceilingTexture, cyberTexture } from "./textures.js";
 
 /* stable id for a wall at a world position — lets callers (e.g.
    character spawns) ask for a window there regardless of which
@@ -59,20 +59,24 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   // dark a room sooner, Silent Hill style — the drifting data motes
   // (props.js) live inside this band and give it a digital grain
   scene.fog = new three.Fog(theme.sceneFog, 2.2, 20);
-  const ambient = new three.AmbientLight(theme.ambient, 1.15);
+  const ambient = new three.AmbientLight(theme.ambient, 1.45);
   scene.add(ambient);
 
-  // floor + ceiling
+  // floor + ceiling. Lambert lighting is per-vertex (r128), so both planes
+  // are subdivided — otherwise a 36m quad has only corner vertices and the
+  // point lights (player lamp, the props.js ceiling grid) can't pool on it.
+  const SEG = N * 4;
   const fTex = floorTexture(three, theme); fTex.repeat.set(N, N);
   const floor = new three.Mesh(
-    new three.PlaneGeometry(size, size),
+    new three.PlaneGeometry(size, size, SEG, SEG),
     new three.MeshLambertMaterial({map:fTex}));
   floor.rotation.x = -Math.PI/2;
   floor.position.set(size/2, 0, size/2);
   scene.add(floor);
+  const cTex = ceilingTexture(three, theme); cTex.repeat.set(N, N);
   const ceil = new three.Mesh(
-    new three.PlaneGeometry(size, size),
-    new three.MeshLambertMaterial({color:theme.ceil}));
+    new three.PlaneGeometry(size, size, SEG, SEG),
+    new three.MeshLambertMaterial({map:cTex}));
   ceil.rotation.x = Math.PI/2;
   ceil.position.set(size/2, WALL_H, size/2);
   scene.add(ceil);

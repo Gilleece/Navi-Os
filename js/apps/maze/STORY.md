@@ -318,9 +318,11 @@ untouched by the ramp.
 crates, dead terminals, canisters and cable coils sit in cell corners (never
 in a walkway), and a few dead-ends hold a larger centrepiece — a server rack,
 a big strapped crate or a terminal kiosk — parked against the back wall (the
-centrepieces are solid; the junk is ankle-height and walkable-through). A few
-ceiling **light wells** glow over junctions (one per level is always a faulty
-tube that cuts out), and **data motes** drift through the fog, which is
+centrepieces are solid; the junk is ankle-height and walkable-through). The
+ceiling is panelled and carries a **light grid**: a glowing fixture in nearly
+every cell lights the maze from within, and how many of them stutter or cut
+out ramps with depth like the wall decay — depth 1 has the odd flicker, depth
+30 barely holds its light. **Data motes** drift through the fog, which is
 heavier than it used to be. In VR the small junk is **grabbable**: squeeze
 the grip near a piece to pick it up, let go to drop or throw it — pure toy
 physics, nothing gameplay-relevant. All of it recolours with the level's

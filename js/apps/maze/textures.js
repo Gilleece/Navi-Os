@@ -202,6 +202,39 @@ export function floorTexture(three, theme){
   return t;
 }
 
+/* a ceiling tile: plain plates, seams, a rare vent — one tile per cell */
+export function ceilingTexture(three, theme){
+  const [nr, ng, nb] = theme.texRgb;
+  return canvasTexture(three, g => {
+    g.fillStyle = cssHex(theme.texBase); g.fillRect(0,0,256,256);
+    const P = 128;                                     // 2×2 plates per cell
+    for (let py = 0; py < 256; py += P)
+      for (let px = 0; px < 256; px += P){
+        const f = 0.05 + Math.random()*0.03;           // dimmer than the walls
+        g.fillStyle = `rgb(${nr*f|0},${ng*f|0},${nb*f|0})`;
+        g.fillRect(px + 2, py + 2, P - 4, P - 4);
+        g.strokeStyle = `rgba(${nr},${ng},${nb},.12)`; g.lineWidth = 2;
+        g.strokeRect(px + 2, py + 2, P - 4, P - 4);
+        g.fillStyle = `rgba(${nr},${ng},${nb},.2)`;    // corner rivets
+        for (const [rx, ry] of [[10,10],[P-10,10],[10,P-10],[P-10,P-10]]){
+          g.beginPath(); g.arc(px + rx, py + ry, 2.5, 0, Math.PI*2); g.fill();
+        }
+        if (Math.random() < 0.2){                      // the odd extraction vent
+          for (let y = py + 44; y < py + 88; y += 11){
+            g.fillStyle = "rgba(0,0,0,.5)";
+            g.fillRect(px + 34, y, 60, 6);
+            g.fillStyle = `rgba(${nr},${ng},${nb},.1)`;
+            g.fillRect(px + 34, y, 60, 2);
+          }
+        }
+      }
+    // a hairline conduit crossing the tile
+    g.strokeStyle = `rgba(${nr},${ng},${nb},.16)`; g.lineWidth = 3;
+    const y = 40 + Math.random()*176;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(256, y); g.stroke();
+  });
+}
+
 /* ---------- props (props.js set dressing) --------------------------------
    crateTexture follows the wall rules (texRgb/texBase — coloured on solid
    bands, grey on the rest, tinted by the lights). screenTexture and

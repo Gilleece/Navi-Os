@@ -175,7 +175,6 @@ export function themeFor(depth){
 
     // scene lights / fog
     ambient:  hexOf(clamp(scale(neutral ? saturate(fill) : near, neutral ? 0.30 : 0.33))),
-    ceil:     hexOf(scale(near, 0.06)),
     sceneFog: hexOf(scale(fogBase, fogF)),
   };
 }
