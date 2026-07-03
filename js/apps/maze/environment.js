@@ -55,7 +55,10 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   const { N, CELL, WALL_H, WALL_T, theme, depth } = cfg;
   const size = N * CELL;
 
-  scene.fog = new three.Fog(theme.sceneFog, 2, 26);
+  // heavier fog than the original (2..26): corridors dissolve into the
+  // dark a room sooner, Silent Hill style — the drifting data motes
+  // (props.js) live inside this band and give it a digital grain
+  scene.fog = new three.Fog(theme.sceneFog, 2.2, 20);
   const ambient = new three.AmbientLight(theme.ambient, 1.15);
   scene.add(ambient);
 

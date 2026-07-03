@@ -8,6 +8,9 @@
      generator.js   : maze grid algorithm (no three.js)
      textures.js    : procedural wall / floor textures
      environment.js : fog, lights, floor, ceiling, walls
+     props.js       : set dressing + atmosphere (corner junk, dead-end
+                      centrepieces, light wells, data motes) and the
+                      VR grab/throw toy physics
      entities.js    : goal gate + floating relics
      player.js      : movement, collision, camera, input
      characters/    : Character class, roster, spawning, idle anim
@@ -23,6 +26,7 @@
    ============================================================ */
 import { $ } from "../../utils.js";
 import { buildEnvironment, wallKey } from "./environment.js";
+import { buildProps, updateProps } from "./props.js";
 import { buildEntities, updateTokens } from "./entities.js";
 import { themeFor, animate, liveScene } from "./palette.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
@@ -59,6 +63,7 @@ const M = {
   renderer:null, scene:null, camera:null, dolly:null,
   walls:[], goal:null, goalLight:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   tokens:[], bursts:[], theme:null, ambient:null, paneMat:null, trimMat:null,
+  props:[], propFx:null, grabs:null,
   npcs:[], nearCharacter:null, dialogueOpen:false, talk:false,
   // narrative gate: who still has unheard story beats (locks the exit ring),
   // the ring's rise animation state, and the recheck / message throttles
@@ -110,6 +115,12 @@ function buildMaze(){
   M.paneMat = paneMat;
   M.trimMat = trimMat;
   M.ambient = ambient;
+
+  // set dressing + atmosphere (also frees anything still held in VR and
+  // pushes the dead-end centrepiece colliders into M.walls)
+  const { props, fx } = buildProps(three, M.scene, M, cells, goalCell, spawns);
+  M.props = props;
+  M.propFx = fx;
 
   // player lamp, rides along with the dolly and persists across rebuilds
   if (!M.lamp){
@@ -232,6 +243,7 @@ function mazeLoop(){
     M.paneMat.color.setHex(sc.pane);
     if (M.trimMat)  M.trimMat.color.setHex(sc.pane);   // baseboards ride the same glow
     if (M.cyberMat) M.cyberMat.color.setHex(sc.cyber);
+    if (M.propFx) for (const m of M.propFx.glow) m.color.setHex(sc.pane);  // screens/LEDs/motes too
   }
 
   if (M.dialogueOpen){            // freeze the world while a conversation is open
@@ -250,6 +262,7 @@ function mazeLoop(){
     }
   }
 
+  updateProps(three, M, dt);      // motes + light wells always; grab/throw pauses during dialogue
   updateHands(M);                 // animate the VR hands + active-controller pointer (self-hides off-VR)
   updateVRBanner();               // hide the depth banner once its time is up
   updateMinimap(M);               // fog-of-war map, top-right (self-hides in VR)

@@ -314,6 +314,18 @@ fully chaotic (8–11 scrawls, walls a jumble). It stays that way below. The
 dissolving cyber wall around the exit ring is always its own pattern,
 untouched by the ramp.
 
+**Set dressing & atmosphere (`props.js`).** The Protocol sheds junk: small
+crates, dead terminals, canisters and cable coils sit in cell corners (never
+in a walkway), and a few dead-ends hold a larger centrepiece — a server rack,
+a big strapped crate or a terminal kiosk — parked against the back wall (the
+centrepieces are solid; the junk is ankle-height and walkable-through). A few
+ceiling **light wells** glow over junctions (one per level is always a faulty
+tube that cuts out), and **data motes** drift through the fog, which is
+heavier than it used to be. In VR the small junk is **grabbable**: squeeze
+the grip near a piece to pick it up, let go to drop or throw it — pure toy
+physics, nothing gameplay-relevant. All of it recolours with the level's
+palette band, screens and LEDs included.
+
 **Persistence & runs (`menu.js`).** One save slot in localStorage, autosaved
 on every level entered and on exit; the launcher offers **CONTINUE** (restore
 the slot at its depth) and **EXPORT / IMPORT** (the raw save as a JSON file).

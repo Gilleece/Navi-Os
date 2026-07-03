@@ -202,6 +202,81 @@ export function floorTexture(three, theme){
   return t;
 }
 
+/* ---------- props (props.js set dressing) --------------------------------
+   crateTexture follows the wall rules (texRgb/texBase — coloured on solid
+   bands, grey on the rest, tinted by the lights). screenTexture and
+   ledTexture are drawn in greyscale on black: props.js puts them on
+   MeshBasicMaterial whose .color carries the level neon (and is recoloured
+   per-frame on animated bands), so the glow always matches the theme. */
+
+/* a shipping crate face: panel fill, rim, cross brace, corner plates */
+export function crateTexture(three, theme, rand = Math.random){
+  const [nr, ng, nb] = theme.texRgb;
+  return canvasTexture(three, g => {
+    g.fillStyle = cssHex(theme.texBase); g.fillRect(0, 0, 256, 256);
+    const f = 0.09 + rand()*0.04;                    // face, slightly uneven
+    g.fillStyle = `rgb(${nr*f|0},${ng*f|0},${nb*f|0})`;
+    g.fillRect(6, 6, 244, 244);
+    g.strokeStyle = `rgba(${nr},${ng},${nb},.22)`;   // rim
+    g.lineWidth = 6; g.strokeRect(10, 10, 236, 236);
+    g.lineWidth = 4;                                  // cross brace
+    g.beginPath(); g.moveTo(14, 14); g.lineTo(242, 242);
+    g.moveTo(242, 14); g.lineTo(14, 242); g.stroke();
+    g.fillStyle = `rgba(${nr},${ng},${nb},.28)`;      // corner plates
+    for (const [px, py] of [[10,10],[206,10],[10,206],[206,206]])
+      g.fillRect(px, py, 40, 40);
+    // stencil: a short serial nobody will ever look up
+    g.fillStyle = `rgba(${nr},${ng},${nb},.4)`;
+    g.font = "28px 'VT323', monospace"; g.textAlign = "center";
+    g.fillText(`LP-${100 + (rand()*900|0)}`, 128, 140);
+  });
+}
+
+/* a dead terminal screen: scanlines, a few lines of glyph blocks, cursor */
+export function screenTexture(three, rand = Math.random){
+  return canvasTexture(three, g => {
+    g.fillStyle = "#000"; g.fillRect(0, 0, 256, 256);
+    g.fillStyle = "rgba(255,255,255,.05)";            // faint phosphor field
+    g.fillRect(8, 8, 240, 240);
+    for (let y = 8; y < 248; y += 6){                 // scanlines
+      g.fillStyle = "rgba(255,255,255,.04)";
+      g.fillRect(8, y, 240, 2);
+    }
+    // lines of dead output: runs of glyph blocks, ragged right edge
+    for (let y = 28, line = 0; y < 200 && line < 8; y += 24, line++){
+      let x = 20;
+      const end = 60 + rand()*160;
+      while (x < end){
+        const w = 8 + rand()*22;
+        g.fillStyle = `rgba(255,255,255,${0.25 + rand()*0.4})`;
+        g.fillRect(x, y, w, 12);
+        x += w + 6 + rand()*10;
+      }
+    }
+    g.fillStyle = "rgba(255,255,255,.9)";             // cursor, forever mid-thought
+    g.fillRect(20, 214, 14, 16);
+  });
+}
+
+/* rows of rack LEDs: mostly dim, a few bright, a couple dead */
+export function ledTexture(three, rand = Math.random){
+  return canvasTexture(three, g => {
+    g.fillStyle = "#000"; g.fillRect(0, 0, 256, 256);
+    for (let y = 14; y < 248; y += 22){               // unit seams
+      g.fillStyle = "rgba(255,255,255,.08)";
+      g.fillRect(6, y + 16, 244, 2);
+      for (let x = 16; x < 120; x += 18){             // the LED block, left half
+        const r = rand();
+        const a = r < 0.12 ? 0 : r < 0.7 ? 0.18 + rand()*0.2 : 0.75 + rand()*0.25;
+        g.fillStyle = `rgba(255,255,255,${a})`;
+        g.fillRect(x, y, 8, 8);
+      }
+      g.fillStyle = `rgba(255,255,255,${0.1 + rand()*0.15})`;  // vent slots, right half
+      for (let x = 140; x < 240; x += 12) g.fillRect(x, y - 2, 6, 14);
+    }
+  });
+}
+
 /* ---------- graffiti ----------------------------------------------------
    A transparent 256² decal of one scrawl (entry comes from
    story.graffitiPool: { kind: "text"|"tally"|"arrow"|"spiral", text? }).
