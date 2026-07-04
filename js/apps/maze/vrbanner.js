@@ -31,7 +31,7 @@ function ensureScratch(){
   scratch.v  = new three.Vector3();
 }
 
-/* head pose in dolly-local space, from the real XR camera so it's correct
+/* head pose in dolly-local space,from the real XR camera so it's correct
    under locomotion + snap-turn (the dolly itself is rotated by snap-turn). */
 function headPose(){
   const xrCam = M.renderer.xr.getCamera ? M.renderer.xr.getCamera(M.camera) : M.camera;
