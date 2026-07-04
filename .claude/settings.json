@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command -v bun deno qjs osascript)",
+      "Read(//usr/bin/**)",
+      "Bash(xcrun --find node)",
+      "Bash(mkdir -p /tmp/claude-501)",
+      "Bash(zsh '/private/tmp/claude-501/-Users-gilleece-Navi-Os/b1e1eec6-bb78-4eed-90a0-f1cbed42ef5e/scratchpad/jscheck.sh' js/apps/maze/story.js)",
+      "Bash(zsh '/private/tmp/claude-501/-Users-gilleece-Navi-Os/b1e1eec6-bb78-4eed-90a0-f1cbed42ef5e/scratchpad/smoketest.sh')",
+      "Bash(zsh '/private/tmp/claude-501/-Users-gilleece-Navi-Os/b1e1eec6-bb78-4eed-90a0-f1cbed42ef5e/scratchpad/chartest.sh')"
+    ]
+  }
+}

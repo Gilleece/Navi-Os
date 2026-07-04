@@ -166,10 +166,15 @@ export function openDialogue(state, character){
   M = state;
   current = character;
   hub = character.dialogueFor(M.depth, player);
+  // the narrative gate requires speaking with everyone once per level —
+  // just opening the conversation counts as the visit (story.js pendingBeats)
+  character.markSeen(M.depth, "@visited");
   M.dialogueOpen = true;
   M.keys = {};                       // drop held movement keys
   M.talk = false;
   shownAffinity = null;              // no pulse on the opening render
+  shownStanding = null;
+  panelDelta = { d: 0, at: 0 };      // no stale delta from the last conversation
   trig = { down:true, dragged:true, startY:null, startScroll:0 };  // ignore the trigger press that opened us
   bDown = true;                      // require a fresh B press before it can close
 
@@ -205,6 +210,24 @@ function present(text, choices){
   drawPanel();
 }
 
+/* deterministic small-menu rotation: the same level always offers the same
+   handful of plain topics for a character, and the next level offers a
+   different one. Rotating (not random) so nothing is unreachable — every
+   topic comes around within a few levels. */
+const MENU_SIZE = 3;
+function menuHash(s){
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function rotatedMenu(list, level, charId){
+  if (list.length <= MENU_SIZE) return list;
+  const start = menuHash(`${charId}:${level}`) % list.length;
+  const out = [];
+  for (let i = 0; i < MENU_SIZE; i++) out.push(list[(start + i) % list.length]);
+  return out;
+}
+
 function renderHub(){
   // hostile characters refuse normal conversation, unless you bring an
   // item they covet (won from another character) to thaw them out
@@ -217,14 +240,27 @@ function renderHub(){
     return present(hub.hostile, [{ label: "(Leave)", onSelect: close }]);
   }
 
-  // a topic is offered unless it's spent for this level (seen), retired for
-  // the whole game (once + remembered), or its availability gate says no.
-  // Story topics (injected by story.js) sort to the top, pinned.
-  const topics = hub.topics
-    .filter(t => !current.hasSeen(hub.level, t.id)
-              && !(t.once && current.recalls(`topic-${t.id}`))
-              && (!t.available || t.available(hub.ctx)))
-    .sort((a, b) => (b.story ? 1 : 0) - (a.story ? 1 : 0));
+  // What's on offer, in three bands:
+  //   • story beats (story.js) — always pinned on top, amber;
+  //   • `keep` topics (trade + the character's recurring bit) — always
+  //     available, at the bottom;
+  //   • everything else ROTATES: only MENU_SIZE plain topics are offered
+  //     per level, a different handful each depth, so a conversation is a
+  //     few things deep instead of a wall of choices. What isn't offered
+  //     this level comes around on a later one.
+  // A topic can also hide behind `minAffinity` — the personal stuff only
+  // surfaces once the character has warmed to the player.
+  const offered = t =>
+    !(t.once && current.recalls(`topic-${t.id}`))
+    && (!t.available || t.available(hub.ctx))
+    && (t.minAffinity == null || current.affinity >= t.minAffinity);
+  const live    = hub.topics.filter(offered);
+  const stories = live.filter(t => t.story);
+  const keeps   = live.filter(t => !t.story && t.keep);
+  const menu    = rotatedMenu(live.filter(t => !t.story && !t.keep), hub.level, current.id);
+
+  const topics = [...stories, ...menu, ...keeps]
+    .filter(t => !current.hasSeen(hub.level, t.id));
   const engageable = topics.filter(t => meetsReq(t.req));
   if (!engageable.length) return present(hub.exhausted, [{ label: "(Leave)", onSelect: close }]);
 
@@ -272,6 +308,11 @@ function applyEffects(fx){
     }
   }
   if (fx.flag) for (const f of [].concat(fx.flag)) setFlag(f);   // story flags
+  if (fx.others) for (const o of fx.others){       // word travels: shift ANOTHER character's
+    const c = characterById(o.id);                 // affinity toward the player (dilemma fuel;
+    if (c && typeof o.like === "number")           // same clamp as conversation)
+      c.like(Math.max(-10, Math.min(3, o.like)));
+  }
   if (fx.peers) for (const p of fx.peers){         // how the trapped feel about each other
     const c = characterById(p.of);
     if (!c) continue;
@@ -314,8 +355,8 @@ function selectByIndex(i){
 function currentMood(){
   const a = current.affinity;
   const delta = shownAffinity == null ? 0 : a - shownAffinity;
-  if (delta >= 3)  return "happy";        // just pleased them
-  if (delta <= -3) return "angry";        // just upset them
+  if (delta >= 2)  return "happy";        // just pleased them
+  if (delta <= -2) return "angry";        // just upset them
   if (current.wontTalk) return "angry";   // hates you
   if (a < 40) return "sad";               // dislikes / wary
   if (a >= 70) return "happy";            // likes you
@@ -328,19 +369,48 @@ function syncHeader(){
   refreshAffinity();
 }
 
+/* the change just made to affinity, shown LOUD: a signed chip that floats
+   off the standing label in the DOM box, and a matching readout on the VR
+   panel (drawPanel keeps it up while it's fresh). Affinity moving is meant
+   to be a first-class event the player never misses. */
+let panelDelta = { d: 0, at: 0 };
+function flashDelta(d){
+  panelDelta = { d, at: performance.now() };
+  const chip = document.createElement("span");
+  chip.textContent = ` ${d > 0 ? "+" : ""}${d} ${d > 0 ? "▲" : "▼"}`;
+  const col = d > 0 ? "#46ff8e" : "#ff3b3b";
+  Object.assign(chip.style, {
+    marginLeft: "8px", color: col, display: "inline-block",
+    textShadow: `0 0 12px ${col}, 0 0 4px ${col}`,
+  });
+  ui.aff.after(chip);
+  chip.animate(
+    [{ opacity: 1, transform: "translateY(0) scale(1.5)" },
+     { opacity: 1, transform: "translateY(-4px) scale(1)", offset: 0.2 },
+     { opacity: 0, transform: "translateY(-16px) scale(1)" }],
+    { duration: 1700, easing: "ease-out" }).onfinish = () => chip.remove();
+}
+
 /* standing label only (no number), red (0) -> green (100), pulse on change */
+let shownStanding = null;   // last standing label rendered (band-change toast)
 function refreshAffinity(){
   const a = current.affinity;
   ui.aff.textContent = current.standing.toUpperCase();
   const col = `hsl(${Math.round((a / 100) * 140)}, 100%, 55%)`;
   ui.aff.style.color = col;
   ui.aff.style.textShadow = `0 0 10px ${col}, 0 0 4px ${col}`;
-  if (shownAffinity !== null && a !== shownAffinity)
+  if (shownAffinity !== null && a !== shownAffinity){
+    flashDelta(a - shownAffinity);
     ui.aff.animate(
       [{ transform: "scale(1.3)", filter: "brightness(2.4)" },
        { transform: "scale(1)",   filter: "brightness(1)" }],
       { duration: 420, easing: "ease-out" });
+    // crossing a band is a headline: shout the new standing
+    if (shownStanding !== null && shownStanding !== current.standing)
+      toast(`${current.name} — ${current.standing.toUpperCase()}`);
+  }
   shownAffinity = a;
+  shownStanding = current.standing;
 }
 
 /* ---------- DOM renderer ---------- */
@@ -415,6 +485,13 @@ function drawPanel(hover = -1){
   g.fillStyle = `hsl(${Math.round((current.affinity / 100) * 140)},100%,55%)`;
   g.font = "26px 'VT323', monospace";
   g.fillText(current.standing.toUpperCase(), BODY_X, 108);
+  // fresh affinity change: show the signed delta beside the standing
+  if (panelDelta.d && performance.now() - panelDelta.at < 2200){
+    const d = panelDelta.d;
+    g.fillStyle = d > 0 ? "#46ff8e" : "#ff3b3b";
+    g.fillText(`${d > 0 ? "+" : ""}${d} ${d > 0 ? "▲" : "▼"}`,
+               BODY_X + g.measureText(current.standing.toUpperCase()).width + 18, 108);
+  }
 
   // text
   g.fillStyle = "#46ff8e"; g.font = "24px 'Share Tech Mono', monospace";

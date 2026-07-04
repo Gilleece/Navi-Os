@@ -302,18 +302,25 @@ function homissDialogue(ctx){
     exhausted: "Ah, don't be a stranger now, will ye? Sure I'll be here. ...I'm always here, amn't I. *a flicker of something behind the eyes, then the grin's back.* Go on, go on.",
     hostile: "*He won't quite meet your eye.* ...I think I'd sooner be on me own for a bit. If that's alright with ye.",
     topics: [
-      { id: "hello", label: "Homiss, how's the day treating you?", effects: { like: +3 },
+      { id: "hello", label: "Homiss, how's the day treating you?", effects: { like: +1 },
         node: { text: "Ah sure ye know yerself — up early, bit o' brekkie, bit o' practice. Same as any day. *he says it like a man steadyin' himself.* Lovely an' normal. Just a normal day, like every other normal day. ...an' how's yourself? No — actually — *he's already somewhere else* — here, can I ask ye somethin' mad?" } },
 
-      { id: "music", label: "So what is it you do?", effects: { like: +3 },
-        node: { text: "I'm a bass man, mostly. Composition — did the doctorate an' all, if ye can credit it. Experimental stuff: drones, detuned bits, a piece that's just the one note for forty minutes til ye start hearin' God in it. Not everyone's cup o' tea. *grins* Me ma still asks when I'll write a proper song." } },
+      { id: "music", label: "So what is it you do?", effects: { like: +1 },
+        node: { text: "I'm a bass man, mostly. Composition — did the doctorate an' all, if ye can credit it. Experimental stuff: drones, detuned bits, a piece that's just the one note for forty minutes til ye start hearin' God in it. Not everyone's cup o' tea. *grins* Me ma still asks when I'll write a proper song.",
+          choices: [
+            { text: "Play me the forty-minute note sometime. Start to finish.", effects: { like: +2 },
+              next: { text: "*He stares at ye.* ...start to FINISH? Nobody's ever asked for the whole— even at the PREMIERE they were checkin' their phones by minute six. *He's already reachin' for the bass, glowin'.* Right. Not tonight — ye've a maze — but yer BOOKED. Front row. Bring nothin' but an open mind an' possibly a cushion. Minute thirty's where God shows up, an' ye want to be COMFORTABLE for that." } },
+            // the trap: an honest, curious question — that lands like a review
+            { text: "Forty minutes of one note, though? Genuinely — how is that music?", effects: { like: -3 },
+              next: { text: "*The grin holds its shape while the light goes out of it.* ...aye. 'How is that music.' *He nods slowly, the way a man nods at a familiar pothole.* D'ye know, that's word for word what the fella from the funding body said. An' me EXTERN. An' me da, God rest him, though he said it kinder. *He turns a tuning peg that doesn't need turnin'.* It's grand. Yer in the majority, sure. The majority's a lovely big roomy place to stand. *He plays somethin' short an' bruised.* ...it's the LISTENIN', for what it's worth. The note doesn't change. YOU do. That was always the whole trick of it. Ah, forget it." } },
+          ] } },
 
       // the signature bit: a ridiculous question he'll never be happy with.
       // oneShot:false so he's always got another one in him.
-      { id: "wouldrather", label: "Go on then — ask me something mad.", oneShot: false,
+      { id: "wouldrather", label: "Go on then — ask me something mad.", oneShot: false, keep: true,
         node: () => wrNode(0) },
 
-      { id: "dread", label: "You seem a little on edge.", effects: { like: +2 },
+      { id: "dread", label: "You seem a little on edge.", minAffinity: 50, effects: { like: +1 },
         node: { text: "On edge? Ah no, I'm grand. I'm grand. It's only— *he leans in, drops his voice* —do ye ever get the feelin' none of it's real? That there's somethin' on the far side of it all, just... watchin'? Readin' us, like? Like we're only lines bein' typed out by somethin' an' we'd never even know? ...no? Just me, so. *a thin laugh* Just me." } },
 
       // the player breaks the fourth wall; Homiss freaks, then buries it
@@ -322,20 +329,20 @@ function homissDialogue(ctx){
           choices: [
             { text: "I'm serious. Look around you.", req: { attr: "intelligence", level: 7 }, effects: { like: -2 },
               next: { text: "*He won't look. He starts hummin' a bassline, low, then louder, drownin' ye out.* La la la — can't hear ye — la — grand weather we're havin', isn't it? Grand. Lovely. Normal. *Everything is normal. It has to be.*" } },
-            { text: "Ha — only messing. You're grand.", effects: { like: +3 },
+            { text: "Ha — only messing. You're grand.", effects: { like: +2 },
               next: { text: "*The relief floods back into him.* Ye had me goin' there, ye divil! *He claps yer shoulder.* C'mere, never mind all that — did I ever tell ye about me thesis?" } },
           ] } },
 
       { id: "charm", label: "*Warmly* There's a serious mind behind that bass.",
-        req: { attr: "charisma", level: 6 }, effects: { like: +3 },
+        req: { attr: "charisma", level: 6 }, effects: { like: +2 },
         node: { text: "*He goes pink to the very ears.* Ah, stop— stop now, ye'll have me blushin'. But a fella likes to hear it, I'll not lie to ye. *beams* D'ye know what, I've a good feelin' about you. We're goin' to be great pals, you an' me. Great pals entirely." } },
 
       { id: "smart", label: "Is your tuning just intonation, or equal temperament?",
-        req: { attr: "intelligence", level: 6 }, effects: { like: +3 },
+        req: { attr: "intelligence", level: 6 }, effects: { like: +2 },
         node: { text: "*His whole face lights up.* Oh ho — a head on ye! Just intonation, when I can get away with it — let the harmonics fall where nature wants 'em, none o' yer tempered compromise. ...d'ye know, talkin' to you is the most real thing's happened to me all day. *a beat* ...all day. Funny, that. Anyway!" } },
 
       { id: "flask", label: "Got anything to drink back there?",
-        req: { attr: "endurance", level: 6 }, effects: { like: +3 },
+        req: { attr: "endurance", level: 6 }, effects: { like: +2 },
         node: { text: "*He waggles a battered flask through the gap.* Poitín. For the nerves. Go easy now, it's— *ye drain it in one, and hand it back without so much as a watering eye. He stares at ye, then at the flask, then at ye.* ...well HOLY God. I can barely LOOK at that stuff. Constitution of a cathedral on ye. Remind me never to get into a drinkin' match with yerself." } },
 
       { id: "catch", label: "*His plectrum slips — snatch it out of the air.*",
@@ -353,7 +360,7 @@ function homissDialogue(ctx){
       // coin-only sale, an item-for-item barter for things he wants, the
       // riddly hidden-desire swap (mayonnaise!), and a free gift for friends
       // on the trade cooldown. See characters.js for the full economy note.
-      { id: "trade", label: "Got anything to trade?", oneShot: false,
+      { id: "trade", label: "Got anything to trade?", oneShot: false, keep: true,
         node: () => {
           const choices = [];
 

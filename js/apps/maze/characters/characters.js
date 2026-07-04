@@ -12,7 +12,10 @@
 
    Spawning: every character shows up on every level at a random spot,
    except those flagged `firstLevelNearStart` (Scally) who are
-   guarenteed within the first five squares on level 1.
+   guarenteed within the first five squares on level 1, and those with
+   a `minDepth` (Little Bee 2, Sian 3, Dalypso 4) who only start
+   appearing from that depth — descending keeps introducing new
+   trapped users instead of crowding them all onto level 1.
 
    The world is called the "Labyrinth Protocol" and characters speak of
    it by that name. Trading is rate-limited for everyone (see
@@ -28,6 +31,9 @@ import { story } from "../state.js";
 import { applyStory } from "../story.js";
 import { scally } from "./scally.js";
 import { homiss } from "./homiss.js";
+import { littlebee } from "./littlebee.js";
+import { sian } from "./sian.js";
+import { dalypso } from "./dalypso.js";
 
 /* affinity buckets -> tone key used to pick dialogue flavour */
 const TONES = [
@@ -57,6 +63,15 @@ const STANDINGS = [
 /* below this affinity a character refuses normal conversation */
 export const HOSTILE = 20;
 
+/* --- the trust cap ---------------------------------------------------
+   Trust is EARNED SLOWLY down here: no amount of charm can push a
+   character's affinity above this ceiling for the current depth, so
+   "Likes you" (70+) is out of reach before depth 4 and real warmth
+   (81+) before depth 7 no matter how well the player plays. Gains
+   simply stop at the cap (losses are never capped — you can always
+   make things worse). Mirrored in STORY.md §7. */
+export function trustCap(depth){ return Math.min(100, 50 + depth * 5); }
+
 /* the world's name; characters refer to it by this in their dialogue */
 export const WORLD = "Labyrinth Protocol";
 
@@ -78,12 +93,32 @@ export const TRADE_COOLDOWN = 2;
    meetPeer). Copied onto each Character as `this.peers` so it can mutate and
    persist across levels.
 
-   TODO: only Scally and Homiss exist so far. As each new character is added,
-   fill in their pairings here (and deliberately leave SOME pairs absent, for
-   characters who have never met, so "introducing" them is a player action). */
+   Sian is the mutual link: school with Dalypso, college with Homiss, worked
+   with Scally at the tech giant that shall not be named, in love with Little
+   Bee — every pair routes through him somehow, so every pair has at least
+   met. The thin pairings (Scally↔Dalypso) are the ones to stress with future
+   characters; deliberately leave SOME pairs absent for characters who have
+   never met, so "introducing" them is a player action. */
 const BASE_PEER_AFFINITY = {
-  scally: { homiss: 58 },   // knows him; cordial but always sizing him up
-  homiss: { scally: 64 },   // likes the wee fixer, a touch warmer than returned
+  scally:    { homiss: 58, littlebee: 62, sian: 60, dalypso: 52 },
+  //           ^ cordial,   ^ respects the fight in her,  ^ knew him at "the company" and
+  //             sizing up    she argues fair               stays cagey about those days; barely
+  //                                                        knows Dalypso ("the loud one")
+  homiss:    { scally: 64, littlebee: 80, sian: 68, dalypso: 66 },
+  //           ^ likes the wee fixer;  ^ his session partner through the walls;
+  //             ^ the rivalry is real and so is the fondness;  ^ fond, feels
+  //               guilty about all the Tuesdays
+  littlebee: { scally: 58, homiss: 78, sian: 92, dalypso: 34 },
+  //           ^ likes him, worried about what he's trading toward;
+  //             ^ her best pal down here;  ^ the whole heart;
+  //               ^ suspicious — "his window doesn't breathe"
+  sian:      { scally: 66, homiss: 72, littlebee: 90, dalypso: 75 },
+  //           ^ work pal ("nobody knew what Scally DID");  ^ rival, brother-in-arms;
+  //             ^ the whole heart, minus what the headset hides;  ^ best mate since six
+  dalypso:   { scally: 55, homiss: 63, littlebee: 44, sian: 82 },
+  //           ^ "seems sound, sells things";  ^ a gentleman with ONE flaw;
+  //             ^ she took nothing that was his to keep, and he's very
+  //               nearly finished letting it go;  ^ best mate FIRST
 };
 
 export class Character {
@@ -110,10 +145,21 @@ export class Character {
     this.layerCount  = def.layerCount ?? 1;         // number of depth slices for the 2.5D figure
     this._dialogue   = def.dialogue;                // (ctx) => rootNode
     this.firstLevelNearStart = !!def.firstLevelNearStart;
+    this.minDepth    = def.minDepth ?? 1;           // first depth this character appears at
+    this.letter      = def.letter ?? def.name[0];   // minimap initial (Sian is "5" — S was taken)
     this.peers       = { ...(BASE_PEER_AFFINITY[def.id] ?? {}) };   // feelings toward other characters (see above)
   }
 
-  like(delta){ this.affinity = Math.max(0, Math.min(100, this.affinity + delta)); }
+  like(delta){
+    if (delta > 0){
+      // gains stall at the depth's trust cap (never punish an affinity
+      // that is somehow already above it — just don't climb further)
+      const cap = Math.max(this.affinity, trustCap(story.depth));
+      this.affinity = Math.min(cap, this.affinity + delta);
+    } else {
+      this.affinity = Math.max(0, this.affinity + delta);
+    }
+  }
 
   /* back to the def's starting state — a new game rewinds the Protocol,
      and the trapped users' worlds rewind with it (menu.js resetGame) */
@@ -221,7 +267,7 @@ export class Character {
 
 /* the full roster, one Character instance per def, created once so
    affinity and seen-topics persist across maze levels */
-const DEFS = [scally, homiss];
+const DEFS = [scally, homiss, littlebee, sian, dalypso];
 export const ROSTER = DEFS.map(def => new Character(def));
 
 /* look a character up by id (peer effects, level events) */
@@ -280,6 +326,7 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
   const spawns = [];
   let firstMetDist = null;
   for (const ch of ROSTER){
+    if (depth < ch.minDepth) continue;   // not this deep yet — introduced on descent
     let pool = candidates.filter(c => !used.has(c.x + "," + c.y));
 
     if (depth === 1 && ch.firstLevelNearStart){

@@ -111,7 +111,7 @@ export function updateMinimap(M){
     // nudge the letter off the window wall, into the cell it faces
     const lx = (npc.x * 0.6 + (npc.cell.x + 0.5) * CELL * 0.4) * s;
     const lz = (npc.z * 0.6 + (npc.cell.y + 0.5) * CELL * 0.4) * s;
-    const letter = npc.character.name[0];
+    const letter = npc.character.letter ?? npc.character.name[0];
     g.fillStyle = "rgba(0,0,0,0.75)";
     g.fillRect(lx - 7 * DPR / 2, lz - 7 * DPR / 2, 7 * DPR, 7 * DPR);
     g.fillStyle = "#fff";

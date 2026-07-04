@@ -46,8 +46,11 @@ export function canAfford(n){ return player.tokens >= (n ?? 0); }
    gate story topics, graffiti and world items. The run counter tracks
    replays: relaunching the maze after a previous run is a new loop — the
    characters keep their memories and comment on seeing you "again from
-   the top". Per-character memory lives on the Character instances. */
-export const story = { flags: new Set(), run: 1, started: false };
+   the top". Per-character memory lives on the Character instances.
+   `depth` mirrors the level currently being played (maze.js keeps it in
+   sync) so systems without engine access — the trust cap in
+   characters.js — can scale with how deep the player is. */
+export const story = { flags: new Set(), run: 1, started: false, depth: 1 };
 export function setFlag(id){ story.flags.add(id); }
 export function hasFlag(id){ return story.flags.has(id); }
 

@@ -34,7 +34,7 @@ import { bindInput, updatePlayer } from "./player.js";
 import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters, ROSTER } from "./characters/characters.js";
 import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue } from "./dialogue.js";
 import { applyLevelEvents, pendingBeats } from "./story.js";
-import { player } from "./state.js";
+import { player, story } from "./state.js";
 import { saveGame, loadGame, resetGame, saveInfo, exportSave, importSave } from "./menu.js";
 import { showCreation, hideCreation } from "./creation.js";
 import { buildMinimap, updateMinimap } from "./minimap.js";
@@ -98,6 +98,7 @@ function buildMaze(){
     if (child !== M.dolly) disposeSubtree(child);
   }
 
+  story.depth = M.depth;                   // the trust cap (characters.js) scales with depth
   recoverAffinity();                       // enraged characters thaw a little each level
   applyLevelEvents(M.depth, ROSTER);       // one-time story mutations (e.g. Scally stocks the mayo)
   M.theme = themeFor(M.depth);             // walls / fog / lights recolour as you descend

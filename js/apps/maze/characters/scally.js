@@ -167,19 +167,28 @@ function scallyDialogue(ctx){
     exhausted: "Eh, amico — we have-a talked enough for now. Go, go! The maze, she is waiting. *Scally rubs his hands and melts back into the static.*",
     hostile: "*He turns his back, muttering in Italian.* Pah! I got nothing for you. You bring Scally something nice, eh — then maybe we talk again.",
     topics: [
-      { id: "place", label: "Well met, friend — what is this place?", effects: { like: +3 },
+      { id: "place", label: "Well met, friend — what is this place?", effects: { like: +1 },
         node: { text: "Heh — 'friend', he says. I like-a this one. They call her the Labyrinth Protocol, amico — the maze that is not a maze, the in-between. You walk, you talk to Scally, you no get lost. Capisce?" } },
 
-      // level-1 only: the tutorial on Labyrinth Tokens (Scally calls them "LT")
+      // level-1 only: the tutorial on Labyrinth Tokens (Scally calls them
+      // "LT"). keep:true exempts it from the rotating menu so the tutorial
+      // can't be rotated out of the one level it exists on.
       { id: "tokens", label: "Anything I should know while travelling through this place?",
-        available: () => depth === 1, effects: { like: +3 },
+        available: () => depth === 1, keep: true, effects: { like: +1 },
         node: { text: "Ahh, smart, smart to ask! See the little shapes, floating, spinning in the halls? LT, amico — Labyrinth Tokens. The coin of this place! The big fat crystals, they are five LT each. The middle ones, three. The little ones, just one. You walk into them, *poof*, they are yours. And everybody down here wants LT — me, the others, all of us. Some things, amico, money is the only language they speak. So you grab every one you see, eh? Every. Single. One." } },
 
       { id: "others", label: "Who else wanders down here?",
-        node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Scally — I am the only honest one. *grin*" } },
+        node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me — Scally — I am the only honest one. *grin*",
+          choices: [
+            { text: "Then I'll stick close to the honest one.", effects: { like: +1 },
+              next: { text: "*He spreads his arms, delighted.* Ecco! Wisdom! You stay close to Scally, amico, and the static she stays hungry. Is a good arrangement. For you, ESPECIALLY for you. *wink*" } },
+            // the trap: a sensible-sounding question he hears as an informer's
+            { text: "Which of the others is lying to me, then?", effects: { like: -3 },
+              next: { text: "*The grin cools by several degrees.* ...eh. You misunderstand the shop, amico. You ask Scally to sell his NEIGHBOURS. *He tidies something that does not need tidying.* Scally sells THINGS. Sausages. Charms. The occasional rumour about the MAZE, never about the windows. *He looks up, and the eyes are flat.* The ones who buy neighbours, amico — sooner or later, somebody sells THEM. Think on it." } },
+          ] } },
 
       { id: "charm", label: "*Flatter him* A man of your style must run this whole place.",
-        req: { attr: "charisma", level: 6 }, effects: { like: +3 },
+        req: { attr: "charisma", level: 6 }, effects: { like: +2 },
         node: { text: "*He puffs up, twirling the mustache.* Ahhh, you have-a the eye! Nothing it moves in these wires without Scally knowing. We are friends now, eh? And friends — friends help each other." } },
 
       { id: "smart", label: "This is a recursive lattice — where does it terminate?",
@@ -191,7 +200,7 @@ function scallyDialogue(ctx){
         node: { text: "EH! Eh eh eh — careful, gorilla! *He watches a hairline crack spider up the brick, then looks you up and down with new respect.* ...Madonna. Va bene. Okay, strong mouse. You break-a nothing else, and we stay friends, sì? *You can hear him already scheming how to use you.*" } },
 
       { id: "sharp-eyes", label: "You can see out of there, can't you? More than you let on.",
-        req: { attr: "perception", level: 6 }, effects: { like: +2 },
+        req: { attr: "perception", level: 6 }, minAffinity: 55, effects: { like: +2 },
         node: { text: "*A long pause. The grin thins.* ...sharp eyes, amico. Sì. The window, she works both ways — Scally sees the halls. Scally sees who walks them. *He taps his nose.* And lately, somebody walks them who casts no shadow on the glass. Ask me no more tonight." } },
 
       { id: "fortuna", label: "That little horn of yours — does it actually work?",
@@ -204,7 +213,7 @@ function scallyDialogue(ctx){
       // Always askable. The menu is built from the shared economy on the
       // base class: a coin-only sale, item-for-item barter, the riddly
       // hidden-desire swap, and a free gift for friends (cooldown-limited).
-      { id: "trade", label: "Do you want to trade?", oneShot: false,
+      { id: "trade", label: "Do you want to trade?", oneShot: false, keep: true,
         node: () => {
           const choices = [];
 

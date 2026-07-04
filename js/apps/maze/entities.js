@@ -43,6 +43,10 @@ const ITEM_GEOS = {
   shard: three => new three.TetrahedronGeometry(0.3),
   vial:  three => new three.CylinderGeometry(0.11, 0.11, 0.46, 8),
   bone:  three => new three.BoxGeometry(0.1, 0.44, 0.1),
+  shoe:  three => new three.TorusGeometry(0.2, 0.055, 6, 12, Math.PI * 1.5),  // horseshoe: an open torus
+  card:  three => new three.BoxGeometry(0.3, 0.4, 0.02),                      // foil sticker: a thin card
+  badge: three => new three.BoxGeometry(0.24, 0.34, 0.04),                    // lanyard: a hanging pass
+  tome:  three => new three.BoxGeometry(0.34, 0.44, 0.1),                     // the Christmas TV guide, thick as a phone book
 };
 
 /* builds the maze's props into `scene`, returns
