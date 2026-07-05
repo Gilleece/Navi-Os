@@ -9,7 +9,7 @@
      3 LT - mid octahedron    (steel)
      5 LT - large icosahedron (gold), the original floating shape
    Walk into one and it spins up, shrinks away and bursts into
-   particles while the LT lands in your balance.
+   particles while the LT lands in your balance. 
 
    The maze also sheds one-of-a-kind story items (story.js
    WORLD_ITEMS) — pale solid shapes, collected the same way but
