@@ -13,6 +13,7 @@ const WINDOWS = {
   about: "win-about", projects: "win-projects", calendar: "win-calendar",
   notepad: "win-notepad", calc: "win-calc", maze: "win-maze",
   term: "win-term", sysmon: "win-sysmon",
+  flappy: "win-flappy", worm: "win-worm", tracker: "win-tracker", life: "win-life",
 };
 
 let out, input, history = [], hi = 0;

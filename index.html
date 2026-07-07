@@ -59,6 +59,22 @@
       <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3zM7 3v10M7 17v4M11 7v10M15 3v6M15 13v8M19 7v10M3 11h4M11 7h4M7 17h8"/></svg>
       <span>MAZE.EXE</span>
     </button>
+    <button class="icon" data-open="win-flappy">
+      <svg viewBox="0 0 24 24"><path d="M4 13a6 6 0 0 1 11-3l4-2-1 4 2 1-4 2a6 6 0 0 1-12-2z"/><circle cx="13" cy="9.5" r=".7"/></svg>
+      <span>FLAPPY.EXE</span>
+    </button>
+    <button class="icon" data-open="win-worm">
+      <svg viewBox="0 0 24 24"><path d="M2 12q3-5 6 0t6 0 6 0"/><circle cx="20" cy="12" r="1.6"/></svg>
+      <span>WORM.EXE</span>
+    </button>
+    <button class="icon" data-open="win-tracker">
+      <svg viewBox="0 0 24 24"><path d="M5 20V10M10 20V4M15 20V13M20 20V7"/></svg>
+      <span>TRACKER.EXE</span>
+    </button>
+    <button class="icon" data-open="win-life">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/><rect x="10" y="4" width="4" height="4" style="fill:currentColor"/><rect x="16" y="10" width="4" height="4" style="fill:currentColor"/><rect x="4" y="16" width="4" height="4" style="fill:currentColor"/><rect x="10" y="16" width="4" height="4" style="fill:currentColor"/><rect x="16" y="16" width="4" height="4" style="fill:currentColor"/></svg>
+      <span>LIFE.EXE</span>
+    </button>
   </nav>
 
   <!-- ABOUT -->
@@ -202,6 +218,64 @@
         <input type="file" id="save-file" accept=".json,application/json" hidden>
       </div>
       <p class="dim save-note">one save slot — autosaves each depth · export to back a run up</p>
+    </div>
+  </section>
+
+  <!-- FLAPPY -->
+  <section class="window" id="win-flappy" data-title="FLAPPY.EXE" role="dialog" aria-label="Flappy game">
+    <header class="titlebar"><span class="tag">&gt;_ FLAPPY.EXE <b>// flap to ascend</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body game-body">
+      <canvas id="flappy-canvas" class="pix" aria-label="Flappy playfield"></canvas>
+    </div>
+  </section>
+
+  <!-- WORM -->
+  <section class="window" id="win-worm" data-title="WORM.EXE" role="dialog" aria-label="Worm game">
+    <header class="titlebar"><span class="tag">&gt;_ WORM.EXE <b>// eat the packets</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body game-body">
+      <canvas id="worm-canvas" class="pix" aria-label="Worm playfield"></canvas>
+    </div>
+  </section>
+
+  <!-- TRACKER -->
+  <section class="window" id="win-tracker" data-title="TRACKER.EXE" role="dialog" aria-label="Step sequencer">
+    <header class="titlebar"><span class="tag">&gt;_ TRACKER.EXE <b>// pattern sequencer</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body">
+      <div class="trk-toolbar">
+        <button id="trk-play" class="trk-play">[ PLAY ]</button>
+        <button id="trk-clear">CLEAR</button>
+        <button id="trk-rand">RANDOM</button>
+        <span class="trk-bpm">BPM
+          <button id="trk-bpm-dn" aria-label="Slower">&minus;</button>
+          <b id="trk-bpm-val">120</b>
+          <button id="trk-bpm-up" aria-label="Faster">+</button>
+        </span>
+      </div>
+      <div id="tracker-grid"></div>
+    </div>
+  </section>
+
+  <!-- LIFE -->
+  <section class="window" id="win-life" data-title="LIFE.EXE" role="dialog" aria-label="Game of Life">
+    <header class="titlebar"><span class="tag">&gt;_ LIFE.EXE <b>// cellular automata</b></span>
+      <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
+    </header>
+    <div class="win-body life-body">
+      <div class="life-toolbar">
+        <button id="life-run" class="life-run">[ RUN ]</button>
+        <button id="life-step">STEP</button>
+        <button id="life-rand">RAND</button>
+        <button id="life-clear">CLEAR</button>
+        <span class="life-spd">SPD <input type="range" id="life-speed" min="2" max="30" value="10" aria-label="Speed"></span>
+      </div>
+      <div id="life-wrap"><canvas id="life-canvas"></canvas></div>
+      <div id="life-read">GEN 0 · POP 0</div>
     </div>
   </section>
 </main>
