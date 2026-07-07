@@ -37,7 +37,7 @@ import { applyLevelEvents, pendingBeats } from "./story.js";
 import { player, story } from "./state.js";
 import { saveGame, loadGame, resetGame, saveInfo, exportSave, importSave } from "./menu.js";
 import { showCreation, hideCreation } from "./creation.js";
-import { buildMinimap, updateMinimap } from "./minimap.js";
+import { buildMinimap, updateMinimap, initWristMap } from "./minimap.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
 import { buildHands, updateHands } from "./hands.js";
 import { initVRBanner, showVRBanner, updateVRBanner, initVRPrompt } from "./vrbanner.js";
@@ -266,7 +266,7 @@ function mazeLoop(){
   updateProps(three, M, dt);      // motes + light wells always; grab/throw pauses during dialogue
   updateHands(M);                 // animate the VR hands + active-controller pointer (self-hides off-VR)
   updateVRBanner();               // hide the depth banner once its time is up
-  updateMinimap(M);               // fog-of-war map, top-right (self-hides in VR)
+  updateMinimap(M);               // fog-of-war map: top-right on flat screens, left wrist in VR
 
   // spinners + goal check
   for (const sp of M.spinners){ sp.rotation.y += dt*1.2; sp.rotation.x += dt*0.7; }
@@ -353,6 +353,7 @@ async function launchMaze(fromSave, btn){
     initDebugUI(debugNextLevel);     // desktop/touch debug button (no-op unless DEBUG)
     initDebugPanel(three, M.dolly);  // in-world VR debug panel (no-op unless DEBUG)
     buildHands(three, M);            // VR hands on the grips + pointer rays on the controllers
+    initWristMap(three, M);          // minimap "watch" on the left wrist in VR
     initVRBanner(three, M);          // head-locked banner ("ENTERED DEPTH N", "+N LT")
     initVRPrompt();                  // world-anchored "PULL TRIGGER — SPEAK WITH X" prompt
     addEventListener("resize", sizeMaze);
