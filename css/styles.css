@@ -316,6 +316,9 @@ a{color:var(--green)}
 .trk-row{display:grid;grid-template-columns:34px repeat(16,minmax(16px,1fr));gap:3px;align-items:center;min-width:430px}
 .trk-lab{font-family:var(--font-d);font-size:14px;letter-spacing:1px;color:var(--green-dim);text-align:right;padding-right:2px}
 .trk-row.drum .trk-lab{color:var(--orange)}
+.trk-note{-webkit-appearance:none;appearance:none;min-width:0;border:none;outline:none;background:transparent;cursor:pointer}
+.trk-note:hover,.trk-note:focus{color:var(--green);text-shadow:0 0 6px rgba(70,255,142,.5)}
+.trk-note option{background:var(--panel-2);color:var(--green)}
 .trk-cell{aspect-ratio:1;border:1px solid var(--green-ink);background:var(--panel-2);padding:0;min-height:16px}
 .trk-cell:nth-child(4n+2){border-left-color:var(--green-dim)}
 .trk-cell.on{background:var(--green);box-shadow:0 0 6px rgba(70,255,142,.5)}

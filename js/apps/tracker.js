@@ -25,6 +25,12 @@ const ROWS = [
 const grid = ROWS.map(() => new Array(STEPS).fill(false));
 let bpm = 120;
 
+/* selectable notes: chromatic scale, C3 .. B5 --------------------- */
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const NOTES = [];
+for (let m = 48; m <= 83; m++)   // MIDI note numbers
+  NOTES.push({ name: NOTE_NAMES[m % 12] + (Math.floor(m / 12) - 1), f: 440 * Math.pow(2, (m - 69) / 12) });
+
 /* audio --------------------------------------------------------- */
 let ac = null, master = null, noiseBuf = null;
 function audio(){
@@ -68,7 +74,7 @@ function trigger(row, t){
   if (r.type === "tone") tone(r.f, t);
   else if (r.type === "kick") kick(t);
   else if (r.type === "snare") snare(t);
-  else if (r.type === "hat") noise(t, .04, 7000, .32);
+  else if (r.type === "hat") noise(t, .04, 7000, .6);
 }
 
 export function initTracker(){
@@ -81,7 +87,18 @@ export function initTracker(){
   ROWS.forEach((r, ri) => {
     const row = document.createElement("div");
     row.className = "trk-row" + (r.drum ? " drum" : "");
-    const lab = document.createElement("span"); lab.className = "trk-lab"; lab.textContent = r.name;
+    let lab;
+    if (r.drum){
+      lab = document.createElement("span"); lab.className = "trk-lab"; lab.textContent = r.name;
+    } else {
+      // tone rows get a note picker so the user can choose the pitch
+      lab = document.createElement("select"); lab.className = "trk-lab trk-note"; lab.title = "Choose note";
+      NOTES.forEach((n, i) => {
+        const o = document.createElement("option"); o.value = i; o.textContent = n.name; lab.appendChild(o);
+      });
+      lab.value = Math.max(0, NOTES.findIndex(n => n.name === r.name));
+      lab.addEventListener("change", () => { const n = NOTES[+lab.value]; r.f = n.f; r.name = n.name; });
+    }
     row.appendChild(lab);
     for (let s = 0; s < STEPS; s++){
       const b = document.createElement("button");
