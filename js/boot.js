@@ -3,6 +3,7 @@
    ============================================================ */
 import { $ } from "./utils.js";
 import { openWindow } from "./windows.js";
+import { notify } from "./notify.js";
 
 const BOOT_LINES = [
   "NAVI-OS v0.1 — atlas kernel",
@@ -32,6 +33,7 @@ export function initBoot(){
     $("#desktop").hidden = false;
     $("#taskbar").hidden = false;
     openWindow("win-about");
+    setTimeout(() => notify("NAVI-OS", "welcome back, operator. press ` for a shell."), 1400);
   }
   bootEl.addEventListener("click", enterDesktop);
   addEventListener("keydown", e => { if (!bootDone) enterDesktop(); }, {once:false});
