@@ -2,7 +2,7 @@
    NAVI-OS — BBS.SYS
    A dial-up bulletin board. Cryptic transmissions from other
    operators, seeded on first run; anything you post persists to
-   localStorage, so the board remembers between visits.
+   localStorage, so the board remembers between visits. 
    ============================================================ */
 import { $ } from "../utils.js";
 
