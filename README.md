@@ -66,6 +66,9 @@ follows whichever window is focused.
 By default the bulletin board is local to each visitor. To make it a genuine
 shared feed, deploy the Cloudflare Worker in [`backend/`](./backend/README.md)
 (free tier) and set the `API` constant at the top of `js/apps/bbs.js`.
+Posts are profanity-filtered twice — at ingestion on the worker and again at
+render time in the browser — using the LDNOOBW word list fetched from GitHub
+(cached; nothing hardcoded in this repo).
 
 ## Where to edit things
 

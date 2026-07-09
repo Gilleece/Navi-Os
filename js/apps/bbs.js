@@ -8,6 +8,7 @@
    drops, posting falls back to the local node.
    ============================================================ */
 import { $ } from "../utils.js";
+import { store } from "../store.js";
 
 /* ← set to your deployed worker URL to make the board shared,
      e.g. "https://navi-bbs.example.workers.dev"                 */
@@ -28,6 +29,38 @@ const esc = s => String(s).replace(/[<>&]/g, c => ({ "<":"&lt;", ">":"&gt;", "&"
 const when = ts => { const s = (Date.now() - ts) / 1000;
   return s < 60 ? "just now" : s < HR/1000 ? Math.floor(s/60) + "m ago" : s < 86400 ? Math.floor(s/3600) + "h ago" : Math.floor(s/86400) + "d ago"; };
 
+/* ---------- profanity filter --------------------------------
+   Same LDNOOBW list the worker uses, fetched from GitHub and
+   cached in localStorage for a week. Censoring runs at render
+   time, so even a post that reached the backend raw is masked
+   ("****") before it hits the screen.                          */
+const WORDLIST_URL = "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en";
+const WORDLIST_MAX_AGE = 7 * 86400e3;
+let wordRe = null;
+
+function buildRe(text){
+  const words = text.split("\n")
+    .map(w => w.trim())
+    .filter(w => w && !w.startsWith("#"))
+    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return words.length ? new RegExp(`\\b(?:${words.join("|")})\\b`, "gi") : null;
+}
+const censor = s => wordRe ? String(s).replace(wordRe, m => "*".repeat(m.length)) : String(s);
+
+async function initFilter(onReady){
+  const cached = store.get("badwords");
+  let text = cached && Date.now() - cached.ts < WORDLIST_MAX_AGE ? cached.text : null;
+  if (!text){
+    try{
+      const r = await fetch(WORDLIST_URL);
+      if (!r.ok) throw new Error(r.status);
+      text = await r.text();
+      store.set("badwords", { ts: Date.now(), text });
+    }catch(e){ text = cached ? cached.text : null; }   // a stale list beats none
+  }
+  if (text){ wordRe = buildRe(text); onReady(); }
+}
+
 export function initBBS(){
   const win = $("#win-bbs"), list = $("#bbs-posts"), handle = $("#bbs-handle"),
         msg = $("#bbs-msg"), btn = $("#bbs-post"), status = $("#bbs-status");
@@ -46,8 +79,8 @@ export function initBBS(){
     for (const p of posts){
       const d = document.createElement("div"); d.className = "bbs-post";
       const meta = document.createElement("div"); meta.className = "bbs-meta";
-      meta.innerHTML = `<b>${esc(p.handle || "anon")}</b><span>${when(p.ts)}</span>`;
-      const body = document.createElement("div"); body.className = "bbs-text"; body.textContent = p.body;
+      meta.innerHTML = `<b>${esc(censor(p.handle || "anon"))}</b><span>${when(p.ts)}</span>`;
+      const body = document.createElement("div"); body.className = "bbs-text"; body.textContent = censor(p.body);
       d.append(meta, body); list.appendChild(d);
     }
   }
@@ -98,6 +131,7 @@ export function initBBS(){
   msg.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) post(); });
 
   render();
-  if (API) syncRemote();
+  initFilter(render);   // re-render once the word list is ready
+  if (API){ linkStatus("LINK: DIALING…"); syncRemote(); }
   else linkStatus("NODE: LOCAL — transmissions stay on this machine");
 }

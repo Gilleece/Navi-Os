@@ -10,3 +10,13 @@ compatibility_date = "2026-07-01"
 [[kv_namespaces]]
 binding = "BBS"
 id = "c822ac922161450394e935e310639591"
+
+# --- email notifications (optional) -------------------------
+# Get an email for every new post, via Resend (free tier):
+#   1. sign up at resend.com with the address you want notified
+#   2. create an API key, then store it as a secret:
+#        npx wrangler secret put RESEND_API_KEY
+#   3. put your address in NOTIFY_EMAIL below and redeploy
+# Leave NOTIFY_EMAIL empty to disable.
+[vars]
+NOTIFY_EMAIL = ""

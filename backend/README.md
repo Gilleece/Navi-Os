@@ -36,6 +36,34 @@ worker is ever unreachable, the board falls back to local-only posting.
   stripped, empty posts rejected.
 - One post per IP per 60 seconds (KV TTL rate limit — 60s is KV's minimum TTL).
 - The board keeps the latest 100 posts.
+- Profanity is censored at ingestion (`****` per character) using the
+  community-maintained [LDNOOBW word list](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words),
+  fetched from GitHub and cached in the KV key `wordlist` for a week — no word
+  list lives in this repo. The site applies the same filter again at render
+  time, so even a post that reached KV raw is masked on screen.
+
+## Email notifications (optional)
+
+The worker can email you every time someone posts, via
+[Resend](https://resend.com) (free tier — no domain setup needed):
+
+1. Sign up at resend.com **using the address you want notified**. On the free
+   tier without a verified domain, Resend only delivers to your own account
+   address (sent from `onboarding@resend.dev`) — exactly right for
+   self-notifications.
+2. Create an API key (dashboard → API Keys), then store it as a secret:
+
+   ```sh
+   npx wrangler secret put RESEND_API_KEY
+   ```
+
+3. Set `NOTIFY_EMAIL = "you@example.com"` under `[vars]` in `wrangler.toml`
+   and redeploy.
+
+Emails are sent best-effort after the response (`ctx.waitUntil`), so a mail
+outage can never block or slow down posting. The email contains the censored
+text — what the board actually displays. If you later verify your own domain
+with Resend, set a `NOTIFY_FROM` var to send from your own address.
 
 ## Moderation
 
