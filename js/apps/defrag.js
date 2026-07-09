@@ -6,6 +6,7 @@
    ============================================================ */
 import { $ } from "../utils.js";
 import { pal, beep } from "./_fx.js";
+import { store } from "../store.js";
 
 const W = 340, H = 380, M = 10;
 const PADW = 62, PADH = 8, PADY = H - 26, BR = 5;
@@ -13,7 +14,7 @@ const BCOLS = 10, BROWS = 5, BGAP = 3, BTOP = 46, BH = 15;
 const BW = (W - 2*M - BGAP*(BCOLS-1)) / BCOLS;
 const TOTAL = BCOLS * BROWS;
 
-let hi = 0;
+let hi = store.get("hi-defrag", 0);
 
 export function initDefrag(){
   const win = $("#win-defrag"), cv = $("#defrag-canvas");
@@ -54,7 +55,7 @@ export function initDefrag(){
       if (!b.alive) continue;
       const r = brickRect(b);
       if (ball.x+BR > r.x && ball.x-BR < r.x+r.w && ball.y+BR > r.y && ball.y-BR < r.y+r.h){
-        b.alive = false; score += 10; if (score > hi) hi = score;
+        b.alive = false; score += 10; if (score > hi){ hi = score; store.set("hi-defrag", hi); }
         const ox = Math.min(ball.x+BR - r.x, r.x+r.w - (ball.x-BR));
         const oy = Math.min(ball.y+BR - r.y, r.y+r.h - (ball.y-BR));
         if (ox < oy) ball.vx = -ball.vx; else ball.vy = -ball.vy;

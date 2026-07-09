@@ -1,0 +1,12 @@
+# NAVI-OS BBS backend — Cloudflare Worker config
+# Deploy with:  npx wrangler deploy   (from this directory)
+name = "navi-bbs"
+main = "bbs-worker.js"
+compatibility_date = "2026-07-01"
+
+# Create the KV namespace first:
+#   npx wrangler kv namespace create BBS
+# then paste the id it prints below.
+[[kv_namespaces]]
+binding = "BBS"
+id = "PASTE_KV_NAMESPACE_ID_HERE"

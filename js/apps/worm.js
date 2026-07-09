@@ -5,37 +5,13 @@
    desktop, swipe on touch. High score lives in session memory.
    ============================================================ */
 import { $ } from "../utils.js";
+import { pal, beep } from "./_fx.js";
+import { store } from "../store.js";
 
 const COLS = 24, ROWS = 20, CELL = 16;   // internal res 384 x 320
 const W = COLS * CELL, H = ROWS * CELL;
 
-let hi = 0;
-
-/* palette cache ------------------------------------------------- */
-let _t = "", _p = {};
-function pal(){
-  const t = document.documentElement.dataset.theme || "atlas";
-  if (t !== _t){
-    const cs = getComputedStyle(document.documentElement), g = k => cs.getPropertyValue(k).trim();
-    _p = { green:g("--green")||"#46ff8e", dim:g("--green-dim")||"#1f7a4a",
-           ink:g("--green-ink")||"#0c2b1a", orange:g("--orange")||"#ff7a1a", bg:g("--bg")||"#04080a" };
-    _t = t;
-  }
-  return _p;
-}
-
-/* audio --------------------------------------------------------- */
-let ac = null;
-function beep(freq, dur = .07, type = "square", vol = .16){
-  try{
-    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
-    if (ac.state === "suspended") ac.resume();
-    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
-    o.type = type; o.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
-    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + .02);
-  }catch(e){}
-}
+let hi = store.get("hi-worm", 0);
 
 export function initWorm(){
   const win = $("#win-worm"), cv = $("#worm-canvas");
@@ -74,7 +50,7 @@ export function initWorm(){
     const body = grow ? snake : snake.slice(0, -1);
     if (body.some(s => s.x === nx && s.y === ny)) return die();
     snake.unshift({ x:nx, y:ny });
-    if (grow){ score++; if (score > hi) hi = score; beep(760 + score*8, .05); placeFood(); }
+    if (grow){ score++; if (score > hi){ hi = score; store.set("hi-worm", hi); } beep(760 + score*8, .05); placeFood(); }
     else snake.pop();
   }
   function die(){ state = "dead"; beep(150, .32, "sawtooth", .2); }

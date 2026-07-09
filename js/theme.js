@@ -1,8 +1,10 @@
 /* ============================================================
    NAVI-OS — colour themes
    Each theme repaints the phosphor by overriding CSS vars.
-   Persisted per session only (in keeping with the notepad).
+   The chosen theme persists across visits (localStorage).
    ============================================================ */
+import { store } from "./store.js";
+
 export const THEMES = {
   atlas: {            // default — green phosphor
     "--green": "#46ff8e", "--green-dim": "#1f7a4a", "--green-ink": "#0c2b1a",
@@ -43,5 +45,12 @@ export function setTheme(name){
   for (const [k, v] of Object.entries(t)) if (k.startsWith("--")) root.setProperty(k, v);
   document.body.style.textShadow = `0 0 6px rgba(${t.glow},.35)`;
   document.documentElement.dataset.theme = name;
+  store.set("theme", name);
   return true;
+}
+
+/* re-apply the saved theme on boot */
+export function initTheme(){
+  const saved = store.get("theme");
+  if (saved && saved !== "atlas" && THEMES[saved]) setTheme(saved);
 }

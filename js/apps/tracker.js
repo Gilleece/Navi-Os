@@ -6,6 +6,8 @@
    window closes. Patterns live in session memory only.
    ============================================================ */
 import { $ } from "../utils.js";
+import { actx, bus } from "./_fx.js";
+import { store } from "../store.js";
 
 const STEPS = 16;
 const ROWS = [
@@ -31,12 +33,12 @@ const NOTES = [];
 for (let m = 48; m <= 83; m++)   // MIDI note numbers
   NOTES.push({ name: NOTE_NAMES[m % 12] + (Math.floor(m / 12) - 1), f: 440 * Math.pow(2, (m - 69) / 12) });
 
-/* audio --------------------------------------------------------- */
+/* audio — rides the shared OS bus so the taskbar mute applies --- */
 let ac = null, master = null, noiseBuf = null;
 function audio(){
   if (!ac){
-    ac = new (window.AudioContext || window.webkitAudioContext)();
-    master = ac.createGain(); master.gain.value = .26; master.connect(ac.destination);
+    ac = actx();
+    master = ac.createGain(); master.gain.value = .26; master.connect(bus());
     const n = ac.sampleRate * 0.5, b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     noiseBuf = b;
@@ -83,6 +85,7 @@ export function initTracker(){
 
   /* build the grid --------------------------------------------- */
   const cells = ROWS.map(() => new Array(STEPS));
+  const sels = {};                       // ri -> note <select> (tone rows)
   host.innerHTML = "";
   ROWS.forEach((r, ri) => {
     const row = document.createElement("div");
@@ -97,7 +100,8 @@ export function initTracker(){
         const o = document.createElement("option"); o.value = i; o.textContent = n.name; lab.appendChild(o);
       });
       lab.value = Math.max(0, NOTES.findIndex(n => n.name === r.name));
-      lab.addEventListener("change", () => { const n = NOTES[+lab.value]; r.f = n.f; r.name = n.name; });
+      lab.addEventListener("change", () => { const n = NOTES[+lab.value]; r.f = n.f; r.name = n.name; savePattern(); });
+      sels[ri] = lab;
     }
     row.appendChild(lab);
     for (let s = 0; s < STEPS; s++){
@@ -109,6 +113,15 @@ export function initTracker(){
   });
 
   function paint(){ ROWS.forEach((_, ri) => { for (let s = 0; s < STEPS; s++) cells[ri][s].classList.toggle("on", grid[ri][s]); }); }
+
+  /* the pattern survives reloads */
+  function savePattern(){
+    store.set("tracker", {
+      bpm,
+      grid: grid.map(r => r.map(v => v ? 1 : 0)),
+      notes: ROWS.map((r, ri) => r.drum ? null : +sels[ri].value),
+    });
+  }
 
   // toggle + drag-paint
   let painting = false, paintVal = true;
@@ -125,7 +138,7 @@ export function initTracker(){
     const ri = +b.dataset.r, s = +b.dataset.s;
     if (grid[ri][s] !== paintVal){ grid[ri][s] = paintVal; b.classList.toggle("on", paintVal); }
   });
-  window.addEventListener("pointerup", () => { painting = false; });
+  window.addEventListener("pointerup", () => { if (painting){ painting = false; savePattern(); } });
 
   /* scheduler --------------------------------------------------- */
   let playing = false, curStep = 0, nextTime = 0, lookTimer = 0, playhead = -1;
@@ -168,7 +181,7 @@ export function initTracker(){
   }
   btn.addEventListener("click", () => playing ? stop() : play());
 
-  $("#trk-clear").addEventListener("click", () => { grid.forEach(r => r.fill(false)); paint(); });
+  $("#trk-clear").addEventListener("click", () => { grid.forEach(r => r.fill(false)); paint(); savePattern(); });
   $("#trk-rand").addEventListener("click", () => {
     grid.forEach((r, ri) => {
       const t = ROWS[ri].type;
@@ -179,17 +192,27 @@ export function initTracker(){
         else r[s] = Math.random() < .13;
       }
     });
-    paint();
+    paint(); savePattern();
   });
 
   const bpmOut = $("#trk-bpm-val");
   function setBpm(v){ bpm = Math.max(60, Math.min(200, v)); bpmOut.textContent = bpm; }
-  $("#trk-bpm-dn").addEventListener("click", () => setBpm(bpm - 5));
-  $("#trk-bpm-up").addEventListener("click", () => setBpm(bpm + 5));
+  $("#trk-bpm-dn").addEventListener("click", () => { setBpm(bpm - 5); savePattern(); });
+  $("#trk-bpm-up").addEventListener("click", () => { setBpm(bpm + 5); savePattern(); });
 
-  // a starter groove so it makes noise on first open
-  const beat = { KCK:[0,8], SNR:[4,12], HAT:[0,2,4,6,8,10,12,14], G4:[2,10], C5:[6], E5:[14] };
-  ROWS.forEach((r, ri) => (beat[r.name] || []).forEach(s => grid[ri][s] = true));
+  // restore the saved pattern, or lay down a starter groove
+  const saved = store.get("tracker");
+  if (saved && Array.isArray(saved.grid)){
+    saved.grid.forEach((r, ri) => { if (grid[ri]) r.forEach((v, s) => { if (s < STEPS) grid[ri][s] = !!v; }); });
+    (saved.notes || []).forEach((n, ri) => {
+      if (n === null || n === undefined || !sels[ri] || !NOTES[n]) return;
+      sels[ri].value = n; ROWS[ri].f = NOTES[n].f; ROWS[ri].name = NOTES[n].name;
+    });
+    if (saved.bpm) bpm = saved.bpm;
+  } else {
+    const beat = { KCK:[0,8], SNR:[4,12], HAT:[0,2,4,6,8,10,12,14], G4:[2,10], C5:[6], E5:[14] };
+    ROWS.forEach((r, ri) => (beat[r.name] || []).forEach(s => grid[ri][s] = true));
+  }
   paint(); setBpm(bpm);
 
   const sync = () => { if (!win.classList.contains("open") && playing) stop(); };

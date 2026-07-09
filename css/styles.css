@@ -113,11 +113,33 @@ a{color:var(--green)}
 .window{
   position:absolute;min-width:280px;
   background:var(--panel);
-  border:1px solid var(--green-dim);
-  box-shadow:0 0 0 1px var(--green-ink),0 0 24px rgba(70,255,142,.12),12px 12px 0 rgba(0,0,0,.45);
-  display:none;flex-direction:column;
+  border:1px solid var(--green-ink);
+  box-shadow:0 0 0 1px var(--green-ink),12px 12px 0 rgba(0,0,0,.35);
+  display:none;flex-direction:column;outline:none;
 }
 .window.open{display:flex}
+/* the focused window glows; background windows go quiet */
+.window.focused{
+  border-color:var(--green-dim);
+  box-shadow:0 0 0 1px var(--green-ink),0 0 24px rgba(70,255,142,.12),12px 12px 0 rgba(0,0,0,.45);
+}
+.window:not(.focused) .titlebar{background:var(--panel-2)}
+.window:not(.focused) .titlebar .tag{color:var(--green-dim)}
+.window:not(.focused) .titlebar .tag b{color:var(--green-dim)}
+/* maximised: fill the desktop above the taskbar */
+.window.maxed{
+  left:0 !important;top:0 !important;right:auto !important;bottom:auto !important;
+  width:100% !important;height:100% !important;
+}
+.window.maxed .win-resize{display:none}
+/* drag-to-resize corner */
+.win-resize{
+  position:absolute;right:0;bottom:0;width:16px;height:16px;z-index:2;
+  cursor:nwse-resize;touch-action:none;
+  background:linear-gradient(135deg,transparent 50%,var(--green-dim) 50%);
+  opacity:.65;
+}
+.win-resize:hover{opacity:1}
 .titlebar{
   display:flex;align-items:center;gap:8px;
   background:linear-gradient(90deg,var(--green-ink),var(--panel-2));
@@ -158,16 +180,26 @@ a{color:var(--green)}
 .kv b{color:var(--orange);font-weight:normal}
 
 /* projects */
-#win-projects{width:430px;top:14%;left:42%}
+#win-projects{width:460px;top:14%;left:42%}
 .proj{
   display:block;border:1px solid var(--green-dim);padding:10px 12px;margin-bottom:10px;
-  text-decoration:none;position:relative;
+  position:relative;
 }
-.proj:hover{background:rgba(70,255,142,.07);border-color:var(--green)}
+.proj:hover{background:rgba(70,255,142,.05);border-color:var(--green)}
 .proj h3{font-family:var(--font-d);font-size:20px;letter-spacing:2px}
 .proj h3 i{font-style:normal;color:var(--orange)}
-.proj p{margin:2px 0 0;font-size:13px;color:var(--green-dim)}
-.proj::after{content:"->";position:absolute;right:12px;top:12px;color:var(--orange)}
+.proj p{margin:4px 0 0;font-size:13px;color:#9df3bf;line-height:1.5}
+.proj-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.proj-tags span{
+  font-family:var(--font-d);font-size:13px;letter-spacing:1px;color:var(--green-dim);
+  border:1px solid var(--green-ink);padding:1px 7px;background:rgba(70,255,142,.04);
+}
+.proj-links{margin-top:8px;display:flex;gap:12px}
+.proj-links a{
+  font-family:var(--font-d);font-size:16px;letter-spacing:1px;
+  color:var(--orange);text-decoration:none;
+}
+.proj-links a:hover{background:var(--orange);color:var(--bg);text-shadow:none}
 
 /* calendar */
 #win-calendar{width:340px;top:30%;left:8%}
@@ -437,6 +469,12 @@ canvas.pix{image-rendering:pixelated}
 /* ---------- bbs (bulletin board) --------------------------- */
 #win-bbs{width:460px;height:440px;top:12%;left:28%}
 .bbs-body{display:flex;flex-direction:column;gap:10px}
+.bbs-status{
+  flex:none;font-family:var(--font-d);font-size:14px;letter-spacing:1px;color:var(--green-dim);
+  border-bottom:1px dashed var(--green-dim);padding-bottom:5px;
+}
+.bbs-status.ok{color:var(--green)}
+.bbs-status.err{color:var(--red)}
 .bbs-posts{
   flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px;
   scrollbar-width:thin;scrollbar-color:var(--green-dim) transparent;
@@ -515,6 +553,13 @@ canvas.pix{image-rendering:pixelated}
 #tb-root:hover{background:var(--orange);color:var(--bg);text-shadow:none}
 #tb-tasks{display:flex;gap:6px;flex:1;overflow-x:auto;scrollbar-width:none}
 #tb-tasks::-webkit-scrollbar{display:none}
+#tb-mute{
+  flex:none;border:1px solid var(--green-dim);color:var(--green);
+  font-family:var(--font-d);font-size:16px;letter-spacing:1px;padding:0 10px;
+}
+#tb-mute:hover{background:var(--green);color:var(--bg);text-shadow:none}
+#tb-mute.off{color:var(--red);border-color:var(--red);text-decoration:line-through}
+#tb-mute.off:hover{background:var(--red);color:var(--bg)}
 .tb-task{
   border:1px solid var(--green-dim);padding:0 12px;font-family:var(--font-d);font-size:17px;
   letter-spacing:1px;white-space:nowrap;color:var(--green-dim);
@@ -526,6 +571,33 @@ canvas.pix{image-rendering:pixelated}
   border-left:1px solid var(--green-dim);
 }
 #tb-clock .t{font-family:var(--font-d);font-size:18px;letter-spacing:2px}
+
+/* ---------- start menu -------------------------------------- */
+#start-menu{
+  position:fixed;left:6px;bottom:calc(var(--tb-h) + 6px);z-index:8900;
+  width:300px;max-height:min(600px,80vh);overflow-y:auto;
+  background:var(--panel);border:1px solid var(--green-dim);
+  box-shadow:0 0 0 1px var(--green-ink),0 0 24px rgba(70,255,142,.12),10px 10px 0 rgba(0,0,0,.45);
+  display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:8px;
+  scrollbar-width:thin;scrollbar-color:var(--green-dim) transparent;
+}
+#start-menu[hidden]{display:none}
+#start-menu::-webkit-scrollbar{width:8px}
+#start-menu::-webkit-scrollbar-thumb{background:var(--green-dim)}
+.sm-title{
+  grid-column:1/-1;font-family:var(--font-d);font-size:15px;letter-spacing:2px;color:var(--orange);
+  border-bottom:1px dashed var(--green-dim);padding:7px 2px 3px;margin-bottom:2px;
+}
+.sm-item{
+  text-align:left;font-family:var(--font-d);font-size:16px;letter-spacing:1px;color:var(--green);
+  padding:5px 8px;border:1px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.sm-item:hover,.sm-item:focus-visible{border-color:var(--green-dim);background:rgba(70,255,142,.07)}
+.sm-item.maze{color:var(--orange)}
+.sm-item.danger:hover{background:var(--red);border-color:var(--red);color:#fff;text-shadow:none}
+.sm-themes{grid-column:1/-1;display:flex;gap:6px;padding:4px 2px}
+.sm-swatch{width:24px;height:24px;border:1px solid var(--green-dim);cursor:pointer;padding:0}
+.sm-swatch:hover{outline:2px solid var(--orange);outline-offset:1px}
 
 /* ---------- maze overlay ------------------------------------ */
 #maze-layer{position:fixed;inset:0;z-index:8500;background:#000;display:none}
@@ -716,6 +788,9 @@ canvas.pix{image-rendering:pixelated}
     min-width:0;
   }
   .titlebar{cursor:default}
+  .tb-btn.max{display:none}
+  .win-resize{display:none}
+  #start-menu{left:4px;right:4px;width:auto}
   #wallpaper-sigil{right:2vw;top:auto;bottom:10vh}
   #notify-stack{left:8px;right:8px;width:auto;top:8px}
   .sm-head,.sm-row{grid-template-columns:30px 1fr 46px 40px 20px}

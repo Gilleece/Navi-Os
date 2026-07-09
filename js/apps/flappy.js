@@ -5,6 +5,8 @@
    window is open; the high score lives in session memory.
    ============================================================ */
 import { $ } from "../utils.js";
+import { pal, beep } from "./_fx.js";
+import { store } from "../store.js";
 
 const W = 300, H = 420;              // internal (pixel) resolution
 const GROUND = 46;
@@ -12,33 +14,7 @@ const BIRD_X = 78, BIRD_R = 11;
 const GAP = 132, PIPE_W = 46, SPEED = 1.9, SPAWN = 168;
 const GRAV = 0.42, FLAP = -6.6;
 
-let hi = 0;                          // session high score
-
-/* palette cache — re-reads only when the theme changes ---------- */
-let _t = "", _p = {};
-function pal(){
-  const t = document.documentElement.dataset.theme || "atlas";
-  if (t !== _t){
-    const cs = getComputedStyle(document.documentElement), g = k => cs.getPropertyValue(k).trim();
-    _p = { green:g("--green")||"#46ff8e", dim:g("--green-dim")||"#1f7a4a",
-           ink:g("--green-ink")||"#0c2b1a", orange:g("--orange")||"#ff7a1a", bg:g("--bg")||"#04080a" };
-    _t = t;
-  }
-  return _p;
-}
-
-/* audio --------------------------------------------------------- */
-let ac = null;
-function beep(freq, dur = .08, type = "square", vol = .18){
-  try{
-    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
-    if (ac.state === "suspended") ac.resume();
-    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
-    o.type = type; o.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
-    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + .02);
-  }catch(e){}
-}
+let hi = store.get("hi-flappy", 0);
 
 export function initFlappy(){
   const win = $("#win-flappy"), cv = $("#flappy-canvas");
@@ -71,7 +47,7 @@ export function initFlappy(){
     if (tSpawn >= SPAWN){ tSpawn -= SPAWN; spawn(); }
     for (const p of pipes){
       p.x -= SPEED * dt;
-      if (!p.passed && p.x + PIPE_W < BIRD_X){ p.passed = true; score++; beep(880, .05); if (score > hi) hi = score; }
+      if (!p.passed && p.x + PIPE_W < BIRD_X){ p.passed = true; score++; beep(880, .05); if (score > hi){ hi = score; store.set("hi-flappy", hi); } }
     }
     pipes = pipes.filter(p => p.x + PIPE_W > -4);
     if (bird + BIRD_R > H - GROUND){ bird = H - GROUND - BIRD_R; die(); }

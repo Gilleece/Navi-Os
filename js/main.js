@@ -2,7 +2,10 @@
    NAVI-OS shell — entry point
    Boots the desktop and wires up every program.
    ============================================================ */
+import { initTheme } from "./theme.js";
 import { initWindows } from "./windows.js";
+import { initStartMenu } from "./startmenu.js";
+import { initSound } from "./sound.js";
 import { initClock } from "./clock.js";
 import { initCalendar } from "./apps/calendar.js";
 import { initNotepad } from "./apps/notepad.js";
@@ -24,7 +27,10 @@ import { initNotify } from "./notify.js";
 import { initScreensaver } from "./screensaver.js";
 import { initBoot } from "./boot.js";
 
+initTheme();
 initWindows();
+initStartMenu();
+initSound();
 initClock();
 initCalendar();
 initNotepad();

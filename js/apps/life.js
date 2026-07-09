@@ -5,20 +5,9 @@
    settle to green. Ticks only while the window is open.
    ============================================================ */
 import { $ } from "../utils.js";
+import { pal } from "./_fx.js";
 
 const CELL = 9;                 // pixels per cell
-
-let _t = "", _p = {};
-function pal(){
-  const t = document.documentElement.dataset.theme || "atlas";
-  if (t !== _t){
-    const cs = getComputedStyle(document.documentElement), g = k => cs.getPropertyValue(k).trim();
-    _p = { green:g("--green")||"#46ff8e", dim:g("--green-dim")||"#1f7a4a",
-           ink:g("--green-ink")||"#0c2b1a", orange:g("--orange")||"#ff7a1a", bg:g("--bg")||"#04080a" };
-    _t = t;
-  }
-  return _p;
-}
 
 export function initLife(){
   const win = $("#win-life"), cv = $("#life-canvas"), wrap = $("#life-wrap");

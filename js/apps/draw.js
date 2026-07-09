@@ -6,6 +6,7 @@
    ============================================================ */
 import { $ } from "../utils.js";
 import { pal } from "./_fx.js";
+import { store } from "../store.js";
 
 const GW = 40, GH = 32, CELL = 10;
 const W = GW*CELL, H = GH*CELL;
@@ -17,6 +18,9 @@ export function initDraw(){
   cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d");
   const data = new Array(GW*GH).fill(null);
+  const savedPix = store.get("draw");
+  if (Array.isArray(savedPix) && savedPix.length === data.length)
+    savedPix.forEach((v, i) => data[i] = v);
   let color = COLORS[0], painting = false;
 
   // palette swatches
@@ -58,9 +62,9 @@ export function initDraw(){
 
   cv.addEventListener("pointerdown", e => { e.preventDefault(); painting = true; cv.setPointerCapture(e.pointerId); paintAt(e); });
   cv.addEventListener("pointermove", e => { if (painting) paintAt(e); });
-  cv.addEventListener("pointerup", () => painting = false);
+  cv.addEventListener("pointerup", () => { painting = false; store.set("draw", data); });
 
-  $("#draw-clear").addEventListener("click", () => { data.fill(null); draw(); });
+  $("#draw-clear").addEventListener("click", () => { data.fill(null); draw(); store.set("draw", data); });
   $("#draw-save").addEventListener("click", () => {
     const S = 12, out = document.createElement("canvas");
     out.width = GW*S; out.height = GH*S;

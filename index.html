@@ -2,8 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NAVI-OS // personal terminal</title>
+<meta name="description" content="NAVI-OS — Sean Gilleece's personal site: a retro cyberpunk desktop OS running in the browser. Projects, games, a working terminal, a music tracker, and a maze in the wired.">
+<meta name="theme-color" content="#04080a">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NAVI-OS // personal terminal">
+<meta property="og:description" content="A retro cyberpunk desktop OS in the browser — projects, games, a working terminal, and a maze in the wired.">
+<meta property="og:url" content="https://gilleece.github.io/Navi-Os/">
+<meta property="og:image" content="https://gilleece.github.io/Navi-Os/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="NAVI-OS // personal terminal">
+<meta name="twitter:description" content="A retro cyberpunk desktop OS in the browser — projects, games, a working terminal, and a maze in the wired.">
+<meta name="twitter:image" content="https://gilleece.github.io/Navi-Os/assets/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -102,7 +116,7 @@
       <p>Hello. I'm Sean! This website is a personal portfolio showcasing my work and projects, along with just being a fun place to experiment.</p>
       <p>My primary interests are XR and immersive technologies, along with writing music and creative coding. Oh and building combat robots!</p>
       <p><b style="color:var(--orange)">CONTACT:</b> hello@seangilleece.com &nbsp;·&nbsp;
-      <a href="https://github.com/Gilleece" target="_blank">github</a> ·></p>
+      <a href="https://github.com/Gilleece" target="_blank" rel="noopener">github</a> ·></p>
     </div>
   </section>
 
@@ -113,18 +127,25 @@
     </header>
     <div class="win-body">
       <h2>PROJECT INDEX</h2>
-      <a class="proj" href="https://github.com/Gilleece/CitraVR-Pico" target="_blank">
+      <div class="proj">
         <h3><i>01</i> CitraVR-Pico</h3>
-        <p>A port of the Citra emulator for the Pico VR platform.</p>
-      </a>
-      <a class="proj" href="https://github.com/Gilleece/LinuxRemoteDesktopXR" target="_blank">
+        <p>A port of the Citra 3DS emulator to the Pico VR platform — 3DS games playable inside the headset.</p>
+        <div class="proj-tags"><span>C++</span><span>ANDROID</span><span>OPENXR</span><span>EMULATION</span></div>
+        <div class="proj-links"><a href="https://github.com/Gilleece/CitraVR-Pico" target="_blank" rel="noopener">[ REPO -&gt; ]</a></div>
+      </div>
+      <div class="proj">
         <h3><i>02</i> LinuxRemoteDesktopXR</h3>
-        <p>A desktop streaming solution for Linux environments to Android based headsets.</p>
-      </a>
-      <a class="proj" href="https://whatwillwewatch.com" target="_blank">
+        <p>Desktop streaming from Linux machines to Android-based XR headsets — your desktop on a virtual display, anywhere.</p>
+        <div class="proj-tags"><span>LINUX</span><span>XR</span><span>STREAMING</span><span>ANDROID</span></div>
+        <div class="proj-links"><a href="https://github.com/Gilleece/LinuxRemoteDesktopXR" target="_blank" rel="noopener">[ REPO -&gt; ]</a></div>
+      </div>
+      <div class="proj">
         <h3><i>03</i> WhatWillWeWatch</h3>
-        <p>A conversational style app/website that helps users decide on a movie based on their preferences. Built using TMDB as the database.</p>
-      </a>
+        <p>A conversational movie picker: answer a few questions about mood and taste and it narrows down what to watch tonight. Built on the TMDB database.</p>
+        <div class="proj-tags"><span>WEB APP</span><span>TMDB API</span><span>UX</span></div>
+        <div class="proj-links"><a href="https://whatwillwewatch.com" target="_blank" rel="noopener">[ VISIT -&gt; ]</a></div>
+      </div>
+      <p class="dim">more experiments live on this machine — open the GAMES folder, or press ` for a shell.</p>
     </div>
   </section>
 
@@ -394,6 +415,7 @@
       <button class="tb-btn min" aria-label="Minimise">_</button><button class="tb-btn close" aria-label="Close">x</button>
     </header>
     <div class="win-body bbs-body">
+      <div id="bbs-status" class="bbs-status" aria-live="polite"></div>
       <div id="bbs-posts" class="bbs-posts"></div>
       <div class="bbs-form">
         <input id="bbs-handle" class="bbs-handle" type="text" placeholder="handle" maxlength="24" value="operator" spellcheck="false" aria-label="Handle">
@@ -407,10 +429,14 @@
 
 <!-- ============ TASKBAR ============ -->
 <footer id="taskbar" hidden>
-  <button id="tb-root" aria-label="Show desktop">ROOT</button>
+  <button id="tb-root" aria-label="Open start menu" aria-haspopup="true" aria-expanded="false" aria-controls="start-menu">ROOT</button>
   <div id="tb-tasks" aria-label="Open windows"></div>
+  <button id="tb-mute" aria-label="Toggle sound" aria-pressed="false">SND</button>
   <div id="tb-clock"><span class="t" id="clock-t">00:00:00</span><span id="clock-d">—</span></div>
 </footer>
+
+<!-- ============ START MENU ============ -->
+<nav id="start-menu" aria-label="Start menu" hidden></nav>
 
 <!-- ============ MAZE OVERLAY ============ -->
 <div id="maze-layer" aria-label="3D maze">

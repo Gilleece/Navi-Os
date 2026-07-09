@@ -1,10 +1,17 @@
 /* ============================================================
    NAVI-OS — BBS.SYS
-   A dial-up bulletin board. Cryptic transmissions from other
-   operators, seeded on first run; anything you post persists to
-   localStorage, so the board remembers between visits. 
+   A dial-up bulletin board. Out of the box it is a local node:
+   posts persist to localStorage on this machine only. Deploy
+   backend/bbs-worker.js (Cloudflare Worker + KV, free tier) and
+   set API below to its URL, and the board joins the wired —
+   every visitor reads and writes the same feed. If the link
+   drops, posting falls back to the local node.
    ============================================================ */
 import { $ } from "../utils.js";
+
+/* ← set to your deployed worker URL to make the board shared,
+     e.g. "https://navi-bbs.example.workers.dev"                 */
+const API = "";
 
 const KEY = "navi-bbs-v1";
 const HR = 1000 * 60 * 60;
@@ -22,9 +29,16 @@ const when = ts => { const s = (Date.now() - ts) / 1000;
   return s < 60 ? "just now" : s < HR/1000 ? Math.floor(s/60) + "m ago" : s < 86400 ? Math.floor(s/3600) + "h ago" : Math.floor(s/86400) + "d ago"; };
 
 export function initBBS(){
-  const win = $("#win-bbs"), list = $("#bbs-posts"), handle = $("#bbs-handle"), msg = $("#bbs-msg"), btn = $("#bbs-post");
+  const win = $("#win-bbs"), list = $("#bbs-posts"), handle = $("#bbs-handle"),
+        msg = $("#bbs-msg"), btn = $("#bbs-post"), status = $("#bbs-status");
   if (!win || !list) return;
   let posts = load();
+
+  const linkStatus = (txt, cls) => {
+    if (!status) return;
+    status.textContent = txt;
+    status.className = "bbs-status" + (cls ? " " + cls : "");
+  };
 
   function render(){
     list.innerHTML = "";
@@ -37,14 +51,53 @@ export function initBBS(){
       d.append(meta, body); list.appendChild(d);
     }
   }
-  function post(){
-    const body = msg.value.trim(); if (!body) return;
-    posts.unshift({ handle: (handle.value.trim() || "operator").slice(0, 24), body: body.slice(0, 280), ts: Date.now() });
-    if (posts.length > 60) posts = posts.slice(0, 60);
-    save(posts); msg.value = ""; render(); msg.focus();
+
+  async function syncRemote(){
+    try{
+      const r = await fetch(API + "/posts");
+      if (!r.ok) throw new Error(r.status);
+      posts = await r.json(); render();
+      linkStatus("LINK: WIRED — shared board", "ok");
+    }catch(e){
+      linkStatus("LINK: DOWN — posting to this node only", "err");
+    }
   }
+
+  function localPost(entry){
+    posts.unshift(entry);
+    if (posts.length > 60) posts = posts.slice(0, 60);
+    save(posts); render();
+  }
+
+  async function post(){
+    const body = msg.value.trim(); if (!body) return;
+    const entry = { handle: (handle.value.trim() || "operator").slice(0, 24), body: body.slice(0, 280), ts: Date.now() };
+    msg.value = "";
+    if (API){
+      btn.disabled = true;
+      try{
+        const r = await fetch(API + "/posts", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ handle: entry.handle, body: entry.body }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        posts = await r.json(); render();
+        linkStatus("LINK: WIRED — shared board", "ok");
+      }catch(e){
+        localPost(entry);
+        linkStatus("LINK: DOWN — posted to this node only", "err");
+      }
+      btn.disabled = false;
+    } else {
+      localPost(entry);
+    }
+    msg.focus();
+  }
+
   btn.addEventListener("click", post);
   msg.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) post(); });
 
   render();
+  if (API) syncRemote();
+  else linkStatus("NODE: LOCAL — transmissions stay on this machine");
 }

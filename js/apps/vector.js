@@ -6,11 +6,12 @@
    ============================================================ */
 import { $ } from "../utils.js";
 import { pal, beep } from "./_fx.js";
+import { store } from "../store.js";
 
 const W = 400, H = 340, SHIPR = 11;
 const TIER = { 32:{next:18, score:20}, 18:{next:10, score:50}, 10:{next:0, score:100} };
 
-let hi = 0;
+let hi = store.get("hi-vector", 0);
 
 export function initVector(){
   const win = $("#win-vector"), cv = $("#vector-canvas");
@@ -72,7 +73,7 @@ export function initVector(){
         const b = bullets[j];
         if (Math.hypot(b.x-rk.x, b.y-rk.y) < rk.r){
           bullets.splice(j, 1); rocks.splice(i, 1);
-          score += TIER[rk.r].score; if (score > hi) hi = score;
+          score += TIER[rk.r].score; if (score > hi){ hi = score; store.set("hi-vector", hi); }
           const nx = TIER[rk.r].next; if (nx){ rocks.push(makeRock(rk.x, rk.y, nx), makeRock(rk.x, rk.y, nx)); }
           beep(200 + rk.r*4, .08, "square", .16); break;
         }

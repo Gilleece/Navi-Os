@@ -5,18 +5,12 @@
    talk back. Backtick (`) toggles it from anywhere.
    ============================================================ */
 import { $ } from "../utils.js";
-import { openWindow } from "../windows.js";
+import { openWindow, APPS } from "../windows.js";
 import { listProcs, kill, uptimeStr, reboot, kernelPanic } from "../system.js";
 import { setTheme, THEMES } from "../theme.js";
 
-const WINDOWS = {
-  about: "win-about", projects: "win-projects", calendar: "win-calendar",
-  notepad: "win-notepad", calc: "win-calc", maze: "win-maze",
-  term: "win-term", sysmon: "win-sysmon",
-  flappy: "win-flappy", worm: "win-worm", tracker: "win-tracker", life: "win-life",
-  games: "win-games", defrag: "win-defrag", scan: "win-scan", vector: "win-vector",
-  draw: "win-draw", oracle: "win-oracle", bbs: "win-bbs",
-};
+/* program names come from the shared registry in windows.js */
+const WINDOWS = Object.fromEntries(Object.entries(APPS).map(([n, a]) => [n, a.id]));
 
 let out, input, history = [], hi = 0;
 
