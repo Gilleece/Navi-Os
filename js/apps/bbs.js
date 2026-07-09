@@ -11,7 +11,7 @@ import { $ } from "../utils.js";
 
 /* ← set to your deployed worker URL to make the board shared,
      e.g. "https://navi-bbs.example.workers.dev"                 */
-const API = "https://navi-bbs.navi-bbs.workers.dev/";
+const API = "https://navi-bbs.workers.dev";
 
 const KEY = "navi-bbs-v1";
 const HR = 1000 * 60 * 60;
