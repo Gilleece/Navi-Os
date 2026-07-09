@@ -8,7 +8,7 @@
      POST /posts   -> { handle, body }  -> updated JSON array
 
    Guards: 280-char body cap, 24-char handle cap, control chars
-   stripped, 30s per-IP rate limit, board capped at 100 posts.
+   stripped, 60s per-IP rate limit, board capped at 100 posts.
    See backend/README.md for deploy steps.
    ============================================================ */
 const CORS = {
@@ -47,7 +47,7 @@ export default {
       const posts = JSON.parse(await env.BBS.get("posts") || "[]");
       posts.unshift({ handle, body, ts: Date.now() });
       await env.BBS.put("posts", JSON.stringify(posts.slice(0, MAX_POSTS)));
-      await env.BBS.put("rl:" + ip, "1", { expirationTtl: 30 });
+      await env.BBS.put("rl:" + ip, "1", { expirationTtl: 60 });   // KV minimum TTL is 60s
       return Response.json(posts.slice(0, MAX_POSTS), { headers: CORS });
     }
 

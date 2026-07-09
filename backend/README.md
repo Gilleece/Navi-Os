@@ -34,7 +34,7 @@ worker is ever unreachable, the board falls back to local-only posting.
 - `GET /posts` — newest-first JSON array.
 - `POST /posts` — `{ handle, body }`; 24/280-char caps, control characters
   stripped, empty posts rejected.
-- One post per IP per 30 seconds (KV TTL rate limit).
+- One post per IP per 60 seconds (KV TTL rate limit — 60s is KV's minimum TTL).
 - The board keeps the latest 100 posts.
 
 ## Moderation
