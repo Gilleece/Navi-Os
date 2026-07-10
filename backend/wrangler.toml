@@ -19,4 +19,4 @@ id = "c822ac922161450394e935e310639591"
 #   3. put your address in NOTIFY_EMAIL below and redeploy
 # Leave NOTIFY_EMAIL empty to disable.
 [vars]
-NOTIFY_EMAIL = ""
+NOTIFY_EMAIL = "seangilleece@gmail.com"
