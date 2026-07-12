@@ -41,6 +41,14 @@ export function buildMinimap(M, mazeCells, goalCell){
   seen = Array.from({ length: N }, () => Array(N).fill(false));   // fresh fog per level
 }
 
+/* no map for the sanctum: one open room needs no fog of war. updateMinimap
+   no-ops until the next buildMinimap. */
+export function clearMinimap(){
+  seen = null;
+  if (canvas) canvas.style.display = "none";
+  if (watch) watch.group.visible = false;
+}
+
 /* reveal the player's cell plus everything visible in a straight line
    down each open passage (corridors are one cell wide, so this is what
    the player can actually see from where they stand) */

@@ -3,7 +3,7 @@
    The DOM HUD isn't composited into immersive-vr, so VR gets:
    - a head-locked BANNER for transient messages ("ENTERED DEPTH 2",
      "+1 LT") that stays centred in view, and
-   - a world-anchored PROMPT ("PULL TRIGGER — SPEAK WITH X") that
+   - a world-anchored PROMPT ("PULL TRIGGER: SPEAK WITH X") that
      floats just below the character you're near.
 
    Both are parented to the dolly (which persists across level rebuilds)

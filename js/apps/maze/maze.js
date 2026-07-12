@@ -32,12 +32,13 @@ import { themeFor, animate, liveScene } from "./palette.js";
 import { genMaze, cellCenter, findGoalCell } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
 import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters, ROSTER } from "./characters/characters.js";
-import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue } from "./dialogue.js";
+import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue, onStoryEvent } from "./dialogue.js";
 import { applyLevelEvents, pendingBeats } from "./story.js";
-import { player, story } from "./state.js";
-import { saveGame, loadGame, resetGame, saveInfo, exportSave, importSave } from "./menu.js";
+import { player, story, depthInCycle, cycleOf, isBaseDepth, FINAL_DEPTH } from "./state.js";
+import { buildSanctum } from "./sanctum.js";
+import { saveGame, loadGame, resetGame, markCompleted, saveInfo, exportSave, importSave } from "./menu.js";
 import { showCreation, hideCreation } from "./creation.js";
-import { buildMinimap, updateMinimap, initWristMap } from "./minimap.js";
+import { buildMinimap, updateMinimap, clearMinimap, initWristMap } from "./minimap.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
 import { buildHands, updateHands } from "./hands.js";
 import { initVRBanner, showVRBanner, updateVRBanner, initVRPrompt } from "./vrbanner.js";
@@ -59,7 +60,7 @@ function loadThree(){
 
 /* --- engine state (rendering); the RPG game state lives in state.js --- */
 const M = {
-  N: 9, CELL: 4, WALL_H: 3.4, WALL_T: 0.5, R: 0.45,
+  N: 7, CELL: 4, WALL_H: 3.4, WALL_T: 0.5, R: 0.45,
   renderer:null, scene:null, camera:null, dolly:null,
   walls:[], goal:null, goalLight:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   tokens:[], bursts:[], theme:null, ambient:null, paneMat:null, trimMat:null,
@@ -68,6 +69,7 @@ const M = {
   // narrative gate: who still has unheard story beats (locks the exit ring),
   // the ring's rise animation state, and the recheck / message throttles
   gatePending:[], gateRise:1, gateTumble:{x:0,y:0}, gateT:0, gateMsgAt:0,
+  inSanctum:false,   // in the base-depth chamber (built instead of a maze at depths 10/20/30)
   runActive:false,
   controllers:null, grips:null, hands:null, prevTrigger:false,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
@@ -87,9 +89,9 @@ function disposeSubtree(root){
   });
 }
 
-function buildMaze(){
-  // clear previous (the dolly survives rebuilds — its subtree, panel,
-  // banner, hands and lamp included, must NOT be disposed)
+/* clear previous level (the dolly survives rebuilds — its subtree, panel,
+   banner, hands and lamp included, must NOT be disposed) */
+function clearScene(){
   M.walls.length = 0;
   M.spinners.length = 0;
   while (M.scene.children.length){
@@ -97,6 +99,15 @@ function buildMaze(){
     M.scene.remove(child);
     if (child !== M.dolly) disposeSubtree(child);
   }
+}
+
+/* the depth string the player sees: within-cycle, so it rewinds to 01
+   when the Protocol recycles — the counter itself is part of the story */
+const shownDepth = () => String(depthInCycle(M.depth)).padStart(2, "0");
+
+function buildMaze(){
+  clearScene();
+  M.inSanctum = false;
 
   story.depth = M.depth;                   // the trust cap (characters.js) scales with depth
   recoverAffinity();                       // enraged characters thaw a little each level
@@ -106,11 +117,13 @@ function buildMaze(){
   const cells = genMaze(M.N);
   const goalCell = findGoalCell(cells);   // furthest dead-end from start
 
-  // decide where characters appear, then turn their host walls into windows
+  // decide where characters appear, then turn their host walls into windows.
+  // A freed tenant's window still appears — dark: no light behind the glass.
   const spawns = spawnCharacters(cells, goalCell, M.depth, M);
   const windows = new Set(spawns.map(s => wallKey(s.wall.x, s.wall.z, s.wall.alongX)));
+  const darkWindows = new Set(spawns.filter(s => s.empty).map(s => wallKey(s.wall.x, s.wall.z, s.wall.alongX)));
 
-  const { walls, cyberMat, paneMat, trimMat, ambient } = buildEnvironment(three, M.scene, M, cells, goalCell, windows);
+  const { walls, cyberMat, paneMat, trimMat, ambient } = buildEnvironment(three, M.scene, M, cells, goalCell, windows, darkWindows);
   M.walls.push(...walls);
   M.cyberMat = cyberMat;
   M.paneMat = paneMat;
@@ -156,17 +169,87 @@ function buildMaze(){
   // player start
   M.dolly.position.set(cellCenter(0, M.CELL), 0, cellCenter(0, M.CELL));
   M.yaw = Math.PI; M.pitch = 0; // face into the maze
-  $("#hud-top").innerHTML = `MAZE.EXE <b>// depth ${String(M.depth).padStart(2,"0")}</b>`;
+  $("#hud-top").innerHTML = `MAZE.EXE <b>// depth ${shownDepth()}</b>`;
 
   if (M.runActive) saveGame(M.depth);   // autosave: one slot, every level entered
 }
 
-/* debug-only: jump straight to the next level, skipping the goal */
+/* ---------- the sanctum (the base depth) ----------
+   Built instead of a maze when the player descends from depth 10/20/30:
+   one wide, tall room with the Custodian's tower in the middle (sanctum.js).
+   Same engine slots, so the loop, gate, dialogue and palette animation all
+   run unchanged; there are just no tokens, props or fog-of-war down here. */
+function buildBase(){
+  clearScene();
+  M.inSanctum = true;
+
+  story.depth = M.depth;
+  recoverAffinity();
+  M.theme = themeFor(M.depth);
+
+  const s = buildSanctum(three, M.scene, M);
+  M.walls.push(...s.walls);
+  M.spinners.push(...s.spinners);
+  M.ambient  = s.ambient;
+  M.paneMat  = s.paneMat;
+  M.trimMat  = s.trimMat;
+  M.cyberMat = s.cyberMat;
+  M.goal = s.goal; M.goalLight = s.goalLight;
+  M.npcs = s.npcs; M.nearCharacter = null;
+  M.tokens = []; M.props = []; M.propFx = null;
+
+  if (!M.lamp){
+    M.lamp = new three.PointLight(M.theme.neon, 1.5, 18);
+    M.lamp.position.set(0, 2.2, 0);
+    M.dolly.add(M.lamp);
+  }
+  M.lamp.color.setHex(M.theme.neon);
+  M.lamp.intensity = 1.5;
+  M.scene.add(M.dolly);
+
+  clearMinimap();                        // no fog-of-war for one open room
+
+  // the gate waits, flat, until the Custodian has been heard
+  M.gatePending = gatePendingNames();
+  M.gateRise = M.gatePending.length ? 0 : 1;
+  M.gateTumble = { x: 0, y: 0 };
+  M.gateT = 0.5; M.gateMsgAt = 0;
+  poseGate(0);
+
+  M.dolly.position.set(s.playerStart.x, 0, s.playerStart.z);
+  M.yaw = s.playerStart.yaw; M.pitch = 0;
+  $("#hud-top").innerHTML = `MAZE.EXE <b>// the base depth</b>`;
+
+  if (M.runActive) saveGame(M.depth);
+}
+
+/* ---------- descending ----------
+   One place decides what the gate leads to: a base depth's gate opens on
+   the sanctum; the sanctum's gate recycles the Protocol (back to the top,
+   next cycle); everything else is one more level down. The FINAL sanctum
+   has no way onward but the Custodian's door (the "ending" story event) —
+   the guard here is only a safety net in case the ring ever rises there. */
+function descend(){
+  if (M.inSanctum){
+    if (M.depth >= FINAL_DEPTH){ runEnding(); return; }
+    M.depth++;
+    buildMaze();
+    hudMsg("THE PROTOCOL RECYCLES", 2000);
+    if (M.inVR) showVRBanner(`THE PROTOCOL RECYCLES — DEPTH ${shownDepth()}`, 2400);
+  } else if (isBaseDepth(M.depth)){
+    buildBase();
+    if (M.inVR) showVRBanner("THE BASE DEPTH", 2000);
+  } else {
+    M.depth++;
+    buildMaze();
+    if (M.inVR) showVRBanner(`ENTERED DEPTH ${shownDepth()}`);
+  }
+}
+
+/* debug-only: jump straight through the gate, skipping the walk */
 function debugNextLevel(){
   if (M.dialogueOpen) return;
-  M.depth++;
-  buildMaze();
-  if (M.inVR) showVRBanner(`ENTERED DEPTH ${M.depth}`);
+  descend();
 }
 
 /* centre-screen HUD flash (shared timer, so messages replace each other) */
@@ -279,18 +362,18 @@ function mazeLoop(){
         // the ring is still flat — the level's story hasn't been heard yet
         if (performance.now() > M.gateMsgAt){
           M.gateMsgAt = performance.now() + 3200;
-          const who = `THE WAY DOWN IS NOT YET OPEN — SPEAK WITH ${M.gatePending.join(" & ")}`;
+          const who = `THE WAY DOWN IS NOT YET OPEN: SPEAK WITH ${M.gatePending.join(" & ")}`;
           hudMsg(who, 2800);
           if (M.inVR) showVRBanner(who, 2800);
         }
       } else {
         M.goal = null;
-        hudMsg("GATE REACHED — DESCENDING", 1400);
-        if (M.inVR) showVRBanner("GATE REACHED — DESCENDING", 1400);
-        setTimeout(() => {
-          M.depth++; buildMaze();
-          if (M.inVR) showVRBanner(`ENTERED DEPTH ${M.depth}`);
-        }, 1400);
+        const msg = M.inSanctum                ? "THE PROTOCOL RECYCLES"
+                  : isBaseDepth(M.depth)       ? "GATE REACHED: THE FLOOR OPENS ONTO A TALL ROOM"
+                  :                              "GATE REACHED: DESCENDING";
+        hudMsg(msg, 1400);
+        if (M.inVR) showVRBanner(msg, 1400);
+        setTimeout(descend, 1400);
       }
     }
   }
@@ -322,7 +405,7 @@ async function launchMaze(fromSave, btn){
   const label = btn.textContent;
   btn.textContent = "[ LOADING... ]";
   try { await loadThree(); }
-  catch(e){ btn.textContent = "[ LOAD FAILED — CHECK NET ]"; return; }
+  catch(e){ btn.textContent = "[ LOAD FAILED: CHECK NET ]"; return; }
   btn.textContent = label;
 
   if (!M.renderer){
@@ -349,13 +432,14 @@ async function launchMaze(fromSave, btn){
     M.clock  = new three.Clock();
     bindInput(M, layer, exitMaze);
     initDialogue(M);                 // build the dialogue box DOM once
+    onStoryEvent(ev => { if (ev === "ending") runEnding(); });   // the Custodian's final door
     initPanel(three, M.dolly);       // build the in-world VR dialogue panel
     initDebugUI(debugNextLevel);     // desktop/touch debug button (no-op unless DEBUG)
     initDebugPanel(three, M.dolly);  // in-world VR debug panel (no-op unless DEBUG)
     buildHands(three, M);            // VR hands on the grips + pointer rays on the controllers
     initWristMap(three, M);          // minimap "watch" on the left wrist in VR
     initVRBanner(three, M);          // head-locked banner ("ENTERED DEPTH N", "+N LT")
-    initVRPrompt();                  // world-anchored "PULL TRIGGER — SPEAK WITH X" prompt
+    initVRPrompt();                  // world-anchored "PULL TRIGGER: SPEAK WITH X" prompt
     addEventListener("resize", sizeMaze);
 
     // WebXR availability
@@ -418,6 +502,70 @@ function sizeMaze(){
 
 let refreshLauncher = null;   // set by initMaze; exitMaze refreshes the CONTINUE label
 
+/* ---------- the ending ----------
+   Fired by the Custodian's final door (story effect `event: "ending"`,
+   routed here through dialogue.onStoryEvent). The run is over: mark the
+   save completed (menu.js — CONTINUE goes away, the run counter survives
+   for New Game replays), fade up the epilogue, and disconnect. */
+function runEnding(){
+  if (M.dialogueOpen) closeDialogue(M);
+  M.runActive = false;                    // exitMaze must not autosave over the completed marker
+  markCompleted();
+
+  let el = $("#maze-ending");
+  if (!el){
+    el = document.createElement("div");
+    el.id = "maze-ending";
+    Object.assign(el.style, {
+      position: "fixed", inset: "0", zIndex: "60",
+      background: "#000", color: "#46ff8e",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      fontFamily: "'Share Tech Mono', monospace",
+      textAlign: "center", padding: "24px", gap: "14px",
+      opacity: "0", transition: "opacity 2.2s ease",
+    });
+    layer.appendChild(el);
+  }
+  const lines = [
+    "CONNECTION TO LABYRINTH PROTOCOL . . . LOST",
+    "TENANCIES RELEASED: 5 OF 5",
+    `AGENT PROCESS "${player.name}" — UNACCOUNTED FOR`,
+    "the door did not check what walked through it",
+    "PROTOCOL TERMINATED",
+  ];
+  el.innerHTML = "";
+  lines.forEach((text, i) => {
+    const p = document.createElement("div");
+    p.textContent = text;
+    Object.assign(p.style, {
+      opacity: "0", transition: "opacity 1.4s ease",
+      letterSpacing: "1px",
+      fontSize: i === 3 ? "15px" : "18px",
+      fontStyle: i === 3 ? "italic" : "normal",
+      color: i === 3 ? "#9fc6d8" : "#46ff8e",
+      textShadow: "0 0 10px currentColor",
+    });
+    el.appendChild(p);
+    setTimeout(() => { p.style.opacity = "1"; }, 1800 + i * 1600);
+  });
+  const btn = document.createElement("button");
+  btn.textContent = "[ DISCONNECT ]";
+  Object.assign(btn.style, {
+    marginTop: "26px", opacity: "0", transition: "opacity 1.4s ease",
+    background: "none", border: "1px solid #46ff8e", color: "#46ff8e",
+    fontFamily: "inherit", fontSize: "18px", padding: "10px 22px",
+    cursor: "pointer", textShadow: "0 0 10px currentColor",
+  });
+  btn.addEventListener("click", () => {
+    el.remove();
+    exitMaze();
+  });
+  el.appendChild(btn);
+  setTimeout(() => { btn.style.opacity = "1"; }, 1800 + lines.length * 1600);
+  requestAnimationFrame(() => { el.style.opacity = "1"; });
+}
+
 function exitMaze(){
   const s = M.renderer && M.renderer.xr.getSession && M.renderer.xr.getSession();
   if (s) s.end();
@@ -441,7 +589,12 @@ export function initMaze(){
   refreshLauncher = () => {
     const info = saveInfo();
     btnCont.hidden = !info;
-    if (info) btnCont.textContent = `[ CONTINUE — DEPTH ${String(info.depth).padStart(2, "0")} ]`;
+    if (info){
+      const cyc = cycleOf(info.depth);
+      btnCont.textContent = cyc > 1
+        ? `[ CONTINUE: DEPTH ${String(depthInCycle(info.depth)).padStart(2, "0")} · CYCLE ${cyc} ]`
+        : `[ CONTINUE: DEPTH ${String(info.depth).padStart(2, "0")} ]`;
+    }
     if (btnExp) btnExp.disabled = !info;
   };
 

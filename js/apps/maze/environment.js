@@ -13,16 +13,16 @@
    has caught up with them).
 
    DECAY: how varied and scrawled-on the walls are ramps with
-   depth (see chaosFor). Depth 1 is the original plain brick and
-   clean walls; by depth 30 — the last level before the deep zone
-   starts re-running old looks — the mix of patterns and the
-   graffiti density are fully chaotic, and they stay that way
-   below. The dissolving cyber wall around the exit ring is
-   untouched by any of this: it is always its own pattern.
+   GLOBAL depth (see chaosFor) — 1..30 across the three cycles —
+   so each pass over "the same" ten floors is visibly more ruined
+   than the last, and the final descent is fully chaotic. The
+   dissolving cyber wall around the exit ring is untouched by any
+   of this: it is always its own pattern.
    ============================================================ */
 import { cellCenter } from "./generator.js";
 import { rng } from "./palette.js";
-import { graffitiPool, LOOP_DEPTH } from "./story.js";
+import { FINAL_DEPTH } from "./state.js";
+import { graffitiPool } from "./story.js";
 import { brickTexture, panelTexture, glyphTexture, crackedTexture,
          graffitiTexture, floorTexture, ceilingTexture, cyberTexture } from "./textures.js";
 
@@ -40,18 +40,22 @@ function wallSeed(depth, x, z, alongX){
 }
 
 /* the decay curve: 0 at depth 1 (pristine, plain brick, no graffiti),
-   1 at depth 30 (the last level before the loop zone) and beyond */
+   1 at the final depth — the last level of cycle 3, when the Protocol
+   is coming apart. Depth here is GLOBAL (1..30), so decay accumulates
+   across the cycles: each pass over "the same" floors is more ruined. */
 export function chaosFor(depth){
-  return Math.max(0, Math.min(1, ((depth ?? 1) - 1) / (LOOP_DEPTH - 2)));
+  return Math.max(0, Math.min(1, ((depth ?? 1) - 1) / (FINAL_DEPTH - 1)));
 }
 
 /* builds the static environment into `scene` from the given maze
    `cells`. Walls bordering `goalCell` get the dissolving "cyber"
    material; walls whose key is in `windows` are built with a window
-   opening instead. Returns { walls, cyberMat, paneMat, trimMat,
-   ambient } — `walls` are axis-aligned collision boxes, the materials
-   are exposed so the loop can pulse / recolour them. */
-export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = new Set()){
+   opening instead — and a window also in `darkWindows` gets black
+   glass (a freed tenant's frame: nobody home, no light behind it).
+   Returns { walls, cyberMat, paneMat, trimMat, ambient } — `walls`
+   are axis-aligned collision boxes, the materials are exposed so the
+   loop can pulse / recolour them. */
+export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = new Set(), darkWindows = new Set()){
   const { N, CELL, WALL_H, WALL_T, theme, depth } = cfg;
   const size = N * CELL;
 
@@ -115,6 +119,10 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   });
   // glowing translucent window pane - characters stand behind it
   const paneMat = new three.MeshBasicMaterial({color:theme.neon, transparent:true, opacity:0.16, side:three.DoubleSide, fog:false});
+  // a freed tenant's pane: black glass, unlit, slightly more solid — the
+  // "dark window" of Scally's rule three. Deliberately NOT on the palette
+  // animation, so it stays dead while everything else breathes.
+  const darkPaneMat = new three.MeshBasicMaterial({color:0x04060a, transparent:true, opacity:0.6, side:three.DoubleSide, fog:false});
   // baseboard trim: a thin strip of the level's neon along every wall
   const trimMat = new three.MeshBasicMaterial({color:theme.neon});
   const TRIM_H = 0.09;
@@ -143,11 +151,13 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
     collide(x, z, alongX);
   }
   // a solid wall with a central window: built from a frame of four
-  // brick segments around an opening, plus a translucent pane.
-  function addWindowWall(x, z, alongX){
+  // brick segments around an opening, plus a translucent pane
+  // (black glass instead when the tenant has been freed).
+  function addWindowWall(x, z, alongX, dark){
     const L = CELL + WALL_T, T = WALL_T;
     const ow = L * 0.5, oh = WALL_H * 0.46, cy = 1.5;   // opening size + centre height
     const botH = cy - oh/2, topH = WALL_H - (cy + oh/2), sideW = (L - ow)/2;
+    const glass = dark ? darkPaneMat : paneMat;
     const seg = (w, h, d, px, py, pz) => {
       const m = new three.Mesh(new three.BoxGeometry(w, h, d), brickMat);
       m.position.set(px, py, pz); scene.add(m);
@@ -157,14 +167,14 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
       seg(L, topH, T, x, WALL_H - topH/2, z);
       seg(sideW, oh, T, x - (ow + sideW)/2, cy, z);
       seg(sideW, oh, T, x + (ow + sideW)/2, cy, z);
-      const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), paneMat);
+      const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), glass);
       pane.position.set(x, cy, z); scene.add(pane);
     } else {
       seg(T, botH, L, x, botH/2, z);
       seg(T, topH, L, x, WALL_H - topH/2, z);
       seg(T, oh, sideW, x, cy, z - (ow + sideW)/2);
       seg(T, oh, sideW, x, cy, z + (ow + sideW)/2);
-      const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), paneMat);
+      const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), glass);
       pane.rotation.y = Math.PI/2; pane.position.set(x, cy, z); scene.add(pane);
     }
     addTrim(x, z, alongX);
@@ -172,7 +182,8 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   }
 
   function place(geo, x, z, alongX, cyber){
-    if (windows.has(wallKey(x, z, alongX))) addWindowWall(x, z, alongX);
+    const key = wallKey(x, z, alongX);
+    if (windows.has(key)) addWindowWall(x, z, alongX, darkWindows.has(key));
     else addWall(geo, x, z, alongX, cyber);
   }
   const gx = goalCell.x, gy = goalCell.y;

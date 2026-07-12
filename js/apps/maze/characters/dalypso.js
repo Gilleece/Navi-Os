@@ -219,13 +219,13 @@ const TAKES = [
   { q: "Right, settle somethin' for me: the sequel is better than the original. Ye know EXACTLY the one I mean. It just is.",
     agree: "You're right. The sequel's better.",
     argue: "The original. And it's not close.",
-    agreeReact: "*He looks at ye, appalled.* ...what? No it ISN'T. The pacin' in the second act is all over the shop an' ye know it. Ye can't just AGREE with things, that's how civilisations fall. ANYWAY— ",
-    argueReact: "*He lights up like a floodlit pitch.* WRONG. Wrong wrong wrong — the set pieces ALONE— okay. Okay. Strong position, well held, entirely incorrect. I respect it. NEXT— " },
+    agreeReact: "*He looks at ye, appalled.* ...what? No it ISN'T. The pacin' in the second act is all over the shop an' ye know it. Ye can't just AGREE with things, that's how civilisations fall. ANYWAY: ",
+    argueReact: "*He lights up like a floodlit pitch.* WRONG. Wrong wrong wrong. The set pieces ALONE... okay. Okay. Strong position, well held, entirely incorrect. I respect it. NEXT: " },
   { q: "black an' white films are better than colour ones. All of them. Even the bad ones. ESPECIALLY the bad ones.",
     agree: "Honestly? Agreed. The shadows alone.",
     argue: "That's pure nostalgia and you know it.",
-    agreeReact: "*Deep suspicion.* ...ye agreed very fast there. Ye can't just say 'the shadows', ye have to EARN the shadows. I'm docking ye a point I never gave ye. Right— ",
-    argueReact: "NOSTALGIA?! Nostalgia is a — no. D'ye know what, that's the first intelligent wrong thing anyone's said to me all week. Final one, an' it's the big one— " },
+    agreeReact: "*Deep suspicion.* ...ye agreed very fast there. Ye can't just say 'the shadows', ye have to EARN the shadows. I'm docking ye a point I never gave ye. Right: ",
+    argueReact: "NOSTALGIA?! Nostalgia is a... no. D'ye know what, that's the first intelligent wrong thing anyone's said to me all week. Final one, an' it's the big one: " },
   { q: "the greatest performance ever put to screen. Go on. YOU say. I'll wait. I won't wait long.",
     agree: "Whoever's in your favourite film, probably.",
     argue: "Someone you've never even heard of.",
@@ -249,7 +249,7 @@ function takeNode(i, prefix){
 }
 function takeClose(){
   return {
-    text: "*Whatever ye said, he's already talkin' over it.* WRONG — it's a fella in a three-minute scene in a film ye've never seen an' I'll die on this hill HAPPILY. *He exhales like a man steppin' off a rollercoaster, delighted with the both of ye.* THAT'S the stuff. D'ye know how long it's been since somebody argued BACK? Everyone down here either agrees with ye or asks ye mad questions about grapes. Call round again. I've takes ye haven't even HEARD yet.",
+    text: "*Whatever ye said, he's already talkin' over it.* WRONG. It's a fella in a three-minute scene in a film ye've never seen, an' I'll die on this hill HAPPILY. *He exhales like a man steppin' off a rollercoaster, delighted with the both of ye.* THAT'S the stuff. D'ye know how long it's been since somebody argued BACK? Everyone down here either agrees with ye or asks ye mad questions about grapes. Call round again. I've takes ye haven't even HEARD yet.",
     choices: [{ text: "(Same time next level.)" }],
   };
 }
@@ -273,54 +273,54 @@ function dalypsoDialogue(ctx){
     hostile:  "*He points the remote at ye an' presses mute.* ...doesn't work on ye. Worth a try. WHAT.",
     wary:     "Oh. You. *He folds his arms like a man settling in to disagree with the weather.* Go on, then.",
     neutral:  "Well! There y'are. I was JUST about to say somethin' about this place, an' ye'll probably disagree with it, which is grand, because yer wrong.",
-    friendly: "Ah, good — someone with a bit of sense about them. C'mere. I've been sittin' on three opinions since yesterday an' two of them are about you.",
-    warm:     "*He beams like a porch light comin' on.* THERE'S me favourite neighbour! Look at ye. State of ye. DELIGHTED. C'mere til I tell ye somethin' — no, leave the maze, the maze'll keep, this is IMPORTANT.",
+    friendly: "Ah, good. Someone with a bit of sense about them. C'mere. I've been sittin' on three opinions since yesterday an' two of them are about you.",
+    warm:     "*He beams like a porch light comin' on.* THERE'S me favourite neighbour! Look at ye. State of ye. DELIGHTED. C'mere til I tell ye somethin'. No, leave the maze. The maze'll keep. This is IMPORTANT.",
   }[character.tone];
 
   return {
     hub: true,
     level: depth,                  // conversations are tracked (and exhausted) per level
     greet,
-    exhausted: "Go on away now — there's a thing startin' on the telly that I've seen forty times an' it doesn't watch itself. Sure, call round again. Yer always callin' round. It's like a soap, this. A good one. Mid-era.",
-    hostile: "*He stares past ye at nothing, jaw set.* I've nothin' to say to ye. An' I'd a LOT to say to ye — I'd PREPARED things — so that's how bad it is.",
+    exhausted: "Go on away now. There's a thing startin' on the telly that I've seen forty times an' it doesn't watch itself. Sure, call round again. Yer always callin' round. It's like a soap, this. A good one. Mid-era.",
+    hostile: "*He stares past ye at nothing, jaw set.* I've nothin' to say to ye. An' I'd a LOT to say to ye. I'd PREPARED things. That's how bad it is.",
     topics: [
       { id: "place", label: "What do you make of this place?", effects: { like: +1 },
-        node: { text: "*He appraises the corridor like a man who has recently — an' he may have mentioned this — bought property.* Structurally? Sound. Ye can't fault the build, walls like that'll outlast the both of us. Terrible natural light, mind. No storage. An' the LAYOUT — whoever designed this never once carried shoppin' through it. *He shakes his head.* Ye know what it's like? It's like a show with great production design an' no script editor. Gorgeous. Goes nowhere. I'd give it three stars an' I'd keep watchin' it, which tells ye everythin' about me." } },
+        node: { text: "*He appraises the corridor like a man who has recently, an' he may have mentioned this, bought property.* Structurally? Sound. Walls like that'll outlast the both of us. Terrible natural light, mind. No storage. An' the LAYOUT: whoever designed this never once carried shoppin' through it. *He shakes his head.* Ye know what it's like? A show with great production design an' no script editor. Gorgeous. Goes nowhere. I'd give it three stars an' I'd keep watchin' it, which tells ye everythin' about me." } },
 
       { id: "house", label: "Tell me about the house.", effects: { like: +1 },
-        node: { text: "*He straightens like a man called up for his country.* FOUR bed. SEMI-detached. South-facin' garden — d'ye know how rare that is at that price point? The estate agent said, an' I quote, 'you won't do better', an' for ONCE in his lyin' profession he was right. There's a good room. There's a UTILITY room — separate! From the KITCHEN! *He counts rooms on his fingers with real love.* Gas boiler, two years old. Attic ye could convert. I'm not sayin' it's a fortress, but in any zombie film ye care to name, we're grand for a season an' a half minimum. *A small pause.* Ye'll have to come round. Everyone will. Soon as things... settle." } },
+        node: { text: "*He straightens like a man called up for his country.* FOUR bed. SEMI-detached. South-facin' garden. D'ye know how rare that is at that price point? The estate agent said, an' I quote, 'you won't do better', an' for ONCE in his lyin' profession he was right. There's a good room. There's a UTILITY room. Separate! From the KITCHEN! *He counts rooms on his fingers with real love.* Gas boiler, two years old. Attic ye could convert. In any zombie film ye care to name, we're grand for a season an' a half minimum. *A small pause.* Ye'll have to come round. Everyone will. Soon as things... settle." } },
 
       { id: "telly", label: "What's on the telly down here?", effects: { like: +1 },
-        node: { text: "Everythin'. That's the mad thing — this window gets ALL the channels. I'm not exaggeratin' for once: channels I know, channels I don't, channels that... *he waves a hand* ...channels there's no NAME for. Last night I watched a documentary about a bridge I'm fairly sure was never built, an' it was CLASS. Third season of shows that got cancelled after one. The versions where they didn't cancel them, d'ye follow me? *He leans in, delighted, entirely unbothered by the implications.* The reception down here is unbelievable. It's the one thing I'd not change about the place." } },
+        node: { text: "Everythin'. That's the mad thing: this window gets ALL the channels. Channels I know, channels I don't, channels there's no NAME for. Last night I watched a documentary about a bridge I'm fairly sure was never built, an' it was CLASS. Third seasons of shows that got cancelled after one. The versions where they didn't cancel them, d'ye follow me? *He leans in, delighted, entirely unbothered by the implications.* The reception down here is unbelievable. It's the one thing I'd not change about the place." } },
 
       // the recurring bit: three hot takes a level, arguing back is the win
-      { id: "takes", label: "Go on — give us your takes.", oneShot: false, keep: true,
+      { id: "takes", label: "Go on. Give us your takes.", oneShot: false, keep: true,
         effects: { like: +1 },
         node: () => takeNode(0, "") },
 
       { id: "sian-bee", label: "What's the story with you and Little Bee?", minAffinity: 55, effects: { like: +1 },
-        node: { text: "*The arms fold. The jaw does a lap.* She's grand. She's GRAND. Smart as a whip an' she'd fight a bus for ye, an' Sian's happier than I've ever seen the man, so there's NOTHIN' to say, is there. *A beat. The honesty arrives like a late train.* ...he was MY best mate first, is all. Since we were six. An' there's no— there's no fixture for that, ye know? No cup for BEST MATE FIRST. She didn't take anythin' that was mine to keep. I know that. I KNOW that. *He unfolds his arms, decision made for the hundredth time.* I'm lettin' it go. I'm very nearly finished lettin' it go." } },
+        node: { text: "*The arms fold. The jaw does a lap.* She's grand. She's GRAND. Smart as a whip an' she'd fight a bus for ye, an' Sian's happier than I've ever seen the man, so there's NOTHIN' to say, is there. *A beat. The honesty arrives like a late train.* ...he was MY best mate first, is all. Since we were six. An' there's no cup for BEST MATE FIRST. She didn't take anythin' that was mine to keep. I know that. I KNOW that. *He unfolds his arms, decision made for the hundredth time.* I'm lettin' it go. I'm very nearly finished lettin' it go." } },
 
       { id: "homiss-late", label: "Any thoughts on Homiss?", effects: { like: +1 },
-        node: { text: "Homiss is a GENTLEMAN. Great head of ideas, plays the bass like the buildin's fallin' down in slow motion, an' I mean that as a compliment. One flaw. ONE. *He holds up a finger like a referee producin' a card.* The man has never once in his LIFE been on time. Not once. Weddin's, matches, his OWN gigs. Tardiness like that isn't a habit, it's a POLICY, an' it needs to be eradicated entirely. ENTIRELY. *He breathes.* ...I'd forgive him anythin', mind. But I'd forgive him fifteen minutes EARLIER if he'd only show up." } },
+        node: { text: "Homiss is a GENTLEMAN. Great head of ideas, plays the bass like the buildin's fallin' down in slow motion, an' I mean that as a compliment. One flaw. ONE. *He holds up a finger like a referee producin' a card.* The man has never once in his LIFE been on time. Weddin's, matches, his OWN gigs. Tardiness like that isn't a habit, it's a POLICY, an' it needs to be eradicated ENTIRELY. *He breathes.* ...I'd forgive him anythin', mind. But I'd forgive him fifteen minutes EARLIER if he'd only show up." } },
 
       { id: "scally-who", label: "Do you know Scally at all?", effects: { like: +1 },
-        node: { text: "Not really, no. Seems sound. Sells things. *He nods slowly, granting this the weight of a match report.* I respect a man with STOCK. Ye know where ye stand with a fella who has stock. ...Sian knew him, back in the day — worked together at the, eh — *he mouths the name of a tech giant with theatrical care* — an' Sian says nobody ever knew what the wee man's JOB was. Which in fairness is also true of half the lads I played football with, an' they were grand too." } },
+        node: { text: "Not really, no. Seems sound. Sells things. *He nods slowly, granting this the weight of a match report.* I respect a man with STOCK. Ye know where ye stand with a fella who has stock. ...Sian knew him, back in the day. Worked together at the, eh, *he mouths the name of a tech giant with theatrical care*, an' Sian says nobody ever knew what the wee man's JOB was. Which in fairness is also true of half the lads I played football with, an' they were grand too." } },
 
-      { id: "endure", label: "Go on then — give me the full house tour.",
+      { id: "endure", label: "Go on then. Give me the full house tour.",
         req: { attr: "endurance", level: 6 }, effects: { like: +2 },
-        node: { text: "*Forty-five minutes later, ye know the BTU rating of the boiler, the council's position on the hedge, the saga of the second stopcock, an' the orientation of every radiator in the buildin'. Ye are still standin'. Ye did not waver.* ...an' that's just the DOWNSTAIRS. *He looks at ye with sudden, genuine emotion.* D'ye know, Sian fell asleep STANDIN' UP durin' the utility room. You... you LISTENED. Ye asked about the FLASHIN'. *He grips the window frame.* Yer the first person to hear the whole tour. Ye magnificent creature. Yer gettin' a key. I've decided. Don't fight me on it — actually no, DO fight me on it, but ye'll lose." } },
+        node: { text: "*Forty-five minutes later, ye know the BTU rating of the boiler, the council's position on the hedge, the saga of the second stopcock, an' the orientation of every radiator in the buildin'. Ye are still standin'. Ye did not waver.* ...an' that's just the DOWNSTAIRS. *He looks at ye with sudden, genuine emotion.* D'ye know, Sian fell asleep STANDIN' UP durin' the utility room. You LISTENED. Ye asked about the FLASHIN'. *He grips the window frame.* Yer the first person to hear the whole tour. Ye magnificent creature. Yer gettin' a key. I've decided. Don't fight me on it. Actually no, DO fight me on it, but ye'll lose." } },
 
       { id: "lucky", label: "*He flips a coin at the window.* Call it in the air.",
         req: { attr: "luck", level: 6 }, effects: { like: +2 },
-        node: { text: "*Ye call it before it leaves his thumb. It lands. Yer right. He flips it again, eyes narrowin'. Right again. A third — RIGHT AGAIN.* ...okay. Okay okay okay. *He pockets the coin like it's turned informant.* D'ye know the ODDS on that? I do, actually — an eighth — but it FELT like more, an' feel is everythin' in this game. Yer comin' to me next quiz night, whenever an' wherever quiz nights exist again, an' yer sittin' BESIDE me. That's not an invitation, that's a TRANSFER. I've signed ye." } },
+        node: { text: "*Ye call it before it leaves his thumb. It lands. Yer right. He flips it again, eyes narrowin'. Right again. A third. RIGHT AGAIN.* ...okay. Okay okay okay. *He pockets the coin like it's turned informant.* D'ye know the ODDS on that? I do, actually, an eighth, but it FELT like more, an' feel is everythin' in this game. Yer comin' to me next quiz night, whenever an' wherever quiz nights exist again, an' yer sittin' BESIDE me. That's not an invitation, that's a TRANSFER. I've signed ye." } },
 
-      { id: "header", label: "*He punts the ball through the window — head it back.*",
+      { id: "header", label: "*He punts the ball through the window. Head it back.*",
         req: { attr: "strength", level: 6 }, effects: { like: +2 },
-        node: { text: "*How the ball comes through the glass is a question for a calmer moment — ye rise an' meet it like a cannon, an' it thunders back past his ear into the dark behind him.* ...HOLY God. *A long silence, in which somewhere deep in his room somethin' falls over.* That's the hardest anyone's ever headed anythin' at me an' I played JUNIOR B. *He retrieves the ball, cradlin' it, starin' at ye with rearranged priorities.* Right. New topic: have ye ever considered centre half? Don't answer. Ye HAVE now." } },
+        node: { text: "*How the ball comes through the glass is a question for a calmer moment. Ye rise an' meet it like a cannon, an' it thunders back past his ear into the dark behind him.* ...HOLY God. *A long silence, in which somewhere deep in his room somethin' falls over.* That's the hardest anyone's ever headed anythin' at me an' I played JUNIOR B. *He retrieves the ball, cradlin' it, starin' at ye with rearranged priorities.* Right. New topic: have ye ever considered centre half? Don't answer. Ye HAVE now." } },
 
       { id: "rude", label: "The house sounds like a shoebox, and your takes are basic.", effects: { like: -10 },
-        node: { text: "*He opens his mouth for the counter-attack of his LIFE — and nothing comes out. He closes it. The finger he'd raised comes slowly down, like a flag.* ...the garden's south-facin', *he says quietly, to nobody, an' turns back to the telly.* Away ye go. Programme's startin'." } },
+        node: { text: "*He opens his mouth for the counter-attack of his LIFE, and nothing comes out. He closes it. The finger he'd raised comes slowly down, like a flag.* ...the garden's south-facin', *he says quietly, to nobody, an' turns back to the telly.* Away ye go. Programme's startin'." } },
 
       // Always askable. Built from the shared economy on the base class: a
       // coin-only sale, item-for-item barter (he collects — the foil sticker,
@@ -371,9 +371,9 @@ function dalypsoDialogue(ctx){
           if (character.affinity < 40)
             text = "Trade? I barely KNOW ye. That's how ye end up in a true-crime documentary, handin' yer valuables to strangers in corridors. Tokens up front or no deal.";
           else if (character.affinity >= 55 && !character.canTrade(depth))
-            text = "Ye've had yer freebie — what is this, a supermarket sweep? Give us a couple of levels to restock the shelves. The GOOD shelves. *He gestures at shelves that may or may not exist.*";
+            text = "Ye've had yer freebie. What is this, a supermarket sweep? Give us a couple of levels to restock the shelves. The GOOD shelves. *He gestures at shelves that may or may not exist.*";
           else
-            text = "Go on, let's do business — an' I'll have ye know everythin' here is MINT condition, one careful owner. *Then, with the subtlety of a hand grenade:* ...also. Hypothetically. If a person were to find a magazine down there — thick one, comes out the once a year, all the listin's in it, maybe a festive cover, HYPOTHETICALLY — that person should bring it here IMMEDIATELY an' name their price. *He examines his nails.* Anyway. What'll it be?";
+            text = "Go on, let's do business. An' I'll have ye know everythin' here is MINT condition, one careful owner. *Then, with the subtlety of a hand grenade:* ...also. Hypothetically. If a person were to find a magazine down there, thick one, comes out the once a year, all the listin's in it, maybe a festive cover, HYPOTHETICALLY, that person should bring it here IMMEDIATELY an' name their price. *He examines his nails.* Anyway. What'll it be?";
 
           return { text, choices };
         } },
@@ -386,14 +386,14 @@ export const dalypso = {
   id:   "dalypso",
   name: "DALYPSO",
   minDepth: 4,       // first window appears at depth 4
-  description: "A red-headed man in a football jersey who argues with rain and means every kindness. Encyclopedic on every film and show ever made — his window gets all the channels, including several that shouldn't exist. Just bought a house. Four bed. Semi-D. South-facing garden. You'll have to come round.",
+  description: "A red-headed man in a football jersey who argues with rain and means every kindness. Encyclopedic on every film and show ever made. His window gets all the channels, including several that shouldn't exist. Just bought a house. Four bed. Semi-D. South-facing garden. You'll have to come round.",
   portrait: drawDalypso,
   drawLayer: drawDalypsoLayer,
   layerCount: 3,
   dialogue: dalypsoDialogue,
   inventory: [
-    { id: "stub",     name: "Cup Final Stub",  desc: "A ticket stub gone soft at the folds. Row Z. 'Greatest day of me life. Well — second. The house, like.'" },
-    { id: "housekey", name: "Spare House Key", desc: "Brand new, never turned in a lock. The tag reads 'GOOD ROOM — DO NOT LOSE'." },
+    { id: "stub",     name: "Cup Final Stub",  desc: "A ticket stub gone soft at the folds. Row Z. 'Greatest day of me life. Well, second. The house, like.'" },
+    { id: "housekey", name: "Spare House Key", desc: "Brand new, never turned in a lock. The tag reads 'GOOD ROOM. DO NOT LOSE.'" },
     // his prized piece: Labyrinth Tokens only, never gifted (price = LT cost)
     { id: "remote",   name: "Universal Remote",desc: "Heavier than it should be. Some of the buttons are for channels that do not exist. All of them work, Dalypso swears.", price: 55 },
   ],

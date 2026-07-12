@@ -140,8 +140,8 @@ export function updateTokens(three, scene, cfg, dt){
           const { id, name, desc } = tk.item;
           addItem({ id, name, desc });
           setFlag(`found-${id}`);
-          toast(`FOUND — ${name.toUpperCase()}`);
-          if (cfg.inVR) showVRBanner(`FOUND — ${name.toUpperCase()}`, 1400);
+          toast(`FOUND: ${name.toUpperCase()}`);
+          if (cfg.inVR) showVRBanner(`FOUND: ${name.toUpperCase()}`, 1400);
           playPickup(5);                                           // the grand chime — these are rare
         } else {
           addTokens(tk.value); refreshTokenHud();

@@ -27,13 +27,14 @@
    ============================================================ */
 import { cellCenter, bfsDistances, exteriorSides } from "../generator.js";
 import { characterInk } from "../palette.js";
-import { story } from "../state.js";
+import { story, hasFlag, cycleOf, depthInCycle } from "../state.js";
 import { applyStory } from "../story.js";
 import { scally } from "./scally.js";
 import { homiss } from "./homiss.js";
 import { littlebee } from "./littlebee.js";
 import { sian } from "./sian.js";
 import { dalypso } from "./dalypso.js";
+import { custodian } from "./custodian.js";
 
 /* affinity buckets -> tone key used to pick dialogue flavour */
 const TONES = [
@@ -187,16 +188,42 @@ export class Character {
 
   get tone(){ return (TONES.find(([max]) => this.affinity <= max) ?? TONES.at(-1))[1]; }
 
-  /* relationship label shown next to the name in dialogue */
-  get standing(){ return (STANDINGS.find(([max]) => this.affinity <= max) ?? STANDINGS.at(-1))[1]; }
+  /* relationship label shown next to the name in dialogue. A def can pin
+     one (the Custodian is a process, not a friendship). */
+  get standing(){
+    return this._def.standing
+        ?? (STANDINGS.find(([max]) => this.affinity <= max) ?? STANDINGS.at(-1))[1];
+  }
 
   /* too cold for normal conversation, needs a gift to thaw first */
-  get wontTalk(){ return this.affinity < HOSTILE; }
+  get wontTalk(){ return !this._def.standing && this.affinity < HOSTILE; }
 
   /* whole-game memory: `once` story topics, replay greetings — anything
      that must never repeat, even on later levels (unlike `seen` below) */
   remember(id){ this.memory.add(id); }
   recalls(id){ return this.memory.has(id); }
+
+  /* --- per-CYCLE topic retirement -----------------------------------------
+     A `once` story beat retires for the cycle it was heard in, not the whole
+     game: when the Protocol recycles, the characters' episodic memory of the
+     conversation rewinds with it and they deliver the beat again, word for
+     word, believing it's the first time. The player alone remembers — a beat
+     retired in an EARLIER cycle re-offers as an ECHO (topicRepeats), which
+     the story engine decorates with a push-back choice. The Custodian is
+     exempt from all of this (custodian.js); it is the only one that keeps
+     its memory across cycles.
+     (Keys are `topic-<id>#<cycle>`; a bare `topic-<id>` from an old save
+     counts as cycle 1.) */
+  retireTopic(id){ this.memory.add(`topic-${id}#${cycleOf(story.depth)}`); }
+  topicRetired(id){
+    const c = cycleOf(story.depth);
+    return this.recalls(`topic-${id}#${c}`) || (c === 1 && this.recalls(`topic-${id}`));
+  }
+  topicRepeats(id){
+    for (let c = cycleOf(story.depth) - 1; c >= 1; c--)
+      if (this.recalls(`topic-${id}#${c}`) || (c === 1 && this.recalls(`topic-${id}`))) return true;
+    return false;
+  }
 
   /* topic exhaustion is tracked per maze level, so each level is a fresh conversation */
   hasSeen(level, id){ return this.seen.get(level)?.has(id) ?? false; }
@@ -254,10 +281,15 @@ export class Character {
   /* the dialogue tree root for this maze level, flavoured by affinity.
      The character file supplies the base hub; the story engine then
      injects any live story beats (pinned to the top) and decorates the
-     greeting for the deep-zone loop / replays. `hub.ctx` is kept so
+     greeting for later cycles / replays. `hub.ctx` is kept so
      dialogue.js can pass it to topic `available(ctx)` predicates. */
   dialogueFor(depth, player){
-    const ctx = { depth, player, affinity: this.affinity, tone: this.tone,
+    /* ctx.depth is the GLOBAL depth (1..30, never resets — story keys and
+       predicates use it); ctx.shownDepth is what the player's HUD says and
+       what the characters believe (their memory rewinds each cycle), so
+       any depth number SPOKEN in dialogue should use shownDepth. */
+    const ctx = { depth, shownDepth: depthInCycle(depth), cycle: cycleOf(depth),
+                  player, affinity: this.affinity, tone: this.tone,
                   character: this, run: story.run };
     const hub = this._dialogue(ctx);
     hub.ctx = ctx;
@@ -266,8 +298,11 @@ export class Character {
 }
 
 /* the full roster, one Character instance per def, created once so
-   affinity and seen-topics persist across maze levels */
-const DEFS = [scally, homiss, littlebee, sian, dalypso];
+   affinity and seen-topics persist across maze levels. The Custodian is a
+   roster member (so its memory, and therefore which audiences it has held,
+   saves and rewinds like everyone else's) but its minDepth keeps it out of
+   every maze: it is only ever met in the base-depth sanctum (sanctum.js). */
+const DEFS = [scally, homiss, littlebee, sian, dalypso, custodian];
 export const ROSTER = DEFS.map(def => new Character(def));
 
 /* look a character up by id (peer effects, level events) */
@@ -327,6 +362,11 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
   let firstMetDist = null;
   for (const ch of ROSTER){
     if (depth < ch.minDepth) continue;   // not this deep yet — introduced on descent
+    // freed by the Custodian: the window still appears where they would have
+    // stood, but it is DARK and empty from then on (spawn.empty — the
+    // environment dims the pane; no figure, no glow, no conversation).
+    // "You pass a window and it is dark inside, you keep walking."
+    const empty = hasFlag(`freed-${ch.id}`);
     let pool = candidates.filter(c => !used.has(c.x + "," + c.y));
 
     if (depth === 1 && ch.firstLevelNearStart){
@@ -347,7 +387,7 @@ export function spawnCharacters(cells, goalCell, depth, cfg){
 
     const sides = exteriorSides(cells, cell.x, cell.y);
     const side  = sides[Math.random()*sides.length | 0];
-    spawns.push(makeSpawn(ch, cell, side, CELL));
+    spawns.push({ ...makeSpawn(ch, cell, side, CELL), empty });
   }
   return spawns;
 }
@@ -364,6 +404,7 @@ export function buildCharacters(three, scene, spawns, theme){
   const ink = characterInk(theme);   // every character drawn in this level's single colour
   const npcs = [];
   for (const s of spawns){
+    if (s.empty) continue;           // a freed tenant: the window stays, dark; nobody behind it
     const ch = s.character;
     const figure = new three.Group();
     const layers = ch.layerCount;

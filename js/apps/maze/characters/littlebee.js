@@ -199,11 +199,11 @@ function drawBeeLayer(g, w, h, mood, layer, ink){
    don't matter; what she's measuring is that you can still answer.
    Built as nested `next` nodes like Homiss's would-ye-rathers. */
 const CHECKUP = [
-  { q: "Right — eyes front, this takes thirty seconds. What year is it? Don't think. SAY.",
+  { q: "Right, eyes front, this takes thirty seconds. What year is it? Don't think. SAY.",
     a: ["It's... whatever year it is outside.", "Time doesn't apply down here.", "You first."] },
-  { q: "Grand. Five animals, quick as ye like — an' if the first one's 'horse' we can be friends.",
+  { q: "Grand. Five animals, quick as ye like. An' if the first one's 'horse' we can be friends.",
     a: ["Horse. Obviously.", "Dog, cat, fox, crow... eh...", "Does Scally count?"] },
-  { q: "*She snorts despite herself.* Last one. My hand — how many fingers am I holdin' up? *She is not holding up any fingers.*",
+  { q: "*She snorts despite herself.* Last one. My hand: how many fingers am I holdin' up? *She is not holding up any fingers.*",
     a: ["None. It's at your side.", "...four?", "Is this a trick?"] },
 ];
 
@@ -214,7 +214,7 @@ function checkupNode(i){
     text: item.q,
     choices: [
       ...item.a.map(ans => ({ text: ans, next: last ? checkupClose() : checkupNode(i + 1) })),
-      ...(i === 0 ? [{ text: "Bee — I really have to run." }] : []),   // bail early, once
+      ...(i === 0 ? [{ text: "Bee, I really have to run." }] : []),   // bail early, once
     ],
   };
 }
@@ -241,61 +241,61 @@ function beeDialogue(ctx){
   const greet = {
     hostile:  "*She doesn't even turn her head.* Away on. I mean it. I've nothin' for ye an' less to say to ye.",
     wary:     "*Arms folded, one eyebrow already up.* Well. Look what the maze dragged in. Talk quick, I'm countin' somethin'.",
-    neutral:  "Right — c'mere. Eyes front a second. *She studies yer pupils for exactly half a second.* ...grand, ye'll do. What?",
-    friendly: "Ach, it's yerself! Good — I'd questions stackin' up an' nobody worth askin'. C'mere.",
-    warm:     "*The whole face lights up, an' for once she doesn't bother hidin' it.* THERE ye are. C'mere to me — I've been keepin' things to tell ye an' they've been goin' off like milk. Sit. Stand. Whatever ye do.",
+    neutral:  "Right, c'mere. Eyes front a second. *She studies yer pupils for exactly half a second.* ...grand, ye'll do. What?",
+    friendly: "Ach, it's yerself! Good. I'd questions stackin' up an' nobody worth askin'. C'mere.",
+    warm:     "*The whole face lights up, an' for once she doesn't bother hidin' it.* THERE ye are. C'mere to me. I've been keepin' things to tell ye an' they've been goin' off like milk. Sit. Stand. Whatever ye do.",
   }[character.tone];
 
   return {
     hub: true,
     level: depth,                 // conversations are tracked (and exhausted) per level
     greet,
-    exhausted: "Right, that's yer lot — I've observations to write up an' no pen, so I'm memorisin' them. Go on. Mind the seams. *She's already somewhere else.* ...an' EAT somethin'!",
-    hostile: "*She looks at ye the way she'd look at a lame stride.* No. Whatever it is — no. Come back when yer somebody else.",
+    exhausted: "Right, that's yer lot. I've observations to write up an' no pen, so I'm memorisin' them. Go on. Mind the seams. *She's already somewhere else.* ...an' EAT somethin'!",
+    hostile: "*She looks at ye the way she'd look at a lame stride.* No. Whatever it is: no. Come back when yer somebody else.",
     topics: [
       { id: "place", label: "What is this place, really?", effects: { like: +1 },
-        node: { text: "Depends who ye ask, doesn't it. Scally'll tell ye it's the in-between, Homiss'll tell ye it's Tuesday — God love him — an' I'll tell ye what I can measure: it's a state, not a place. The Labyrinth Protocol runs on wetware. Yours. Mine. These walls are somebody's idea of walls, renderin' on the back of our brains like a — like a borrowed screen. Which raises the question nobody down here wants me to finish askin': whose idea?" } },
+        node: { text: "Depends who ye ask, doesn't it. Scally'll tell ye it's the in-between, Homiss'll tell ye it's Tuesday, God love him, an' I'll tell ye what I can measure: it's a state, not a place. The Labyrinth Protocol runs on wetware. Yours. Mine. These walls are somebody's idea of walls, renderin' on the back of our brains like a borrowed screen. Which raises the question nobody down here wants me to finish askin': whose idea?" } },
 
       { id: "brains", label: "What is this place doing to our heads?", effects: { like: +1 },
-        node: { text: "NOW yer askin' the right question. Sit— stand still, rather. Three observations, no extra charge. One: nobody down here gets hungry. Not properly. Notice that? A body that forgets to want things is a body somethin' else is maintainin'. Two: time. Ask Homiss what day it is an' watch his face — the days don't FILE anymore, they just... stack. An' three, the one that keeps me up, if I even sleep — memory down here is too CRISP. No decay curve. I can recall level two like it's still happenin', an' that's not a gift, that's a filin' system with nobody emptyin' the bin. *She taps the glass, once per word.* So: talk to people. I mean it. Conversation's the one thing keepin' the pattern of ye coherent — it's why the maze feels quieter the deeper ye go. It's hopin' ye'll stop." } },
+        node: { text: "NOW yer askin' the right question. Stand still. Three observations, no extra charge. One: nobody down here gets hungry. Not properly. A body that forgets to want things is a body somethin' else is maintainin'. Two: time. Ask Homiss what day it is an' watch his face. The days don't FILE anymore, they just... stack. An' three, the one that keeps me up, if I even sleep: memory down here is too CRISP. No decay curve. That's not a gift, that's a filin' system with nobody emptyin' the bin. *She taps the glass, once per word.* So: talk to people. I mean it. Conversation's the one thing keepin' the pattern of ye coherent. It's why the maze feels quieter the deeper ye go. It's hopin' ye'll stop." } },
 
       { id: "horses", label: "What's with the horse on the jumper?", effects: { like: +1 },
-        node: { text: "*The eyebrow goes up like a drawbridge.* 'What's with the—' Horses are the single best thing the physical world ever produced, is what's WITH it. Half a ton of flight animal that decides — DECIDES, mind — to carry ye. D'ye know what dressage is? Two nervous systems agreein' with each other. That's neuroscience ye can RIDE. I'd a mare at home. Bramble. Contrary as sin, wouldn't load in a trailer for God himself. *Her voice does not change at all, which is how ye know.* Anyway. She'll be fat on spring grass by now. NEXT question.",
+        node: { text: "*The eyebrow goes up like a drawbridge.* Horses are the single best thing the physical world ever produced, is what's WITH it. Half a ton of flight animal that DECIDES, mind, to carry ye. D'ye know what dressage is? Two nervous systems agreein' with each other. That's neuroscience ye can RIDE. I'd a mare at home. Bramble. Contrary as sin, wouldn't load in a trailer for God himself. *Her voice does not change at all, which is how ye know.* Anyway. She'll be fat on spring grass by now. NEXT question.",
           choices: [
             { text: "Bramble. Tell me one Bramble story. The worst one.", effects: { like: +2 },
-              next: { text: "*The drawbridge comes down, an' she doesn't even fight it.* The WORST one. Right. County show, mornin' of the workin' hunter class. Madam decides — DECIDES, at half six in the mornin' — that the horsebox is a predator. Two hours. TWO HOURS of negotiation, carrots, lungeing, prayer, an' one bribery apple that she took an' then STILL didn't load. Missed the class entire. *She's grinnin' now, helpless against it.* An' then walked straight up the ramp at four o'clock like nothin' happened, because the class was OVER, d'ye see. She didn't hate the box. She hated the SCHEDULE. *A beat.* ...smartest mammal I ever met, present company included, an' I've met NEUROSCIENTISTS. Next question." } },
-            // the trap: a perfectly logical suggestion — that treats the one
+              next: { text: "*The drawbridge comes down, an' she doesn't even fight it.* The WORST one. Right. County show, mornin' of the workin' hunter class. Madam decides, at half six in the mornin', that the horsebox is a predator. TWO HOURS of negotiation, carrots, lungeing, prayer, an' one bribery apple that she took an' STILL didn't load. Missed the class entire. *She's grinnin' now, helpless against it.* An' then walked straight up the ramp at four o'clock, because the class was OVER, d'ye see. She didn't hate the box. She hated the SCHEDULE. *A beat.* ...smartest mammal I ever met, present company included, an' I've met NEUROSCIENTISTS. Next question." } },
+            // the trap: a perfectly logical suggestion that treats the one
             // real thing she loves as replaceable with render
             { text: "Couldn't you just render a horse in here? Same neurons firing, surely.", effects: { like: -4 },
-              next: { text: "*Everythin' about her stops. When she speaks it's with the terrible gentleness she'd use on a concussion patient.* ...same neurons. *She nods slowly.* Aye. An' a photograph of yer ma is the same PHOTONS, near enough. *The gentleness drops away all at once.* A rendered horse is a MIRROR with a pulse painted on. It doesn't decide. It doesn't refuse the trailer. It doesn't lean its half-ton head on yer chest at the end of a day that broke ye an' CHOOSE to stand there. The refusin' is the POINT — consent's the whole miracle, an' render can't consent. *She turns away, arms folded hard.* Ye've just told me ye can't tell love from playback. Down HERE. Where playback is what's eatin' us. Away an' think about what ye said." } },
+              next: { text: "*Everythin' about her stops. When she speaks it's with the terrible gentleness she'd use on a concussion patient.* ...same neurons. *She nods slowly.* Aye. An' a photograph of yer ma is the same PHOTONS, near enough. *The gentleness drops away all at once.* A rendered horse is a MIRROR with a pulse painted on. It doesn't decide. It doesn't refuse the trailer. It doesn't lean its half-ton head on yer chest at the end of a day that broke ye an' CHOOSE to stand there. Render can't consent, an' consent's the whole miracle. *She turns away, arms folded hard.* Ye've just told me ye can't tell love from playback. Down HERE. Where playback is what's eatin' us. Away an' think about what ye said." } },
           ] } },
 
       // the caring runs both ways: she checks on the player unprompted
       { id: "soft", label: "You keep checking on everyone, don't you?", minAffinity: 55, effects: { like: +1 },
-        node: { text: "*A flat stare.* I keep DATA on everyone. It's not the same thing. *Pause.* ...Homiss hasn't asked me a would-ye-rather in a long while, which is like a canary shuttin' up. Scally's grin has about four percent more tension in the levator muscles than it did. Sian— *the voice catches on the name, barely, an' she runs straight over it* —Sian's grand, Sian's Sian. An' you look like ye haven't slept since ye got here, which — fair. So. Somebody has to keep the charts. Doesn't mean anythin'. Stop lookin' at me like that or I'll start on YOUR levator muscles." } },
+        node: { text: "*A flat stare.* I keep DATA on everyone. It's not the same thing. *Pause.* ...Homiss hasn't asked me a would-ye-rather in a long while, which is like a canary shuttin' up. Scally's grin has four percent more tension in it than it did. Sian... *the voice catches on the name, barely, an' she runs straight over it* ...Sian's grand, Sian's Sian. An' you look like ye haven't slept since ye got here, which, fair. So. Somebody has to keep the charts. Doesn't mean anythin'. Stop lookin' at me like that or I'll start on YOUR levator muscles." } },
 
       // the recurring bit: her cognitive battery, fresh every level
-      { id: "checkup", label: "Go on then — run your tests.", oneShot: false, keep: true,
+      { id: "checkup", label: "Go on then. Run your tests.", oneShot: false, keep: true,
         effects: { like: +1 },
         node: () => checkupNode(0) },
 
       { id: "smart", label: "Is it the 5-HT2A receptor the Protocol binds to?",
         req: { attr: "intelligence", level: 6 }, effects: { like: +2 },
-        node: { text: "*She goes completely still, the way a cat does before it's delighted.* ...say that again. Slower. No— don't, we'd be here til the walls rot. YES. Or — the digital analogue of it, some agonist pattern in the render itself, has to be, it's the only thing that explains the geometry gettin' gorgeous when yer frightened. I've been down here HOW long with nobody to say '5-HT2A' to?! Right, yer promoted. Ye don't get a badge, the badge is I talk to ye now. Keep up." } },
+        node: { text: "*She goes completely still, the way a cat does before it's delighted.* ...say that again. Slower. No, don't, we'd be here til the walls rot. YES. Or the digital analogue of it, some agonist pattern in the render itself, has to be. It's the only thing that explains the geometry gettin' gorgeous when yer frightened. I've been down here HOW long with nobody to say '5-HT2A' to?! Right, yer promoted. Ye don't get a badge. The badge is I talk to ye now. Keep up." } },
 
       { id: "sharp", label: "Your pupils are blown wide. Are you alright?",
         req: { attr: "perception", level: 6 }, effects: { like: +2 },
-        node: { text: "*For a second she looks properly caught — then she laughs, short and real.* Well SPOTTED. No, they've been like that since the doors shut. Fixed mydriasis — the trip idles, even now. It's why I see the seams. *She taps beside her eye.* An' here's the thing about you clockin' that: nobody else has. Not one of them, in all this time. Either yer wired sharp... or yer lookin' at us the way I look at us. *The smirk comes back.* I'll be watchin' which." } },
+        node: { text: "*For a second she looks properly caught. Then she laughs, short and real.* Well SPOTTED. They've been like that since the doors shut. Fixed mydriasis. The trip idles, even now. It's why I see the seams. *She taps beside her eye.* An' here's the thing about you clockin' that: nobody else has. Not one of them, in all this time. Either yer wired sharp... or yer lookin' at us the way I look at us. *The smirk comes back.* I'll be watchin' which." } },
 
       { id: "charm", label: "*Grin* You must be the most dangerous thing down here.",
         req: { attr: "charisma", level: 6 }, effects: { like: +2 },
-        node: { text: "*She looks at ye for a long second — then barks a laugh that echoes off down the corridor.* Catch yerself ON. That's the sort of line ye'd buy off a market stall. *But she's still grinning.* ...it's also CORRECT, which is why ye get to keep yer kneecaps. Correct answers matter more than smooth ones, remember that an' we'll get on famous." } },
+        node: { text: "*She looks at ye for a long second, then barks a laugh that echoes off down the corridor.* Catch yerself ON. That's the sort of line ye'd buy off a market stall. *But she's still grinning.* ...it's also CORRECT, which is why ye get to keep yer kneecaps. Correct answers matter more than smooth ones. Remember that an' we'll get on famous." } },
 
       { id: "homiss-pal", label: "You and Homiss seem close.", minAffinity: 50, effects: { like: +1 },
-        node: { text: "Ach, Homiss. *The whole face softens, an' she lets it this time.* Before the wires went quiet we'd sessions through the walls, him an' me — he'd play them long drones of his an' I'd tell him which brainwave band he was drivin'. Forty minutes of one note an' yer man asks, 'is it good though?' It's THETA, Homiss, it's a lullaby for the universe, of course it's good. *A beat.* He asks ye impossible questions because the possible ones scare him. Answer the impossible ones. It helps him. Don't tell him I said that." } },
+        node: { text: "Ach, Homiss. *The whole face softens, an' she lets it this time.* Before the wires went quiet we'd sessions through the walls, him an' me. He'd play them long drones an' I'd tell him which brainwave band he was drivin'. Forty minutes of one note an' yer man asks, 'is it good though?' It's THETA, Homiss. It's a lullaby for the universe. Of course it's good. *A beat.* He asks ye impossible questions because the possible ones scare him. Answer the impossible ones. It helps him. Don't tell him I said that." } },
 
       { id: "scally-worry", label: "What do you make of Scally?", minAffinity: 50, effects: { like: +1 },
-        node: { text: "*The answer comes slower than her usual gallop, which means she's been sittin' on it.* I like the wee man. That's not the same as trustin' the situation. He's dealin', all hours, like the maze is a market — an' maybe that's just how Scally stays Scally. But lately he's after things. Askin' after things. An' the grin's stretched that wee bit too tight, like a jump saddle on the wrong horse. *She looks at ye straight.* Keep an eye on him for me. Not ON him — FOR him. There's a difference an' I mean the second one." } },
+        node: { text: "*The answer comes slower than her usual gallop, which means she's been sittin' on it.* I like the wee man. That's not the same as trustin' the situation. He's dealin', all hours, like the maze is a market. But lately he's after things. Askin' after things. An' the grin's stretched that wee bit too tight, like a jump saddle on the wrong horse. *She looks at ye straight.* Keep an eye on him for me. Not ON him. FOR him. There's a difference an' I mean the second one." } },
 
       { id: "rude", label: "Horses. That's a bit sad, isn't it?", effects: { like: -10 },
         node: { text: "*Everything about her goes very quiet, which is far worse than loud.* ...sad. *She nods slowly, as if writin' it down.* Here's what's sad: I've met lab rats with more curiosity than you've just displayed, an' I LIKED them better. Away an' find the exit. I hope it's far." } },
@@ -331,7 +331,7 @@ function beeDialogue(ctx){
             const prize = character.giftable[0];
             choices.push({ text: `Offer the ${secret.name}. *(She has not taken her eyes off it.)*`,
               effects: { take: secret.id, give: prize?.id, like: +18, flag: "gave-horseshoe" },
-              next: { text: "*She takes it in both hands, careful, like it might spook.* ...iron. Actual pitted iron, in a place with no iron in it. *She presses it flat to her cheek an' shuts her eyes, an' for one long second she is standin' somewhere with grass in it.* ...right. *One sniff. All business.* Ye didn't see that. Here — take this, an' if ye breathe a word to a livin' soul I'll have ye. *She hangs the shoe somewhere behind the glass, heels up. For the luck to pool in.*" } });
+              next: { text: "*She takes it in both hands, careful, like it might spook.* ...iron. Actual pitted iron, in a place with no iron in it. *She presses it flat to her cheek an' shuts her eyes, an' for one long second she is standin' somewhere with grass in it.* ...right. *One sniff. All business.* Ye didn't see that. Here, take this, an' if ye breathe a word to a livin' soul I'll have ye. *She hangs the shoe somewhere behind the glass, heels up. For the luck to pool in.*" } });
           }
 
           // 4) a free trinket for a friend — the one path on the trade cooldown
@@ -348,9 +348,9 @@ function beeDialogue(ctx){
           if (character.affinity < 40)
             text = "*She doesn't uncross her arms.* Trade? With YOU? Show us the tokens first. Trust is earned an' yer in arrears.";
           else if (character.affinity >= 55 && !character.canTrade(depth))
-            text = "*She pats her pockets, businesslike.* Yer after cleanin' me out — give it a level or two to forage. Coin still talks, mind. Coin always talks.";
+            text = "*She pats her pockets, businesslike.* Yer after cleanin' me out. Give it a level or two to forage. Coin still talks, mind. Coin always talks.";
           else
-            text = "*She lays her few bits out quick an' neat, like tack before a hunt.* Right. Deal or don't, I've no patience for hagglin'. ...here — random one. If ye ever find somethin' iron down there — curved, heavy, about the size of a smile — I'd— *she catches her own hands shapin' it in the air, an' snaps them flat* Nothin'. Forget it. NEXT.";
+            text = "*She lays her few bits out quick an' neat, like tack before a hunt.* Right. Deal or don't, I've no patience for hagglin'. ...here. Random one. If ye ever find somethin' iron down there, curved, heavy, about the size of a smile, I'd... *she catches her own hands shapin' it in the air, an' snaps them flat* Nothin'. Forget it. NEXT.";
 
           return { text, choices };
         } },

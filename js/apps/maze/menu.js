@@ -16,7 +16,7 @@
    users greet a returning operator with déjà vu (story.js
    REPLAY_GREETS). CONTINUE restores the run as saved.
    ============================================================ */
-import { player, story, STATS, STAT_BASE, resetPlayer } from "./state.js";
+import { player, story, STATS, STAT_BASE, resetPlayer, FINAL_DEPTH } from "./state.js";
 import { ROSTER, resetRoster } from "./characters/characters.js";
 
 const KEY = "maze-save-v1";
@@ -51,12 +51,32 @@ function snapshot(depth){
   };
 }
 
-const valid = d => d && d.v === VERSION && d.depth >= 1 && d.player && d.characters;
+const valid = d => d && d.v === VERSION && d.depth >= 1 && d.player && d.characters && !d.completed;
 
 export function saveGame(depth){
   const s = storage(); if (!s) return false;
   try { s.setItem(KEY, JSON.stringify(snapshot(depth))); return true; }
   catch { return false; }
+}
+
+/* the run ended at the Custodian's door: keep the slot (the run counter
+   must survive for New Game's déjà vu), but retire it — no CONTINUE back
+   into a terminated Protocol. */
+export function markCompleted(){
+  const s = storage(); if (!s) return false;
+  try {
+    s.setItem(KEY, JSON.stringify({
+      v: VERSION, completed: true, run: story.run, savedAt: new Date().toISOString(),
+    }));
+    return true;
+  } catch { return false; }
+}
+
+/* the run counter from the slot, valid save or not (a completed marker
+   still carries it) — resetGame needs it to keep runs monotonic */
+function savedRun(){
+  const s = storage(); if (!s) return 0;
+  try { return JSON.parse(s.getItem(KEY))?.run ?? 0; } catch { return 0; }
 }
 
 /* peek at the slot without touching game state (launcher labels) */
@@ -96,14 +116,15 @@ export function loadGame(){
     c.peers = { ...(cs.peers ?? {}) };
     c.seen = new Map(Object.entries(cs.seen ?? {}).map(([lvl, ids]) => [Number(lvl), new Set(ids)]));
   }
-  return d.depth;
+  // saves from before the Protocol was 10×3 could sit past the final depth
+  return Math.min(d.depth, FINAL_DEPTH);
 }
 
 /* NEW GAME: the Protocol rewinds. World state resets; the run counter
    climbs past anything played or saved before, so the characters keep
    their déjà vu of you ("...back at the very top, amico?"). */
 export function resetGame(){
-  const prev = Math.max(story.started ? story.run : 0, saveInfo()?.run ?? 0);
+  const prev = Math.max(story.started ? story.run : 0, savedRun());
   story.run = prev + 1;
   story.started = true;
   story.flags.clear();

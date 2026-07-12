@@ -40,6 +40,23 @@ export function addTokens(n){ player.tokens += n; return player.tokens; }
 export function spendTokens(n){ player.tokens = Math.max(0, player.tokens - n); return player.tokens; }
 export function canAfford(n){ return player.tokens >= (n ?? 0); }
 
+/* --- the shape of the game: 10 depths, 3 cycles ---------------------------
+   The Labyrinth Protocol is ten depths deep, and the whole descent LOOPS:
+   reaching the Custodian at the base recycles the player back to the top.
+   Internally `depth` never resets — it keeps climbing 1..30 (so palettes,
+   decay, trust and story keys all stay monotonic) — and the cycle and the
+   depth the PLAYER sees are derived views of it. Only presentation (HUD,
+   banners, what characters say out loud) uses the shown depth; the
+   characters' episodic memory rewinds each cycle, so to them it really is
+   "depth 3" again. */
+export const DEPTHS_PER_CYCLE = 10;
+export const CYCLES = 3;
+export const FINAL_DEPTH = DEPTHS_PER_CYCLE * CYCLES;   // 30: the last visit to the base
+export function cycleOf(depth){ return Math.min(CYCLES, Math.floor(((depth ?? 1) - 1) / DEPTHS_PER_CYCLE) + 1); }
+export function depthInCycle(depth){ return (((depth ?? 1) - 1) % DEPTHS_PER_CYCLE) + 1; }
+/* true on the depths whose gate leads to the base-depth sanctum */
+export function isBaseDepth(depth){ return depth % DEPTHS_PER_CYCLE === 0; }
+
 /* --- story flags + run counter ------------------------------------------
    Whole-game narrative state (see story.js for the content that reads it).
    Flags mark events that have happened ("msg-h2s", "found-data-vial") and

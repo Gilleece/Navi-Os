@@ -204,10 +204,10 @@ function drawSianLayer(g, w, h, mood, layer, ink){
    would-ye-rathers: the content of the pick doesn't matter, the CRAIC
    of the pick is everything. */
 const BOT_STEPS = [
-  { q: "YES. Right. Hypothetical bot — thirteen kilos, house rules, budget of whatever I find in these walls. First call: chassis. Wedge, walker, or somethin' the insurance fella can never know about?",
+  { q: "YES. Right. Hypothetical bot: thirteen kilos, house rules, budget of whatever I find in these walls. First call: chassis. Wedge, walker, or somethin' the insurance fella can never know about?",
     a: ["Wedge. Reliable. Boring. Wins.", "Walker. Style points.", "The insurance one, obviously."] },
-  { q: "*He explodes.* NO. No no n— ...actually. ACTUALLY. Hmm. Hai, that's not the worst call I've heard today. Right, it's your funeral: WEAPON. Spinner, flipper... or fire? Say fire. Don't say fire. Say it.",
-    a: ["Spinner. Maximum chaos.", "Flipper — dignity in victory.", "Fire. You said not to."] },
+  { q: "*He explodes.* NO. No no n... actually. ACTUALLY. Hmm. Hai, that's not the worst call I've heard today. Right, it's your funeral: WEAPON. Spinner, flipper... or fire? Say fire. Don't say fire. Say it.",
+    a: ["Spinner. Maximum chaos.", "Flipper. Dignity in victory.", "Fire. You said not to."] },
   { q: "*He grips the window frame like a corner man.* Ye absolute MENACE. I love it. It's banned in three counties an' I love it. LAST call, an' this one matters more than both the others: the name. Go.",
     a: ["Brenda II: The Reckoning.", "Something with 'Doom' in it.", "Name it after Bee. I dare you."] },
 ];
@@ -225,7 +225,7 @@ function botNode(i){
 }
 function botClose(){
   return {
-    text: "*He steps back from an invisible whiteboard, visibly moved.* ...it's beautiful, hai. It would be DISQUALIFIED, an' it's beautiful. Soon as I find the workshop level in this place — there's ALWAYS a workshop level — we're buildin' her. Shake on it. *Ye shake on it through the glass, somehow, which neither of ye questions.*",
+    text: "*He steps back from an invisible whiteboard, visibly moved.* ...it's beautiful, hai. It would be DISQUALIFIED, an' it's beautiful. Soon as I find the workshop level in this place, an' there's ALWAYS a workshop level, we're buildin' her. Shake on it. *Ye shake on it through the glass, somehow, which neither of ye questions.*",
     choices: [{ text: "(It's a deal.)" }],
   };
 }
@@ -246,66 +246,66 @@ function sianDialogue(ctx){
   const greet = {
     hostile:  "*He turns a controller over an' over in his hands, not lookin' at ye.* ...oh. It's you, hai. Sound. I'm busy.",
     wary:     "Alright. *A nod. No grin. From Sian that's a five-alarm freeze.* What's the craic.",
-    neutral:  "Well HELLO — another user! What's the craic, hai? Some graphics in this place, aren't they? Look at the FOG. Ye couldn't render that fog on a work machine an' I'd know, hai, I've TRIED.",
-    friendly: "Ah here, it's yerself! *He air-drums a little fill on the window frame.* C'mon over — I found a wall with a seam in it two corridors back, ye HAVE to see it, it's the first bug in the whole build.",
-    warm:     "*He lights up like a loading screen finishing.* The MAIN character! I was only just sayin' to meself, I hope the game spawns more of that one, hai. Best NPC in the— yer not an NPC. Best WHATEVER in the build. C'mere.",
+    neutral:  "Well HELLO, another user! What's the craic, hai? Some graphics in this place, aren't they? Look at the FOG. Ye couldn't render that fog on a work machine an' I'd know, hai, I've TRIED.",
+    friendly: "Ah here, it's yerself! *He air-drums a little fill on the window frame.* C'mon over. I found a wall with a seam in it two corridors back. Ye HAVE to see it. First bug in the whole build.",
+    warm:     "*He lights up like a loading screen finishing.* The MAIN character! I was only just sayin' to meself, I hope the game spawns more of that one, hai. Best NPC in the... yer not an NPC. Best WHATEVER in the build. C'mere.",
   }[character.tone];
 
   return {
     hub: true,
     level: depth,                  // conversations are tracked (and exhausted) per level
     greet,
-    exhausted: "Right, I've to get back to it — that wall's got a collision bug an' I WILL clip through it before the day's out, hai. Go on. Come back when there's craic. There's always craic.",
+    exhausted: "Right, I've to get back to it. That wall's got a collision bug an' I WILL clip through it before the day's out, hai. Go on. Come back when there's craic. There's always craic.",
     hostile: "*He pulls the visor down like a welding mask.* Nah. Yer muted, hai. MUTED. *He mimes pressing a button with enormous dignity.*",
     topics: [
       { id: "place", label: "So what do you make of all this?", effects: { like: +1 },
-        node: { text: "Honestly? Five stars. FIVE, hai. The hand trackin' alone — look— *he wiggles his fingers at ye through the glass* — flawless. No jitter, no driftin', an' the latency... there's NO latency. I've shipped code, hai, I know what a frame budget looks like, an' this thing doesn't HAVE one. Whoever built this is ten years ahead of anythin' I ever— *a tiny pause, the first one* —anyway. Game of the year. Bit long, maybe." } },
+        node: { text: "Honestly? Five stars. FIVE, hai. The hand trackin' alone, look, *he wiggles his fingers at ye through the glass*, flawless. No jitter, no driftin', an' there's NO latency. I've shipped code, hai. This thing doesn't even HAVE a frame budget. Whoever built it is ten years ahead of anythin' I ever... *a tiny pause, the first one* ...anyway. Game of the year. Bit long, maybe." } },
 
       { id: "bass", label: "I hear you play bass.", effects: { like: +1 },
-        node: { text: "I PLAY bass. Homiss OWNS a bass — there's a difference, hai. *He's grinnin' but he's up on his toes.* Yer man got a DOCTORATE in it. A doctorate! In BASS! Ye can't peer-review a groove, hai, either the room moves or it doesn't. He plays one note for forty minutes an' calls it a piece; I play forty notes in one minute an' he calls it 'a panic attack in E'. *A beat. The grin softens.* ...he's better than me. Ye didn't hear that. He'd agree with ye an' that'd be worse." } },
+        node: { text: "I PLAY bass. Homiss OWNS a bass. There's a difference, hai. *He's grinnin' but he's up on his toes.* Yer man got a DOCTORATE in it. In BASS! Ye can't peer-review a groove, hai. Either the room moves or it doesn't. He plays one note for forty minutes an' calls it a piece; I play forty notes in one minute an' he calls it 'a panic attack in E'. *A beat. The grin softens.* ...he's better than me. Ye didn't hear that. He'd agree with ye an' that'd be worse." } },
 
       { id: "robots", label: "Tell me about the combat robots.", effects: { like: +1 },
-        node: { text: "*He inhales like a man about to recite scripture.* Brenda. Twelve kilos, hardened steel wedge, drum spinner off a washin' machine motor I rewound MEself. Undefeated in Leinster, hai — well. One loss. Disqualification. There was FIRE, the rules are VAGUE about fire, we've been over this at the tribunal. *He mimes her turnin' circles.* She's sittin' in me shed right now with her batteries out, like a knight in a tomb. First thing I'm doin' when I take this headset off is chargin' her up. First thing." } },
+        node: { text: "*He inhales like a man about to recite scripture.* Brenda. Twelve kilos, hardened steel wedge, drum spinner off a washin' machine motor I rewound MEself. Undefeated in Leinster, hai. Well. One loss. Disqualification. There was FIRE, the rules are VAGUE about fire, we've been over this at the tribunal. *He mimes her turnin' circles.* She's sittin' in me shed right now with her batteries out, like a knight in a tomb. First thing I'm doin' when I take this headset off is chargin' her up. First thing." } },
 
       // the recurring bit: workshop the next bot, fresh every level
       { id: "designbot", label: "Let's design your next bot.", oneShot: false, keep: true,
         effects: { like: +1 },
         node: () => botNode(0) },
 
-      { id: "bee-love", label: "Little Bee — she's yours, then?", minAffinity: 55, effects: { like: +1 },
-        node: { text: "*The grin goes soft at the edges, an' he doesn't fight it.* Aye. Met her at a robot fight, if ye can believe it. Brenda died mid-bout — servo went — an' this small FURIOUS genius leans over the barrier an' diagnoses it by EAR. By ear, hai! Over the crowd! I was done for on the spot. Doctor of brains, rides horses, argues like a barrister with a wasp in her jacket... *He taps the glass, softer.* She's in here somewhere too — went deep after the trippy stuff, that's her idea of a holiday. She can mind herself better than I can mind meself. But— ye'd tell me. If ye saw her. That she's grand. Ye'd tell me, hai." } },
+      { id: "bee-love", label: "Little Bee. She's yours, then?", minAffinity: 55, effects: { like: +1 },
+        node: { text: "*The grin goes soft at the edges, an' he doesn't fight it.* Aye. Met her at a robot fight, if ye can believe it. Brenda died mid-bout, servo went, an' this small FURIOUS genius leans over the barrier an' diagnoses it by EAR. Over the crowd! I was done for on the spot. Doctor of brains, rides horses, argues like a barrister with a wasp in her jacket... *He taps the glass, softer.* She's in here somewhere too. Went deep after the trippy stuff. That's her idea of a holiday. She can mind herself better than I can mind meself. But... ye'd tell me. If ye saw her. That she's grand. Ye'd tell me, hai." } },
 
       { id: "school", label: "You and Dalypso go way back?", effects: { like: +1 },
-        node: { text: "Since we were six, hai! D'ye know he once fought the referee AND both managers at an under-12 match — from the STANDS? He was eleven. Got escorted out of a game he wasn't even PLAYIN' in. *He wipes an eye.* Heart of gold on him, mind — he'd give ye his last euro an' then argue ye shouldn't spend it. He just... the man would start a row with rain for bein' wet. Ye want him in yer corner though. There's nobody better in yer corner." } },
+        node: { text: "Since we were six, hai! D'ye know he once fought the referee AND both managers at an under-12 match, from the STANDS? He was eleven. Escorted out of a game he wasn't even PLAYIN' in. *He wipes an eye.* Heart of gold on him, mind. He'd give ye his last euro an' then argue ye shouldn't spend it. The man would start a row with rain for bein' wet. But ye want him in yer corner. There's nobody better in yer corner." } },
 
       { id: "work", label: "You worked with Scally?", effects: { like: +1 },
-        node: { text: "At the tech giant that shall not be named, hai — aye. *He glances left an' right on reflex, which is mad, given.* Everyone knew Scally. NOBODY knew what Scally did. He wasn't on any org chart I ever saw, an' I looked. Procurement? Security? Facilities? All ye knew was: whatever ye needed — a standin' desk, a graphics card, a fire exit that didn't set off the alarm — ye asked the wee man, an' it appeared, an' ye didn't ask a second question. *A beat.* Funny him bein' in here. In a... in the same game. Small world, hai.",
+        node: { text: "At the tech giant that shall not be named, hai. Aye. *He glances left an' right on reflex, which is mad, given.* Everyone knew Scally. NOBODY knew what Scally did. He wasn't on any org chart I ever saw, an' I looked. All ye knew was: whatever ye needed, a standin' desk, a graphics card, a fire exit that didn't set off the alarm, ye asked the wee man, an' it appeared, an' ye didn't ask a second question. *A beat.* Funny him bein' in here. In a... in the same game. Small world, hai.",
           choices: [
-            { text: "A fire exit that didn't set off the alarm? Go on — whose idea was that?", effects: { like: +2 },
-              next: { text: "*He lights up like a man handed a match an' permission.* MINE, hai! Well — the NEED was mine. There was a roof. There was a sunset. There was a girl I was TEXTIN' about the sunset— *he waves it off, grinnin'.* The POINT is, I asked the wee man on the Monday, an' on the WEDNESDAY there's a fire door on floor four with a wee sticker of a cornicello on it, an' that door never made a sound again as long as I worked there. No invoice. No questions. Just — *he snaps his fingers* — SORTED. *A beat, an' the grin goes fond.* Whole buildin' full of geniuses, an' the only man who could actually DO things wore a flat cap an' officially didn't exist. Says somethin', hai. I don't know WHAT. But it says it." } },
-            // the trap: reasonable workplace paranoia — aimed at his mate
-            { text: "No org chart, appears everywhere, knows everything? Sian — he was obviously surveillance.", effects: { like: -3 },
-              next: { text: "*The grin stops movin'.* ...surveillance. *He sets the controller down, an' when he talks the warmth's been swapped out for somethin' careful.* Scally lent me his OWN coat one winter, hai. Off his back, in the car park, because I was after givin' mine to— doesn't matter. The wee man FED people. Half the graduate intake owed him their deposit money an' the other half owed him their JOBS. *He folds his arms.* An' I'm supposed to stand at this window an' hear he was a CAMERA? *He shakes his head slowly.* Ye want to watch that, partner. Down here everyone's got a theory about everyone — her upstairs has them about the fella below, the wee man has them about the halls — an' the theories do more damage than the MAZE does. He's me MATE. Find a different suspect, hai." } },
+            { text: "A fire exit that didn't set off the alarm? Go on. Whose idea was that?", effects: { like: +2 },
+              next: { text: "*He lights up like a man handed a match an' permission.* MINE, hai! Well. The NEED was mine. There was a roof. There was a sunset. There was a girl I was TEXTIN' about the sunset... *he waves it off, grinnin'.* I asked the wee man on the Monday, an' on the WEDNESDAY there's a fire door on floor four with a wee cornicello sticker on it, an' that door never made a sound again. No invoice. No questions. Just *he snaps his fingers* SORTED. *A beat, an' the grin goes fond.* Whole buildin' full of geniuses, an' the only man who could actually DO things wore a flat cap an' officially didn't exist. Says somethin', hai. I don't know WHAT. But it says it." } },
+            // the trap: reasonable workplace paranoia, aimed at his mate
+            { text: "No org chart, appears everywhere, knows everything? Sian, he was obviously surveillance.", effects: { like: -3 },
+              next: { text: "*The grin stops movin'.* ...surveillance. *He sets the controller down, an' when he talks the warmth's been swapped out for somethin' careful.* Scally lent me his OWN coat one winter, hai. Off his back, in the car park, because I was after givin' mine to... doesn't matter. The wee man FED people. Half the graduate intake owed him their deposit money an' the other half owed him their JOBS. *He folds his arms.* An' I'm supposed to hear he was a CAMERA? *He shakes his head slowly.* Ye want to watch that, partner. Down here the theories do more damage than the MAZE does. He's me MATE. Find a different suspect, hai." } },
           ] } },
 
       { id: "agile", label: "*He tosses the battlebot at you without warning.*",
         req: { attr: "agility", level: 6 }, effects: { like: +2 },
-        node: { text: "THINK FAST— *it's already in yer hand, spinner-side safely down, before he finishes the shout. He stares.* ...ye caught her. Ye caught her ONE-handed, on the ARMOURED side. D'ye know the reaction time on that? Frame-perfect, hai. FRAME-perfect. *He points at ye like a manager who's just found a free agent.* Right, that's it, yer on pit crew. No arguments. Ye've the hands for it an' Dalypso's banned from three venues." } },
+        node: { text: "THINK FAST... *it's already in yer hand, spinner-side safely down, before he finishes the shout. He stares.* ...ye caught her. ONE-handed, on the ARMOURED side. D'ye know the reaction time on that? Frame-perfect, hai. *He points at ye like a manager who's just found a free agent.* Right, that's it, yer on pit crew. No arguments. Ye've the hands for it an' Dalypso's banned from three venues." } },
 
       { id: "smart", label: "What's this place's render pipeline like?",
         req: { attr: "intelligence", level: 6 }, effects: { like: +2 },
-        node: { text: "*He lights up — a colleague! — an' then, halfway through the first sentence, dims.* Deferred, has to be, the light count alone— see, that's the thing though. I went lookin' for the framerate. Ye can always FEEL a framerate, hai, a dropped frame here an' there, it's like a heartbeat. *He taps the glass twice.* This has no heartbeat. It never drops. Not when the fog's thick, not with all the particles, never. Either it's runnin' on somethin' the size of a power station... or it's not renderin' the way renderin' works. *The grin comes back a half-second late.* Mad optimisation, hai. Fair play to them." } },
+        node: { text: "*He lights up, a colleague!, an' then, halfway through the first sentence, dims.* Deferred, has to be, the light count alone... see, that's the thing though. I went lookin' for the framerate. Ye can always FEEL a framerate, hai. A dropped frame here an' there, like a heartbeat. *He taps the glass twice.* This has no heartbeat. It never drops. Not when the fog's thick, not with all the particles, never. Either it's runnin' on somethin' the size of a power station... or it's not renderin' the way renderin' works. *The grin comes back a half-second late.* Mad optimisation, hai. Fair play to them." } },
 
-      { id: "strong", label: "*He can't get the chassis open — put your hands to it.*",
+      { id: "strong", label: "*He can't get the chassis open. Put your hands to it.*",
         req: { attr: "strength", level: 6 }, effects: { like: +2 },
-        node: { text: "It's seized, hai, don't bother, I've been at it an hour with— *the casing comes apart in yer hands with a bang like a shot. He looks at the two halves, then at you, then back.* ...HOLY God. That's torqued to forty newton-metres, that is. WAS. *He takes the halves back, reverent.* Right, new plan: yer not pit crew anymore, yer the WEAPON. We'll strap a wedge to ye. Thirteen-kilo class? Ye'd walk it. Ye'd WALK it, hai." } },
+        node: { text: "It's seized, hai, don't bother, I've been at it an hour with... *the casing comes apart in yer hands with a bang like a shot. He looks at the two halves, then at you, then back.* ...HOLY God. That's torqued to forty newton-metres, that is. WAS. *He takes the halves back, reverent.* Right, new plan: yer not pit crew anymore, yer the WEAPON. We'll strap a wedge to ye. Thirteen-kilo class? Ye'd WALK it, hai." } },
 
       { id: "charm", label: "*Deadpan* You're the best craic in this whole maze.",
         req: { attr: "charisma", level: 6 }, effects: { like: +2 },
-        node: { text: "*He clutches his chest like he's been flipped.* Now THAT — that is a review I'll be quotin'. 'Best craic in the maze', five stars, verified user. *He straightens up, mock-solemn.* I'd say yer only sayin' it, but here's the thing, hai: I've decided not to care. Flattery works on me a HUNDRED percent of the time an' I've made peace with it. C'mere, ye've unlocked the good stories now. Did I ever tell ye about the tribunal?" } },
+        node: { text: "*He clutches his chest like he's been flipped.* Now THAT is a review I'll be quotin'. 'Best craic in the maze', five stars, verified user. *He straightens up, mock-solemn.* I'd say yer only sayin' it, but here's the thing, hai: I've decided not to care. Flattery works on me a HUNDRED percent of the time an' I've made peace with it. C'mere, ye've unlocked the good stories now. Did I ever tell ye about the tribunal?" } },
 
       { id: "rude", label: "The robots are toys, and Homiss is the better bassist.", effects: { like: -10 },
-        node: { text: "*He goes off like a car alarm.* TOYS?! Brenda is twelve KILOS of— an' HOMISS?! HOMISS is— *and then, all at once, the air goes out of him, which is far worse.* ...he is, actually. He's the better player. The robots bit was just mean, hai. *He picks up the controller an' turns away.* Game's more fun single-player anyway." } },
+        node: { text: "*He goes off like a car alarm.* TOYS?! Brenda is twelve KILOS of... an' HOMISS?! HOMISS is... *and then, all at once, the air goes out of him, which is far worse.* ...he is, actually. He's the better player. The robots bit was just mean, hai. *He picks up the controller an' turns away.* Game's more fun single-player anyway." } },
 
       // Always askable. Built from the shared economy on the base class: a
       // coin-only sale, item-for-item barter (he wants Homiss's plectrum —
@@ -341,7 +341,7 @@ function sianDialogue(ctx){
             const prize = character.giftable[0];
             choices.push({ text: `Offer the ${secret.name}. *(He has gone very still.)*`,
               effects: { take: secret.id, give: prize?.id, like: +18, flag: "gave-lanyard" },
-              next: { text: "*He takes it an' turns it over, an' for a long moment he isn't playin' anything at all.* ...I had one of these. This exact lanyard. Same scratch where the logo goes — we all scratched it off, it was that kind of place. *He looks up at ye, an' the visor hides whatever his eyes are doin'.* This was WORK, hai. This was us. The Protocol, the maze — it's not somebody's game. It's somebody's PRODUCT. Somebody stood up in a plannin' meetin' an' SHIPPED this. *He pockets it, an' the grin that comes back on is the one he used to wear to stand-ups.* Here. Take somethin' for it. An' keep yer save backed up, hai. I mean that as a friend." } });
+              next: { text: "*He takes it an' turns it over, an' for a long moment he isn't playin' anything at all.* ...I had one of these. This exact lanyard. Same scratch where the logo goes. We all scratched it off. It was that kind of place. *He looks up at ye, an' the visor hides whatever his eyes are doin'.* This was WORK, hai. This was us. The Protocol isn't somebody's game. It's somebody's PRODUCT. Somebody stood up in a plannin' meetin' an' SHIPPED this. *He pockets it, an' the grin that comes back on is the one he used to wear to stand-ups.* Here. Take somethin' for it. An' keep yer save backed up, hai. I mean that as a friend." } });
           }
 
           // 4) a free trinket for a friend — the one path on the trade cooldown
@@ -358,9 +358,9 @@ function sianDialogue(ctx){
           if (character.affinity < 40)
             text = "*He sucks his teeth.* Economy's rough, hai. Nothin' personal, but I don't know yer gamertag from Adam. Coin up front, an' count it where I can see ye.";
           else if (character.affinity >= 55 && !character.canTrade(depth))
-            text = "Inventory's SPOKEN for, hai — I'm a Cavan man, we don't do 'spare'. *winks* Give it a level or two. The shop restocks. ...I assume the shop restocks.";
+            text = "Inventory's SPOKEN for, hai. I'm a Cavan man, we don't do 'spare'. *winks* Give it a level or two. The shop restocks. ...I assume the shop restocks.";
           else
-            text = "Vendor mode: ENGAGED. *He mimes a till openin'.* Right — what are ye buyin', what are ye sellin'? ...oh, an' a random one, off the books: if ye ever come across a wee card on a string out there — plastic, photo on it, like a work badge — grab it for me. Don't ask why. *The grin doesn't move, but somethin' behind it does.* Just grab it, hai.";
+            text = "Vendor mode: ENGAGED. *He mimes a till openin'.* Right, what are ye buyin', what are ye sellin'? ...oh, an' a random one, off the books: if ye ever come across a wee card on a string out there, plastic, photo on it, like a work badge, grab it for me. Don't ask why. *The grin doesn't move, but somethin' behind it does.* Just grab it, hai.";
 
           return { text, choices };
         } },

@@ -251,7 +251,7 @@ function renderHub(){
   // A topic can also hide behind `minAffinity` — the personal stuff only
   // surfaces once the character has warmed to the player.
   const offered = t =>
-    !(t.once && current.recalls(`topic-${t.id}`))
+    !(t.once && current.topicRetired(t.id))   // per-CYCLE: retired beats echo next cycle
     && (!t.available || t.available(hub.ctx))
     && (t.minAffinity == null || current.affinity >= t.minAffinity);
   const live    = hub.topics.filter(offered);
@@ -273,14 +273,14 @@ function renderHub(){
 
 function giftTo(item){
   const given = removeItem(item.id);
-  if (given){ current.inventory.push(given); current.like(20); toast(`GAVE — ${given.name.toUpperCase()}`); }
+  if (given){ current.inventory.push(given); current.like(20); toast(`GAVE: ${given.name.toUpperCase()}`); }
   renderHub();                       // mood may now be warm enough to talk
 }
 
 function selectTopic(t){
   if (!meetsReq(t.req)) return;
   if (t.oneShot !== false) current.markSeen(hub.level, t.id);   // carried out -> not offered again this level
-  if (t.once) current.remember(`topic-${t.id}`);                // retired for the whole game (story beats)
+  if (t.once) current.retireTopic(t.id);   // retired for the CYCLE (echoes replay it next cycle)
   applyEffects(t.effects);
   renderNode(typeof t.node === "function" ? t.node() : t.node);
 }
@@ -288,7 +288,12 @@ function selectTopic(t){
 /* ---------- effects ----------
    One place applies everything a topic or choice can do: affinity (clamped
    for pure conversation, free for trades), token cost, item exchange, story
-   flags, and inter-character (peer) affinity shifts from story beats. */
+   flags, inter-character (peer) affinity shifts from story beats, and named
+   engine events (`event`) — the Custodian's final door fires "ending", which
+   maze.js handles (registered via onStoryEvent to avoid a module cycle). */
+let storyEventHandler = null;
+export function onStoryEvent(fn){ storyEventHandler = fn; }
+
 function applyEffects(fx){
   if (!fx) return;
   if (typeof fx.like === "number"){
@@ -304,7 +309,7 @@ function applyEffects(fx){
     if (item){
       addItem(item);
       if (fx.gift) current.recordTrade(hub.level); // only free affinity gifts go on the cooldown
-      toast(`RECEIVED — ${item.name.toUpperCase()}`);
+      toast(`RECEIVED: ${item.name.toUpperCase()}`);
     }
   }
   if (fx.flag) for (const f of [].concat(fx.flag)) setFlag(f);   // story flags
@@ -319,6 +324,7 @@ function applyEffects(fx){
     if (p.meet) c.meetPeer(p.toward, p.initial ?? 50);
     if (p.delta) c.likePeer(p.toward, p.delta);
   }
+  if (fx.event && storyEventHandler) storyEventHandler(fx.event);
 }
 
 /* a choice can be gated on an attribute (req) and/or a token price
@@ -407,7 +413,7 @@ function refreshAffinity(){
       { duration: 420, easing: "ease-out" });
     // crossing a band is a headline: shout the new standing
     if (shownStanding !== null && shownStanding !== current.standing)
-      toast(`${current.name} — ${current.standing.toUpperCase()}`);
+      toast(`${current.name}: ${current.standing.toUpperCase()}`);
   }
   shownAffinity = a;
   shownStanding = current.standing;
@@ -646,14 +652,14 @@ export function updateInteractions(state){
   if (M.inVR){
     // DOM prompt isn't visible in immersive-vr — float one above the character
     ui.prompt.classList.remove("on");
-    if (near) setVRPrompt(`PULL TRIGGER — SPEAK WITH ${name}`, near.x, near.z);
+    if (near) setVRPrompt(`PULL TRIGGER: SPEAK WITH ${name}`, near.x, near.z);
     else      setVRPrompt(null);
   } else {
     setVRPrompt(null);
     if (near){
       ui.prompt.textContent = IS_TOUCH
-        ? `TAP HERE — SPEAK WITH ${name}`
-        : `PRESS [F] — SPEAK WITH ${name}`;
+        ? `TAP HERE: SPEAK WITH ${name}`
+        : `PRESS [F]: SPEAK WITH ${name}`;
       ui.prompt.classList.add("on");
     } else {
       ui.prompt.classList.remove("on");
