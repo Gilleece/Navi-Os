@@ -247,11 +247,20 @@ function scallyDialogue(ctx){
               next: { text: "*His hands tremble as he takes it, voice dropping to nothing.* ...the little saint, she comes home at last. You did not see this, eh? Here, take it, take it. Is the least Scally can do. *He will not meet your eyes.*" } });
           }
 
-          // 4) a free trinket for a friend - the one path on the trade cooldown
+          // 4) a free trinket for a friend — real generosity starts at 75.
+          //    Asking earlier is allowed, and gets you read in-character:
+          //    polite brush-off at 40..74, open scorn below 40.
           const freebie = character.giftable[0];
-          if (character.affinity >= 55 && character.canTrade(depth) && freebie)
-            choices.push({ text: "Anything spare for a friend?",
-                           effects: { give: freebie.id, like: +3, gift: true } });
+          if (freebie){
+            if (character.affinity >= 75 && character.canTrade(depth))
+              choices.push({ text: "Anything spare for a friend?",
+                             effects: { give: freebie.id, like: +3, gift: true } });
+            else if (character.affinity < 75)
+              choices.push({ text: "Anything spare for a friend?",
+                next: { text: character.affinity < 40
+                  ? "*The laugh comes out flat, like a coin dropped on the counter.* A gift. For YOU. Amico, a gift is a thing you give a FRIEND, and what are you to Scally, eh? Foot traffic. *He turns back to his shelf.* The coin talks. You, not so much."
+                  : "*He wags a finger, almost fond.* Ehhh. Gifts, amico, gifts are for famiglia. You and Scally, we are... promising. PROMISING. Is not nothing! *He taps his temple.* Keep walking, keep talking, keep bringing that face to the window. The shelf, she remembers who her friends are. One day she opens for you. Not today." } });
+          }
 
           choices.push({ text: "(Maybe later.)" });
 
@@ -260,7 +269,7 @@ function scallyDialogue(ctx){
           let text;
           if (character.affinity < 40)
             text = "*He keeps the goods close to his chest.* Trade? With you, amico, only the coin talks. You show Scally the LT, eh?";
-          else if (character.affinity >= 55 && !character.canTrade(depth))
+          else if (character.affinity >= 75 && !character.canTrade(depth))
             text = "*Scally pats his coat, apologetic.* Favours you must wait for, my friend. Things are-a scarce in the Labyrinth Protocol right now. But coin? Coin always talks. *winks*";
           else
             text = "*He spreads his little wares.* Eh, let us deal! And... *his voice drops* ...if ever the maze gives up a little bone the old saints left behind, you bring it to Scally, eh? I ask-a no more. *He looks quickly away.*";

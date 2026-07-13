@@ -389,11 +389,20 @@ function homissDialogue(ctx){
               next: { text: "*He takes it in both hands like a holy relic, barely breathin'.* ...mayonnaise. Real, actual mayonnaise. *His voice cracks.* Ye beautiful, beautiful creature. Whatever ye need off me, ever, it's yours. I mean that now. I'll never forget this. *He's not letting go of the jar.*" } });
           }
 
-          // 4) a free trinket for a friend — the one path on the trade cooldown
+          // 4) a free trinket for a friend — real generosity starts at 75.
+          //    Asking earlier is allowed, and gets you read in-character:
+          //    polite brush-off at 40..74, open scorn below 40.
           const freebie = character.giftable[0];
-          if (character.affinity >= 55 && character.canTrade(depth) && freebie)
-            choices.push({ text: "Anything goin' spare for a pal?",
-                           effects: { give: freebie.id, like: +3, gift: true } });
+          if (freebie){
+            if (character.affinity >= 75 && character.canTrade(depth))
+              choices.push({ text: "Anything goin' spare for a pal?",
+                             effects: { give: freebie.id, like: +3, gift: true } });
+            else if (character.affinity < 75)
+              choices.push({ text: "Anything goin' spare for a pal?",
+                next: { text: character.affinity < 40
+                  ? "*He looks at ye a long moment over the strings, an' doesn't stop playin'.* ...a 'pal'. *Plink.* D'ye know, I've been called worse things by better friends. Ye'll get nothin' spare off me but advice, an' here it is for free: come back when 'pal' isn't a chancer's word in yer mouth, wha'."
+                  : "*He winces, genuinely pained by his own answer.* Ah, look... every bit an' bob down here's a piece o' me, an' a man wants to know a person PROPER before he goes postin' himself out the window. We're gettin' there, like. We ARE. Few more chats an' sure ye'll have the shirt off me back. *A beat.* It's a terrible shirt. Ye'll love it." } });
+          }
 
           choices.push({ text: "(Maybe later.)" });
 
@@ -402,7 +411,7 @@ function homissDialogue(ctx){
           let text;
           if (character.affinity < 40)
             text = "*He holds his bits a bit closer.* Ah, I don't really know ye well enough to be handin' me things over, do I. No offence, like.";
-          else if (character.affinity >= 55 && !character.canTrade(depth))
+          else if (character.affinity >= 75 && !character.canTrade(depth))
             text = "*He pats his empty pockets, mortified.* Ah, ye've fairly cleaned me out for now, pal. Give us a bit to scrounge somethin' together, wha'? *winks*";
           else
             text = "Go on so, let's see what we've got! *Then, casual as anythin', which is to say not at all:* ...an' ye'd tell me, sure ye would, if ye ever came across a drop o' mayonnaise out there? Ye'd tell me. That's all I ask.";

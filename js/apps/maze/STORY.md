@@ -777,6 +777,22 @@ A conversation is a few things deep, not a wall of choices:
   seamlessly). Barter and token sales are **not** on the cooldown (they're
   self-limiting — the item / LT is spent).
 
+### Three ways to get a character's items
+
+1. **Token sale** — items with a `price` (LT only, never gifted/bartered).
+2. **Affinity gift** — un-priced items, given free only at **affinity ≥ 75**
+   ("Likes you" territory; the trust cap makes this unreachable before
+   depth 5), on the trade cooldown. **Asking early is always possible and
+   always refused in character**, in two registers: a polite "I don't know
+   you well enough yet" at 40–74 (Bee: *"trust is a DATASET, not a favour"*;
+   Sian: *"free stuff's ENDGAME content, hai"*) and open scorn below 40
+   (Dalypso: *"I've seen chancers on DAYTIME TELEVISION with more shame.
+   MUTE."*). The refusal itself costs nothing — asking isn't punished, just
+   read. When a 75+ friend is only blocked by the cooldown, the trade
+   topic's intro line apologises instead.
+3. **Barter** — un-priced items swapped for something the character wants
+   (`interests.open` / `interests.hidden`).
+
 ### The ending (`maze.js runEnding`)
 
 Fired by `audience-3`'s final choice. Closes the dialogue, **marks the save

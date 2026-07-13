@@ -357,11 +357,20 @@ function dalypsoDialogue(ctx){
               next: { text: "*He holds it at arm's length like a newborn, then against his chest.* The Christmas one. THE Christmas one. *He opens it dead centre, an' his eyes are shinin'.* Look at it. Two full weeks where everythin' good is on an' nothin' bad can happen an' the whole COUNTRY is watchin' the same thing at the same time. That's not a magazine, that's a CEASEFIRE. *He tucks it somewhere safe below the window, an' when he straightens up he has to clear his throat.* Ye don't understand what ye've done. Come round to the house. I MEAN it. Yer name's goin' on a key." } });
           }
 
-          // 4) a free trinket for a friend — the one path on the trade cooldown
+          // 4) a free trinket for a friend — real generosity starts at 75.
+          //    Asking earlier is allowed, and gets you read in-character:
+          //    polite brush-off at 40..74, open scorn below 40.
           const freebie = character.giftable[0];
-          if (character.affinity >= 55 && character.canTrade(depth) && freebie)
-            choices.push({ text: "Anything spare for a good neighbour?",
-                           effects: { give: freebie.id, like: +3, gift: true } });
+          if (freebie){
+            if (character.affinity >= 75 && character.canTrade(depth))
+              choices.push({ text: "Anything spare for a good neighbour?",
+                             effects: { give: freebie.id, like: +3, gift: true } });
+            else if (character.affinity < 75)
+              choices.push({ text: "Anything spare for a good neighbour?",
+                next: { text: character.affinity < 40
+                  ? "*He points the remote at ye an' holds it there, thumb hoverin'.* A gift. Off ME. To YOU. I have seen chancers on DAYTIME TELEVISION with more shame. Away an' earn a Christmas card first. MUTE."
+                  : "*He sucks air through his teeth: the full referee's deliberation.* Gifts is a season-finale thing, neighbour. Big moment. Strings swellin'. Handed over the threshold in the rain. You an' me? We're barely out o' the PILOT. *He softens, marginally.* Good pilot, mind. Promisin' numbers. Stick around an' EARN yer arc like everybody else." } });
+          }
 
           choices.push({ text: "(Maybe later.)" });
 
@@ -370,7 +379,7 @@ function dalypsoDialogue(ctx){
           let text;
           if (character.affinity < 40)
             text = "Trade? I barely KNOW ye. That's how ye end up in a true-crime documentary, handin' yer valuables to strangers in corridors. Tokens up front or no deal.";
-          else if (character.affinity >= 55 && !character.canTrade(depth))
+          else if (character.affinity >= 75 && !character.canTrade(depth))
             text = "Ye've had yer freebie. What is this, a supermarket sweep? Give us a couple of levels to restock the shelves. The GOOD shelves. *He gestures at shelves that may or may not exist.*";
           else
             text = "Go on, let's do business. An' I'll have ye know everythin' here is MINT condition, one careful owner. *Then, with the subtlety of a hand grenade:* ...also. Hypothetically. If a person were to find a magazine down there, thick one, comes out the once a year, all the listin's in it, maybe a festive cover, HYPOTHETICALLY, that person should bring it here IMMEDIATELY an' name their price. *He examines his nails.* Anyway. What'll it be?";

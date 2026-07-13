@@ -334,11 +334,20 @@ function beeDialogue(ctx){
               next: { text: "*She takes it in both hands, careful, like it might spook.* ...iron. Actual pitted iron, in a place with no iron in it. *She presses it flat to her cheek an' shuts her eyes, an' for one long second she is standin' somewhere with grass in it.* ...right. *One sniff. All business.* Ye didn't see that. Here, take this, an' if ye breathe a word to a livin' soul I'll have ye. *She hangs the shoe somewhere behind the glass, heels up. For the luck to pool in.*" } });
           }
 
-          // 4) a free trinket for a friend — the one path on the trade cooldown
+          // 4) a free trinket for a friend — real generosity starts at 75.
+          //    Asking earlier is allowed, and gets you read in-character:
+          //    polite brush-off at 40..74, open scorn below 40.
           const freebie = character.giftable[0];
-          if (character.affinity >= 55 && character.canTrade(depth) && freebie)
-            choices.push({ text: "Anything spare for a friend?",
-                           effects: { give: freebie.id, like: +3, gift: true } });
+          if (freebie){
+            if (character.affinity >= 75 && character.canTrade(depth))
+              choices.push({ text: "Anything spare for a friend?",
+                             effects: { give: freebie.id, like: +3, gift: true } });
+            else if (character.affinity < 75)
+              choices.push({ text: "Anything spare for a friend?",
+                next: { text: character.affinity < 40
+                  ? "*The look she gives ye could sterilise a ward.* A GIFT. To the likes of YOU. Wise up — I've CHARTED yer behaviour, courier, an' the chart says ye'd not get a used swab off me. Earn it or buy it. Them's the two doors."
+                  : "Request logged. Denied. *She's not bein' cruel; she's readin' out a result.* Gift-givin's a trust behaviour, an' trust is a DATASET, not a favour ye ask for. Yours is trendin' upward — I'll grant ye that on the record. Keep showin' up at the window. Science'll tell ye when." } });
+          }
 
           choices.push({ text: "(Maybe later.)" });
 
@@ -347,7 +356,7 @@ function beeDialogue(ctx){
           let text;
           if (character.affinity < 40)
             text = "*She doesn't uncross her arms.* Trade? With YOU? Show us the tokens first. Trust is earned an' yer in arrears.";
-          else if (character.affinity >= 55 && !character.canTrade(depth))
+          else if (character.affinity >= 75 && !character.canTrade(depth))
             text = "*She pats her pockets, businesslike.* Yer after cleanin' me out. Give it a level or two to forage. Coin still talks, mind. Coin always talks.";
           else
             text = "*She lays her few bits out quick an' neat, like tack before a hunt.* Right. Deal or don't, I've no patience for hagglin'. ...here. Random one. If ye ever find somethin' iron down there, curved, heavy, about the size of a smile, I'd... *she catches her own hands shapin' it in the air, an' snaps them flat* Nothin'. Forget it. NEXT.";

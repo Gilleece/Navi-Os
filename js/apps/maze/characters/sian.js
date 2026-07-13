@@ -344,11 +344,20 @@ function sianDialogue(ctx){
               next: { text: "*He takes it an' turns it over, an' for a long moment he isn't playin' anything at all.* ...I had one of these. This exact lanyard. Same scratch where the logo goes. We all scratched it off. It was that kind of place. *He looks up at ye, an' the visor hides whatever his eyes are doin'.* This was WORK, hai. This was us. The Protocol isn't somebody's game. It's somebody's PRODUCT. Somebody stood up in a plannin' meetin' an' SHIPPED this. *He pockets it, an' the grin that comes back on is the one he used to wear to stand-ups.* Here. Take somethin' for it. An' keep yer save backed up, hai. I mean that as a friend." } });
           }
 
-          // 4) a free trinket for a friend — the one path on the trade cooldown
+          // 4) a free trinket for a friend — real generosity starts at 75.
+          //    Asking earlier is allowed, and gets you read in-character:
+          //    polite brush-off at 40..74, open scorn below 40.
           const freebie = character.giftable[0];
-          if (character.affinity >= 55 && character.canTrade(depth) && freebie)
-            choices.push({ text: "Anything going spare for the pit crew?",
-                           effects: { give: freebie.id, like: +3, gift: true } });
+          if (freebie){
+            if (character.affinity >= 75 && character.canTrade(depth))
+              choices.push({ text: "Anything going spare for the pit crew?",
+                             effects: { give: freebie.id, like: +3, gift: true } });
+            else if (character.affinity < 75)
+              choices.push({ text: "Anything going spare for the pit crew?",
+                next: { text: character.affinity < 40
+                  ? "*He laughs once, flat, no 'hai' anywhere near it.* Free loot. For YOU. Big lad, yer reputation with this vendor is BOTTOMED OUT. Ye know how standin's work: ye grind them. Away an' grind."
+                  : "Ah here — free stuff's ENDGAME content, hai. Loyalty rewards. You an' me are only mid-campaign: decent co-op, good banter, gift tier's not unlocked yet. *He taps an invisible progress bar between yez.* Few more levels o' this an' the drops start droppin'. I don't make the rules. I DO make the rules. The rules stand, hai." } });
+          }
 
           choices.push({ text: "(Maybe later.)" });
 
@@ -357,7 +366,7 @@ function sianDialogue(ctx){
           let text;
           if (character.affinity < 40)
             text = "*He sucks his teeth.* Economy's rough, hai. Nothin' personal, but I don't know yer gamertag from Adam. Coin up front, an' count it where I can see ye.";
-          else if (character.affinity >= 55 && !character.canTrade(depth))
+          else if (character.affinity >= 75 && !character.canTrade(depth))
             text = "Inventory's SPOKEN for, hai. I'm a Cavan man, we don't do 'spare'. *winks* Give it a level or two. The shop restocks. ...I assume the shop restocks.";
           else
             text = "Vendor mode: ENGAGED. *He mimes a till openin'.* Right, what are ye buyin', what are ye sellin'? ...oh, an' a random one, off the books: if ye ever come across a wee card on a string out there, plastic, photo on it, like a work badge, grab it for me. Don't ask why. *The grin doesn't move, but somethin' behind it does.* Just grab it, hai.";

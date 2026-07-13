@@ -249,13 +249,18 @@ export class Character {
           the world's currency, picked up as floating shapes in the maze.
 
        2. AFFINITY GIFTS. The other (un-priced) items can be given away for
-          free once the player is liked enough. This is the only path on
-          the TRADE_COOLDOWN: a gift on level N blocks the next gift from
+          free only once the player is GENUINELY liked: affinity >= 75
+          (which the trust cap makes unreachable before depth 5). The ask
+          is always offerable below that, and must be REFUSED in character,
+          in two registers: a polite "I don't know you well enough yet" at
+          40..74, open scorn below 40. This is the only path on the
+          TRADE_COOLDOWN: a gift on level N blocks the next gift from
           this character until level N + TRADE_COOLDOWN (so a gift on level
           1 is unavailable again until level 3). dialogue.js records it for
-          you when a `gift` effect fires; just gate the offer on canTrade()
-          and, when it's false, brush the player off in character ("things
-          are scarce in the Labyrinth Protocol right now").
+          you when a `gift` effect fires; gate the actual handover on
+          affinity >= 75 && canTrade(), and when the cooldown blocks a
+          75+ friend, brush them off apologetically in the intro line
+          ("things are scarce in the Labyrinth Protocol right now").
 
        3. BARTER. Those same un-priced items can also be traded for a
           specific item the character wants from the player. Each character
