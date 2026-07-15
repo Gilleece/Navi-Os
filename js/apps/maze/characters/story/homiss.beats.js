@@ -314,6 +314,32 @@ export function homissBeats(H){
             next: { text: "*The hand comes off the strings, an' the buildin's hum goes round once more, alone, an' trails off like a question.* ...ye might be right. That's the sensible read: somethin's takin' me apart a bar at a time an' I'm HANDIN' it the bars. *He looks at the silent bass, an' then at the wall, an' the silence gets very big in the room.* But here's the thing about starvin' a duet, friend. Both of yez go hungry. *He puts his hand back, but doesn't play.* I'll think on it. I will. But if the last thing left of me down here is four notes in the buildin's memory... I'd rather it had them KINDLY. Wouldn't you?" } },
           { text: "Would you rather: the tune survives you, or you survive the tune?", effects: { like: +2 },
             next: { text: "*His head comes up slowly, an' the delight arrives like sunrise on a wet street.* ...ye ABSOLUTE weapon. Turnin' the man's own artillery on him at a time like this. *He puts the bass down so he can do the question justice, hands laced, professional.* The tune survives me: immortality, but I'm not there for the applause. I survive the tune: I walk out of here EMPTY, a musician-shaped fella with nothin' in the case. *A long pause. The buildin' hums his four notes, softly, like it's waitin' on the answer too.* ...tune survives me. Every time. Ye don't get to KEEP songs anyway, friend. Ye only get to be the one they happened to. *He picks the bass back up.* Best would-ye-rather ever asked in this buildin'. Now get out before I answer it again differently." } },
+        ] } }) },
+
+  /* -- depth 18 . Homiss: da capo (cycle 2) -- */
+  { char: "homiss", depth: 18, make: () => ({
+      id: "da-capo", story: true, once: true,
+      label: "*He plays a phrase, stops, and plays the exact same phrase.*",
+      effects: { like: +1 },
+      node: { text: "*He doesn't look up from the fretboard.* ...here. Ye'll think I'm astray. I've played this exact bar, in this exact SPOT, before. Not a bar like it. IT. *He sets the bass down across his knees.* D'ye know the mark on a sheet — D.C., da capo? 'Back to the top, play it again.' The whole corridor's got a da capo on it, friend. Round we go. An' every time round, somethin's a hair off. A note bent. A wall a foot to the left. Small enough ye'd talk yerself out of it. Big enough it's eatin' at me.",
+        choices: [
+          { text: "If it's a loop, it's a loop with me in it. That's better than before.", effects: { like: +2 },
+            next: { text: "*That lands somewhere warm, an' he plays four bright notes on the strength of it.* ...aye. It is, isn't it. The loops BEFORE ye came were the bad kind — just me an' the hum, round an' round. *He grins, tired an' true.* A da capo's only a prison if yer playin' it alone. With an audience it's an ENCORE. Come back round, friend. I'll be here. Apparently I'm always here." } },
+          { text: "Then play it forward. Skip to the last verse.",
+            next: { text: "*He huffs a laugh.* Can't skip a da capo, friend — that's the whole cruelty of the notation. Ye've to play the WHOLE thing back before ye reach the codas. *He picks the bass up.* But there IS a coda. A wee sign, further down the page: 'jump HERE, an' finish.' *He nods downward, through the floor.* Somebody has to walk to the coda an' play the endin'. Faster than the hummin' does. Away with ye. Mind the repeats." } },
+        ] } }) },
+
+  /* -- depth 29 . Homiss: the building winding down (cycle 3) -- */
+  { char: "homiss", depth: 29, make: () => ({
+      id: "resolving-note", story: true, once: true,
+      label: "*He stops playing so you can hear the floor. It's humming.*",
+      effects: { like: +1, flag: "homiss-resolving" },
+      node: { text: "*He holds a finger up, an' under everythin' there's a long low tone, patient as weather.* ...hear it? The buildin's note. It was always there — ye'd catch it between songs, like a fridge in another room. But it's LOUDER now, friend, an' d'ye know what it's DOIN'? It's resolvin'. Fallin' toward the root, the way a tune does when it's endin'. *He picks the bass back up, gentle.* A thing that hums like that isn't windin' up. It's windin' DOWN. We're near the last bar. I can feel the double line comin'.",
+        choices: [
+          { text: "Then somebody should be at the bottom to catch the last note.", effects: { like: +2 },
+            next: { text: "*He nods, eyes shut, all the way to the bottom of the chord.* ...aye. Ye don't let a tune end into an empty room. Somebody stands there for the last note, or it was never really PLAYED. *He plays four soft notes, an' the floor hums the answer.* Go on, friend. Be at the bottom when it lands. Me an' the buildin', we'll play it down to ye. An' when it resolves — mind — a resolved chord isn't a death. It's a HOME. Get us to it." } },
+          { text: "Play against it. Don't let it wind all the way down.",
+            next: { text: "*He considers that, hand flat on the strings.* ...I could. Play SHARP against the root, keep the tension up, hold the song open by main force. *He shakes his head slow.* But ye can't hold a note forever, friend. Ye'd only be delayin' the same last bar, an' delayin' an endin' is just a longer way of dreadin' it. *He plays WITH the hum instead of against it.* Better to play it true, an' walk out on the resolution. Away down. I'll keep the tune goin' till ye reach the end of it." } },
         ] } }) }
   ];
 }

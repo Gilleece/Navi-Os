@@ -226,6 +226,61 @@ export function sianBeats(H){
             next: { text: "*He nods, slow, the project manager in him takin' the requirements hit like a professional.* ...aye. Fair. Ye've a whole buildin' of us an' one pair of legs. *He looks back at the soft corner, an' does the maths out loud, gently:* So some levels I'll be... low detail. Billboard Sian. A sprite with a good memory of bein' a lad. *He turns back, an' the grin's still there, hand-authored, no LOD on it at all.* Then here's the fallback spec, hai: don't ration the VISITS, ration the WORRY. When ye can't get to me, don't carry me round yer neck. I'll be here, hummin' the menu music. Just — when ye DO come — come loud. Announce yerself. Give the fog somethin' to lose." } },
           { text: "The fog's not culling you, Sian. It's the game huddling around what it loves.", effects: { like: +2 },
             next: { text: "*He blinks. Ye've handed a Cavan man sincerity, an' for one full second the machinery of him has no idea what slot it goes in.* ...huddlin'. *He looks round his wee room — the fog, the servo shelf, the patch lead, the whole rendered stubborn heart of it — like he's rereadin' a level design doc with new eyes.* The last things a dyin' build keeps are the load-bearin' ones, hai. The core loop. The... *he clears his throat, hard* ...the essentials. An' it kept ME. *He points at ye, an' the voice comes back at full daft wattage, an' it's holdin' a wobble the way a bridge holds a lorry.* HUDDLIN'. That's goin' in me performance review: 'retained through end-of-life due to bein' ESSENTIAL'. Away with ye, before I say somethin' with feelings in it. GO. An' mind the fog on the stairs — it's got no manners at ALL down there." } },
-        ] } }) }
+        ] } }) },
+
+  /* -- depth 16 . Sian: they reused the skybox (cycle 2) -- */
+  { char: "sian", depth: 16, make: () => ({
+      id: "asset-reuse", story: true, once: true,
+      label: "*He's sighting down the corridor with one eye shut.*",
+      effects: { like: +1 },
+      node: { text: "*He's got one eye closed, lining the corridor up like a spirit level.* Hai. Big lad. Tell me I'm not the only one seein' it. This level — I've WALKED it. Not one like it. IT. Same crack in the ceilin', same wonky light, byte for byte. *He shakes his head, half admirin', half appalled.* They re-used the whole ASSET. Studios do it, no shame, ye run outta budget an' ye redress an old room. But ye FLIP it, hai — mirror it, change the light. This is a straight copy-paste. Ye don't copy-paste a level unless ye've run clean out of world.",
+        choices: [
+          { text: "Ran out of world. So we must be near the end of it.", effects: { like: +2 },
+            next: { text: "*He points at ye, buzzin'.* THAT'S the read! Ye don't loop the middle of a game, hai, ye loop the END — when the credits are tryin' to roll an' somethin's holdin' them back. *He cracks his knuckles.* So it's close. The bottom. Keep the pace up, partner — we're not grindin', we're speedrunnin' the recap." } },
+          { text: "Or the whole place is just stuck on a loop, Sian.",
+            next: { text: "*The grin goes a bit see-through.* ...aye. A loop. A while-true with no break condition. *He taps the glass, thinkin' out loud.* Ye know what fixes an infinite loop, hai? Somethin' from OUTSIDE it. A player. An interrupt. *He looks at ye, an' means it.* That's you, big lad. Yer the break statement. Away an' break it." } },
+        ] } }) },
+
+  /* ================= cycle 3: caught in the static =================
+     Fresh cycle-3 material for the empty final-descent depths. Authored to
+     the STATIC_GREETS register (scheduled shutdown). Fires only in cycle 3. */
+
+  /* -- depth 21 . Sian: end-of-life build (cycle 3) -- */
+  { char: "sian", depth: 21, make: () => ({
+      id: "eol-build", story: true, once: true,
+      label: "*His visor glow keeps dropping out, like a bad bulb.*",
+      effects: { like: +1, flag: "sian-eol" },
+      node: { text: "*The light off him stutters, and he watches it happen on the back of his own hand with pure professional fascination.* Hai. Don't panic — I'M not panickin', we're both not panickin'. Frame drops. In me EYES now, not just the world. *He flexes the hand, countin' the stutters.* This is end-of-life, big lad. I've SHIPPED end-of-life. Ye stop patchin', ye pull the servers, an' the last players get this exact look off everythin' — the flicker, the sound cuttin' to mono, the fog comin' in SQUARE. The build stops pretendin' it'll be here tomorrow.",
+        choices: [
+          { text: "A build that stops pretending stops wasting effort on anything but the essentials.", effects: { like: +2 },
+            next: { text: "*He goes still, then grins, delighted ye did the reasonin' for him.* ...an' the essential, hai — the ONE job left in her — is gettin' the player to the end. Everythin' else is polish, an' the polish is GONE. *He knocks the glass twice.* So she's not fallin' apart, big lad. She's TRIAGIN'. Sheddin' load to keep the road down open. Don't waste it. Ship me to the credits." } },
+          { text: "Then we log out before the servers pull. All of us.",
+            next: { text: "*He points at ye, an' the flicker can't touch the intent in it.* THAT'S the run. Last players on a dyin' server do one of two things: sit in the lobby cryin', or pull off the best lap of their LIVES, because nobody's left to patch out the shortcuts. *The grin sharpens.* We're doin' the lap. Everybody logs out the front door, an' Sian's spectatin' NOTHIN'. GO." } },
+        ] } }) },
+
+  /* ================= peer brokering (W2) ================= */
+
+  /* -- carry the warmth under Bee's tenner back to Sian (mends the pair) -- */
+  { char: "sian", depth: 6,
+    available: () => hasFlag("msg-b2s") && !hasFlag("mended-bee-sian"),
+    make: () => ({
+      id: "broker-bee", story: true, once: true, gate: false,
+      label: "Bee asked after you. Warmly — under all the tenner talk.",
+      node: { text: "*He stops tinkerin'.* ...warmly. *He turns Brenda's servo over.* She'd never SAY warm, hai, she'd rather chew glass. The tenner IS the warm — that's our whole language. But if ye could hear the warm UNDER it... *he looks up, an' for a second there's no grin at all, just the man* ...what did she actually say. Straight.",
+        choices: [
+          { text: "That a happy brain lasts longer down here. She's protecting you. That's the whole message.",
+            effects: { peers: [{ of: "sian", toward: "littlebee", delta: +5 }], flag: "mended-bee-sian", like: +2 },
+            next: { text: "*He has to look at the servo a while.* ...she's runnin' NEUROLOGY on how to love me from behind a wall. *A wet laugh.* Course she is. Most Bee sentence ever composed. *He knocks the glass twice, steadier.* Right. Tell her back, exact words, hai: 'message received, compiler happy, tenner's up to fifteen with the interest.' She'll know it means I heard the real one. Go on — don't let me get soppy, it voids the warranty." } },
+          { text: "That you still owe her a tenner. That's it. That's all I'm carrying.",
+            next: { text: "*The grin snaps back to full.* HA. Course that's all. That's PLENTY, hai. *He pockets the servo.* Tenner outstandin', interest accruin', romance intact. Don't be addin' subtitles to a Cavan love story, big lad, ye'll only get them wrong. Away with ye." } },
+        ] } }) },
+
+  /* -- gossip: Sian on Dalypso, gated on their (high) mutual regard -- */
+  { char: "sian",
+    available: ctx => (ctx.character.feelsToward("dalypso") ?? 0) >= 70,
+    make: () => ({
+      id: "gossip-dalypso-sian", story: true, once: true, gate: false,
+      label: "You and Dalypso go back, don't you?",
+      node: { text: "*His face goes soft.* Since we were SIX, hai. Same estate, same everythin'. He'd contest a throw-in at me FUNERAL, an' I'd want him to. *He spins a controller.* People hear the shoutin' an' think he's all edges. Nah. He's the fella who walked me home the whole way the night me da's shed flooded an' never once made it a story after. *He catches himself.* ...anyway. If ye can get ONE of us out first, hai — it's him. He's got a house with the kettle waitin'. I've just got a robot with the batteries out." } }) }
   ];
 }

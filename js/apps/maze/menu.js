@@ -56,6 +56,7 @@ function snapshot(depth){
       name: player.name,
       stats: { ...player.stats },
       tokens: player.tokens,
+      points: player.points,
       inventory: player.inventory.map(i => ({ ...i })),
     },
     characters: Object.fromEntries(ROSTER.map(c => [c.id, {
@@ -121,6 +122,7 @@ export function loadGame(){
   player.name = d.player.name ?? "OPERATOR";
   for (const [k] of STATS) player.stats[k] = d.player.stats?.[k] ?? STAT_BASE;
   player.tokens = d.player.tokens ?? 0;
+  player.points = d.player.points ?? 0;   // additive field; older saves default to 0
   player.inventory.length = 0;
   for (const it of d.player.inventory ?? []) player.inventory.push({ ...it });
 

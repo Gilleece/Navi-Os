@@ -30,7 +30,12 @@ export const player = {
   stats: Object.fromEntries(STATS.map(([k]) => [k, 5])),
   inventory: [],   // [{ id, name, desc }]
   tokens: 0,       // Labyrinth Tokens (LT): the world's currency, picked up in the maze
+  points: 0,       // unspent OPERATOR POINTS: SPECIAL growth earned from the Custodian + deep friendships (spent in the LOG's STATS tab)
 };
+
+/* per-attribute ceiling, shared with creation.js (the point-buy screen) and
+   the LOG's STATS tab. One source of truth so growth and creation agree. */
+export const STAT_MAX = 9;
 
 /* --- Labyrinth Tokens (LT) ---------------------------------------------
    LT are the currency of the Labyrinth Protocol: collected from the
@@ -39,6 +44,20 @@ export const player = {
 export function addTokens(n){ player.tokens += n; return player.tokens; }
 export function spendTokens(n){ player.tokens = Math.max(0, player.tokens - n); return player.tokens; }
 export function canAfford(n){ return player.tokens >= (n ?? 0); }
+
+/* --- OPERATOR POINTS (SPECIAL progression) ------------------------------
+   Stats are fixed at creation; these let them grow slowly across a run.
+   The Custodian grants one at every sanctum audience, and a first-time deep
+   friendship (>=90 affinity) grants one more — both via the `points` effect
+   and the milestone hook in dialogue.js. Spent one-at-a-time in the LOG's
+   STATS tab; the pool + the raised stats persist in the save. */
+export function grantPoints(n){ player.points += (n ?? 0); return player.points; }
+export function spendPoint(attr){
+  if (player.points <= 0) return false;
+  if ((player.stats[attr] ?? 0) >= STAT_MAX) return false;   // already at the ceiling
+  player.stats[attr]++; player.points--;
+  return true;
+}
 
 /* --- the shape of the game: 10 depths, 3 cycles ---------------------------
    The Labyrinth Protocol is ten depths deep, and the whole descent LOOPS:
@@ -80,6 +99,7 @@ export function resetPlayer(){
   for (const [k] of STATS) player.stats[k] = STAT_BASE;
   player.inventory.length = 0;
   player.tokens = 0;
+  player.points = 0;
 }
 
 /* does the player satisfy a dialogue requirement like

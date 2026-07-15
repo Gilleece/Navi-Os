@@ -607,6 +607,12 @@ canvas.pix{image-rendering:pixelated}
 #hud-top{top:12px;left:14px;font-size:20px;color:var(--green)}
 #hud-top b{color:var(--orange);font-weight:normal}
 #hud-lt{top:38px;left:14px;font-size:18px;color:var(--green);text-shadow:0 0 8px var(--green-dim)}
+#hud-objective{
+  top:64px;left:14px;font-size:14px;max-width:min(60vw,520px);
+  color:var(--orange);text-shadow:0 0 8px rgba(255,122,26,.5);
+  opacity:0;transition:opacity .3s;
+}
+#hud-objective.show{opacity:.92}
 #hud-msg{
   top:42%;left:0;right:0;text-align:center;font-size:clamp(26px,6vw,52px);
   color:var(--orange);opacity:0;transition:opacity .3s;

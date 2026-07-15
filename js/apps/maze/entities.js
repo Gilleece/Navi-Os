@@ -154,12 +154,12 @@ export function updateTokens(three, scene, cfg, dt){
           setFlag(`found-${id}`);
           toast(`FOUND: ${name.toUpperCase()}`);
           if (cfg.inVR) showVRBanner(`FOUND: ${name.toUpperCase()}`, 1400);
-          playPickup(5);                                           // the grand chime — these are rare
+          playPickup(5, m.position);                              // the grand chime — these are rare (positional)
         } else {
           addTokens(tk.value); refreshTokenHud();
           toast(`+${tk.value} LT`);                                // desktop/touch HUD flash
           if (cfg.inVR) showVRBanner(`+${tk.value} LT`, 1100);     // same head-locked banner as depth changes
-          playPickup(tk.value);                                    // synth blip, grander for bigger denominations
+          playPickup(tk.value, m.position);                        // synth blip, grander for bigger denominations (positional)
         }
         spawnBurst(three, scene, cfg, tk);
       }

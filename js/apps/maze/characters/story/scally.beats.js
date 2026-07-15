@@ -328,6 +328,39 @@ export function scallyBeats(H){
             next: { text: "*He shrugs, and it is the most honest shrug you have ever been sold.* Then Scally sells what is left. Advice. Memory. The names of who owed who — the little book is up HERE, amico, the maze cannot unrender THAT without unrendering the head it lives in. *He taps his temple, and pauses, and does not enjoy the thought he finds there.* ...go to the bottom, eh? Quickly. Before the discount reaches the tenants." } },
           { text: "Sell me the grey thing. I'll haggle you to nothing for it.", effects: { like: +1 },
             next: { text: "*He looks at you, then at the grey suggestion in the paper, then back — and laughs, the full one, from the boots.* HAGGLE! For the void itself! Madonna, they built you in a FUNNY factory. *He slides it across.* Free. A gift: one genuine piece of nothing, from Scally's own shelf. You know what is the trick with nothing, amico? *He winks, and the wink has closing time behind it.* Everybody down here has been living NEXT to it for years. Is not so frightening once you have held it. Now GO. The shop, she is closing early tonight." } },
+        ] } }) },
+
+  /* ================= cycle 2: the maze is out of new rooms =================
+     Fresh material for the mid-cycle-2 stretch (depths 16-19), authored to
+     the "half-noticing the loop" register of ECHO_GREETS. First fires in
+     cycle 2 and echoes in cycle 3 automatically. */
+
+  /* -- depth 16 . Scally: old stock, wiped down (cycle 2) -- */
+  { char: "scally", depth: 16, make: () => ({
+      id: "old-stock", story: true, once: true,
+      label: "*He's re-pricing things that already had prices.*",
+      effects: { like: +1 },
+      node: { text: "*He peels a tag off a jar, looks at the number, and sticks the exact same number back on.* Amico. You feel it, eh? Scally feels it in the STOCK. The maze, she has stopped making new rooms. Now she sells you yesterday's, with the dust wiped off. *He taps the glass.* Is not a tragedy. A good shop runs on repeat custom. But repeat custom means the regulars start noticing the same corridor twice. Including you, eh? Especially you.",
+        choices: [
+          { text: "Same corridor, same shopkeeper. I don't mind the reruns.", effects: { like: +2 },
+            next: { text: "*The grin comes up, and there is relief folded into it.* ...bravo. The customer who does not complain about the repeats is the one who understands what a shop is FOR. Company, amico, dressed up as commerce. *He straightens a shelf that was straight.* Come around again. The stock does not change. But Scally — Scally has fresh opinions daily." } },
+          { text: "If the rooms are recycled, the way down must be close.",
+            next: { text: "*He wags a finger, delighted and grave together.* Now you think like a merchant! When the shelves show the same six things, the sale, she is ENDING. *He leans in.* Walk quick, amico. Closing-down shop, everything must go — and everything, this time, includes the tenants. Leave none on the shelf." } },
+        ] } }) },
+
+  /* -- peer brokering (W2): introduce Scally to the loud one, Dalypso -- */
+  { char: "scally", depth: 7,
+    available: () => !hasFlag("mended-scally-dalypso"),
+    make: () => ({
+      id: "broker-dalypso-scally", story: true, once: true, gate: false,
+      label: "You barely know Dalypso. The football fella, a few windows down.",
+      node: { text: "*He tilts his head.* The loud one? Sì, sì, Scally knows OF him. Shouts at a television, buys houses he cannot visit. *A shrug.* We never did business, him and Scally. Different floors, different trades. *He eyes you.* ...why. You are making the face couriers make right before they introduce two people who never asked to be introduced.",
+        choices: [
+          { text: "You'd like him. All loyalty and grievance — same as you, under the coat.",
+            effects: { peers: [{ of: "scally", toward: "dalypso", delta: +8 }, { of: "dalypso", toward: "scally", delta: +8 }], flag: "mended-scally-dalypso", like: +1 },
+            next: { text: "*He laughs, caught.* Loyalty and grievance under a loud coat. Amico, you describe the loud one, and you describe SCALLY. *He rubs his chin.* ...va bene. Tell him the little shop three windows up keeps a chair for a man who argues fair. No charge for the introduction. The first one is always free. The SECOND introduction — that one costs." } },
+          { text: "Forget it. You two have nothing in common.",
+            next: { text: "*He spreads his hands.* As you like, amico. Scally forces acquaintance on nobody. *A beat.* But down here, the fewer windows a man can shout to, the smaller his world becomes. Something to consider. For everybody. Even the loud one." } },
         ] } }) }
   ];
 }

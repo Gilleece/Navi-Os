@@ -9,7 +9,7 @@
    a character hand over an item. The portrait switches mood
    (happy / angry / sad / neutral) to match what just happened.
    ============================================================ */
-import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens, setFlag } from "./state.js";
+import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens, setFlag, hasFlag, grantPoints } from "./state.js";
 import { isErrandStart } from "./story.js";
 import { characterById } from "./characters/characters.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
@@ -323,6 +323,10 @@ function applyEffects(fx){
     setFlag(f);
     if (isErrandStart(f)) toast("LOG UPDATED");                  // a new errand/promise is now in the log
   }
+  if (fx.points){                                  // OPERATOR POINTS: SPECIAL growth (Custodian drip, etc.)
+    grantPoints(fx.points);
+    toast("OPERATOR POINT AWARDED — OPEN THE LOG TO SPEND");
+  }
   if (fx.others) for (const o of fx.others){       // word travels: shift ANOTHER character's
     const c = characterById(o.id);                 // affinity toward the player (dilemma fuel;
     if (c && typeof o.like === "number")           // same clamp as conversation)
@@ -427,6 +431,22 @@ function refreshAffinity(){
   }
   shownAffinity = a;
   shownStanding = current.standing;
+  maybeAwardMilestone(current);      // deep-friendship SPECIAL point (once per character, whole-game)
+}
+
+/* relationship milestone: the first time a character's affinity reaches the
+   "Adores you" band (>=90), a themed OPERATOR POINT is granted — once per
+   game, on a GLOBAL flag so it never rewinds with the per-cycle memory.
+   The stat is player-chosen on spend; the flavour below is just the toast. */
+const MILESTONE_STAT = { littlebee: "INT", sian: "AGI", scally: "LCK", homiss: "CHA", dalypso: "PER" };
+function maybeAwardMilestone(character){
+  if (!character || character.id === "custodian") return;
+  if (character.affinity < 90) return;
+  if (hasFlag(`trained-${character.id}`)) return;
+  setFlag(`trained-${character.id}`);
+  grantPoints(1);
+  const stat = MILESTONE_STAT[character.id];
+  toast(`${character.name.toUpperCase()} TRUSTS YOU — OPERATOR POINT${stat ? ` (${stat}?)` : ""}`);
 }
 
 /* ---------- DOM renderer ---------- */

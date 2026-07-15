@@ -77,6 +77,63 @@ export function setSfxVolume(v){ sfxVol = Math.max(0, Math.min(1, v)); writePref
 const rand  = (a, b) => a + Math.random() * (b - a);
 const ratio = semitones => Math.pow(2, semitones / 12);
 
+/* --- spatial audio (positional world sounds) -----------------------------
+   The synth is unchanged; world sounds (token pickups, the gate sting) can
+   now pass a world position and get routed through an HRTF PannerNode so
+   they attenuate with distance and pan with the listener. Sounds with no
+   position (footsteps, dialogue blips) keep going straight to sfxBus. The
+   panner still feeds sfxBus, so mute + the SFX-volume slider govern it for
+   free. The listener is driven from the camera each frame (updateListener),
+   so this works in flat play AND in VR (turning the head pans the world). */
+function coord(pos, k, i){ return pos ? (pos[k] ?? pos[i] ?? 0) : 0; }
+
+function makePanner(pos){
+  if (!ctx || !pos) return null;
+  const p = ctx.createPanner();
+  p.panningModel  = "HRTF";
+  p.distanceModel = "inverse";
+  p.refDistance   = 2;      // full volume within ~2m
+  p.maxDistance   = 40;
+  p.rolloffFactor = 1.1;    // gentle falloff so distant pickups are still audible
+  const x = coord(pos, "x", 0), y = coord(pos, "y", 1), z = coord(pos, "z", 2);
+  if (p.positionX){
+    const t = ctx.currentTime;
+    p.positionX.setValueAtTime(x, t);
+    p.positionY.setValueAtTime(y, t);
+    p.positionZ.setValueAtTime(z, t);
+  } else {
+    p.setPosition(x, y, z);   // deprecated fallback for older audio engines
+  }
+  p.connect(sfxBus);
+  return p;
+}
+
+/* a sound's destination: a fresh positional panner when a world spot is
+   given, else the shared (non-spatial) SFX bus */
+function sfxDest(pos){ return makePanner(pos) || sfxBus; }
+
+/* keep the Web Audio listener glued to the head/camera. `pos`/`fwd`/`up`
+   are plain {x,y,z} in world space (maze.js pulls them from M.camera each
+   frame). No-op until initAudio has built the context. */
+export function updateListener(pos, fwd, up){
+  if (!ctx || !pos || !fwd || !up) return;
+  const l = ctx.listener, t = ctx.currentTime;
+  if (l.positionX){
+    l.positionX.setValueAtTime(pos.x, t);
+    l.positionY.setValueAtTime(pos.y, t);
+    l.positionZ.setValueAtTime(pos.z, t);
+    l.forwardX.setValueAtTime(fwd.x, t);
+    l.forwardY.setValueAtTime(fwd.y, t);
+    l.forwardZ.setValueAtTime(fwd.z, t);
+    l.upX.setValueAtTime(up.x, t);
+    l.upY.setValueAtTime(up.y, t);
+    l.upZ.setValueAtTime(up.z, t);
+  } else {
+    l.setPosition(pos.x, pos.y, pos.z);              // deprecated fallback
+    l.setOrientation(fwd.x, fwd.y, fwd.z, up.x, up.y, up.z);
+  }
+}
+
 /* one enveloped oscillator note, scheduled relative to `t0`. */
 function note(dest, t0, { freq, type = "square", start = 0, dur = 0.12,
                           gain = 0.2, attack = 0.005, glide = 0 }){
@@ -99,15 +156,17 @@ function note(dest, t0, { freq, type = "square", start = 0, dur = 0.12,
 const STEPS = [0, 4, 7, 12, 16];
 
 /* coin-style pickup. Bigger denominations get a taller, longer, brighter
-   arpeggio (with a little sparkle on the 5 LT). `value` is 1 / 3 / 5. */
-export function playPickup(value = 1){
+   arpeggio (with a little sparkle on the 5 LT). `value` is 1 / 3 / 5.
+   `pos` (optional {x,y,z}) spatialises it: a token to your left sounds left,
+   and quieter the further it is. */
+export function playPickup(value = 1, pos = null){
   const c = initAudio();
   if (!c) return;
   const t0 = c.currentTime;
 
   const out = c.createGain();
   out.gain.value = rand(0.28, 0.38);        // deliberately low; subtle level variation
-  out.connect(sfxBus);
+  out.connect(sfxDest(pos));
 
   const count = value >= 5 ? 4 : value >= 3 ? 3 : 2;
   const root  = (value >= 5 ? 660 : value >= 3 ? 550 : 440) * rand(0.985, 1.015); // pitch wobble
@@ -188,14 +247,15 @@ export function playDialogueBlip(){
 }
 
 /* --- gate unlock: a longer rising arpeggio, grander than a 5 LT pickup,
-   with a low swell underneath. The game's biggest moment. --- */
-export function playGateUnlock(){
+   with a low swell underneath. The game's biggest moment. `pos` (optional)
+   localises the sting to the exit ring. --- */
+export function playGateUnlock(pos = null){
   const c = initAudio();
   if (!c) return;
   const t0 = c.currentTime;
   const out = c.createGain();
   out.gain.value = 0.9;
-  out.connect(sfxBus);
+  out.connect(sfxDest(pos));
 
   const root = 330 * rand(0.99, 1.01);
   const steps = [0, 4, 7, 12, 16, 19, 24];

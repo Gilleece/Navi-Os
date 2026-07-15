@@ -299,6 +299,72 @@ export function littlebeeBeats(H){
             next: { text: "*She has the decency to look about nine years old for a second.* ...noted. Filed under 'advice I'll be ignorin' at the next interestin' aperture'. *She folds her arms.* It's called FIELDWORK, courier. The lab came to ME. Forty levels of chartin' this place through glass an' the glass is finally optional — ye think I'm goin' to observe from a safe distance NOW? *She taps the seam, gently, like knockin' for a neighbour.* ...but aye. I'll keep me arm on the tenant side. Mostly. Yer worse than a ethics board. GO." } },
           { text: "What's on the other side? Tell me exactly.", effects: { like: -2 },
             next: { text: "*The marker stops.* ...exactly. *She turns, an' the look on her is the one from results-day, the guard not so much dropped as confiscated.* Exactly is: nothing. Not dark — dark's a THING, dark's photons mindin' their own business. This is the colour of a variable before it's set. An' the hum isn't a sound, it's me own nervous system tellin' me lies about a place it has no words for. *She recaps the marker with a click like a door.* Ye asked for exact. Exact costs. Now both of us get to know it, an' only ONE of us can walk away from the seam. *She waves ye off, not unkindly.* That's the toll. Go pay it forward: get to the bottom." } },
-        ] } }) }
+        ] } }) },
+
+  /* -- depth 19 . Little Bee: perseveration (cycle 2) -- */
+  { char: "littlebee", depth: 19, make: () => ({
+      id: "perseveration", story: true, once: true,
+      label: "*She's counting the bricks in the far wall. Again.*",
+      effects: { like: +1, flag: "bee-loop" },
+      node: { text: "*She doesn't stop countin' till she's done, then turns.* Same wall. Same NUMBER of bricks. Same crack, same length of crack, I MEASURED it two levels up. *She taps her temple, clinical.* There's a word for a brain that walks the same thought in a circle, wearin' a groove: perseveration. An' the Protocol's doin' it. Which means one of two things, courier, an' I've decided not to decide which: either it's DEGRADIN'... or it's DWELLIN' on somethin'. A dyin' system loops. So does a grievin' one.",
+        choices: [
+          { text: "Then we walk the groove till we're through it. Bottom's on the far side.", effects: { like: +2 },
+            next: { text: "*A short nod, approval rationed as ever.* Correct procedure. Ye don't break a rumination by fightin' it. Ye break it by COMPLETIN' the thought it's stuck on. *She folds her arms.* So whatever this place can't stop chewin' on is down at the bottom. Get there. Finish the thought FOR it, an' maybe the loop lets go. Eyes front. An' don't count the walls too close down here — I've a theory they count back." } },
+          { text: "Which is it, though — dying, or grieving?", effects: { like: +1 },
+            next: { text: "*She's quiet a second, which from her is a chapter.* ...the honest answer is the readin's the same either way. Both look like repetition from inside. *She meets yer eye.* But grief has a SHAPE. It resolves, if somethin' arrives to resolve it. Decay just flattens. *She turns back to her count.* I'm choosin' to read it as grief, courier. Not because the data says so. Because it means the walkin' MEANS somethin'. Now go add to the sample." } },
+        ] } }) },
+
+  /* -- depth 28 . Little Bee: inventory of herself (cycle 3) -- */
+  { char: "littlebee", depth: 28, make: () => ({
+      id: "self-inventory", story: true, once: true,
+      label: "*The glass is covered in tally marks. Some strokes are missing.*",
+      effects: { like: +1, flag: "bee-inventory" },
+      node: { text: "*She's mid-list when ye arrive, an' finishes it before she looks up.* ...forty-one facts about horses. The smell of a wet field. The exact sound of a specific eejit laughin' through a wall. *She caps the marker.* Inventory, courier. Of me. I do it every level now. The buildin's forgettin' things — I can MEASURE it, the signal droppin', the noise gone structured, which noise has no business bein'. So I write down what's still there, every level, an' I fight it for every entry. *Her voice is level. Her hand on the marker is not.* It doesn't get MINE. Not without a receipt.",
+        choices: [
+          { text: "Then add one it can't touch: someone walked forty levels carrying your words.", effects: { like: +2 },
+            next: { text: "*She goes still, an' then writes it — small, in the corner, where the horse is drawn with its tail half rubbed out.* ...logged. *She steps back an' looks at it.* That's the thing about a fact that lives in two heads, courier. The maze can unrender the wall it's written on. It can't unrender YOU. *The almost-smile, spent but real.* Ye've been backin' me up this whole time, an' neither of us filed the paperwork. Consider it filed. Now go — the route down's the one system it's still holdin' open, an' systems don't do sentiment. Don't waste it." } },
+          { text: "You're triaging. Shedding everything to keep the core alive.", effects: { like: +1 },
+            next: { text: "*She nods, clinical to the last.* End-stage triage, aye. A dyin' system drops the peripherals to protect the vitals. *She taps the glass, once per word.* An' the vital it's protectin' — I've charted it — is the stairs. The way DOWN. It's holdin' the one door open at the cost of everythin' else. *She meets yer eye.* So the buildin' an' me agree on exactly one thing at the end, courier: get you to the bottom. Go be the findin' that was worth keepin'." } },
+        ] } }) },
+
+  /* ================= peer brokering (W2) =================
+     Optional (gate:false) beats that let the player SHIFT how the trapped
+     feel about each other. Each brokering choice carries a live peer nudge
+     AND a durable flag; the flag is what the sanctum farewells + the twist
+     read (peers are live, flags are the safe cross-module signal). The
+     gossip topics below gate on the LIVE peer value, so they appear/vanish
+     as the pair crosses its threshold. */
+
+  /* -- depth 8 . Bee: settle the Dalypso question (mend or poison) -- */
+  { char: "littlebee", depth: 8,
+    available: () => hasFlag("bee-suspects"),
+    make: () => ({
+      id: "broker-dalypso", story: true, once: true, gate: false,
+      label: "About Dalypso. You've had me counting his walls. What's the verdict?",
+      node: { text: "*She goes still, marker down.* Ye've stood at his window now, more than once. So I'll take yer readin', courier, an' God help me I'll ACT on it — yer the only instrument I have that gets close to the man. Straight, now: is Dalypso sound... or is he the picture I'm afraid he is?",
+        choices: [
+          { text: "He's sound, Bee. His window breathes like anyone's. Let this one go.",
+            effects: { peers: [{ of: "littlebee", toward: "dalypso", delta: +8 }], flag: "mended-bee-dalypso", like: +1 },
+            next: { text: "*Somethin' she's carried since depth seven sets itself down, an' her shoulders come with it.* ...breathes. Right. *A long breath of her own.* I'll file the suspicion under 'disproven, with relief'. D'ye know how rarely I get to write THAT? *The almost-smile.* Tell the big eejit downstairs his best mate's off the hook. He'll be unbearable. Let him." } },
+          { text: "Trust the instrument, Bee. His window doesn't breathe. You were right.",
+            effects: { peers: [{ of: "littlebee", toward: "dalypso", delta: -8 }], flag: "poisoned-bee-dalypso", like: +1 },
+            next: { text: "*Her jaw sets like a gate.* ...confirmed. By an outside observer. *She writes it, fast an' small.* Then I'm not paranoid, I'm CALIBRATED, an' there's a cold comfort in that ye wouldn't credit. *She looks down the corridor toward his window.* I'll keep me distance an' me data. An' if I'm right about what's behind that glass — at least now TWO of us are watchin' it." } },
+        ] } }) },
+
+  /* -- gossip: warms toward Dalypso once bee->dalypso >= 40 (after a mend) -- */
+  { char: "littlebee",
+    available: ctx => (ctx.character.feelsToward("dalypso") ?? 0) >= 40,
+    make: () => ({
+      id: "gossip-dalypso-warm", story: true, once: true, gate: false,
+      label: "You've changed your tune about Dalypso.",
+      node: { text: "*She doesn't deny it.* I ran the man again, with better data, an' the numbers came back different. Maybe the window was always breathin' an' I was readin' me own fear off the glass. *A shrug, clinical.* Sian was right about him. First time in recorded history. Don't tell him I said either half of that sentence." } }) },
+
+  /* -- gossip: cold toward Dalypso once bee->dalypso <= 30 (after a poison) -- */
+  { char: "littlebee",
+    available: ctx => (ctx.character.feelsToward("dalypso") ?? 99) <= 30,
+    make: () => ({
+      id: "gossip-dalypso-cold", story: true, once: true, gate: false,
+      label: "Still no love lost for Dalypso, I see.",
+      node: { text: "*Flat, certain.* Less than none. I stopped tradin' pleasantries with that window the day ye confirmed it for me. A thing that mimics a man well enough to fool a room full of the grievin' isn't harmless, courier. It's ACCOMPLISHED. *She caps the marker.* I keep me tallies where he can't read them now. Mind you do the same." } }) }
   ];
 }

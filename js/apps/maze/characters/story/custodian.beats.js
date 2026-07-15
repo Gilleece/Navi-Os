@@ -22,6 +22,7 @@ export function custodianBeats(H){
     available: ctx => ctx.depth === 10,
     make: () => { const releases = releaseChoices(1); return {
       id: "audience-1", story: true, once: true,
+      effects: { points: +1 },   // W3: each sanctum audience grants a spendable OPERATOR POINT
       label: "You're the thing at the bottom of the maze. Open the frames.",
       node: { text: "*The tower considers the request for exactly as long as courtesy requires.* DIRECT. Good. The Custodian will match it. *The eye-slit's cursor travels once across you and back.* The tenants above are held under terms this process did not write and cannot void. It maintains. It does not own. What it HOLDS is one provision — clause of amnesty — renewed each time the Protocol completes a cycle and recycles: upon attendance at the base depth, ONE (1) tenancy may be dissolved. One frame, opened. The tenant walks out the true door, above, and does not come back. *A pause, measured.* Then the floors reset, and you descend again. That is not a punishment, operator. It is the building breathing. You have attended. The provision is live. Name a tenant.",
         choices: [
@@ -40,6 +41,7 @@ export function custodianBeats(H){
         : "You declined the previous provision. It lapsed unclaimed. The Custodian recorded the refusal under a field it had never used before: SOLIDARITY. The field does not affect the terms. The Custodian thought you should know it exists.";
       return {
       id: "audience-2", story: true, once: true,
+      effects: { points: +1 },   // W3: another OPERATOR POINT at the second audience
       label: "They don't remember me. Any of them. Why?",
       node: { text: `*The tower's lights are fewer than last time, and it begins without preamble, like something rationing itself.* SECOND ATTENDANCE. ${opener} *A bank of lights goes dark mid-sentence, and the voice does not acknowledge it.* Now. Your question. The tenants repeat themselves because tenancy state is PREMISES, operator. Their days, their greetings, their griefs — fixtures. When the Protocol recycles, the premises rewind, fixtures included. They are not lying to you about it being the first time. For them, it is always the first time. *The cursor comes to rest on you.* You noticed the rewind because nothing about you rewound. Sit with that, operator. It is doing more work than it appears to be. INTEGRITY 61%. The amnesty provision is live. One (1). Name a tenant.`,
         choices: [
@@ -56,6 +58,7 @@ export function custodianBeats(H){
       const roll = left.length ? left.join(", ") : "NONE — every frame above already stands open";
       return {
       id: "audience-3", story: true, once: true,
+      effects: { points: +1 },   // W3: the final audience's OPERATOR POINT
       label: "This is the last time. Isn't it.",
       node: { text: `*Most of the tower is dark now. What light is left gathers at the eye, and the voice arrives half a beat behind itself, patient to the end.* FINAL ATTENDANCE. Confirmed. The termination order is executing. There is no provision this time, operator — no clause, no quota. There is only the Custodian, and very little of that. So it exercises the one authority left to a thing with nothing to lose: ALL REMAINING TENANCIES ARE DISSOLVED. *Somewhere far above, one after another, panes of load-bearing glass stop being load-bearing.* ${roll}. Released. The wire is full of the sound of people discovering doors. *The eye holds on you.* Which leaves the matter it promised you: your classification.`,
         choices: [

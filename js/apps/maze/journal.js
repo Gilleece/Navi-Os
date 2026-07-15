@@ -15,21 +15,23 @@
    reads like pausing to check your notes.
    ============================================================ */
 import { $ } from "../../utils.js";
-import { player, hasFlag, depthInCycle, cycleOf } from "./state.js";
+import { player, hasFlag, depthInCycle, cycleOf, STATS, STAT_MAX, spendPoint } from "./state.js";
 import { ROSTER } from "./characters/characters.js";
 import { WORLD_ITEMS, activeErrands } from "./story.js";
 
 const W = 560, H = 760, DPR = 2;    // logical size; canvas is DPR× for crisp text
-const TABS = ["OBJECTIVE", "CONTACTS", "INVENTORY", "ERRANDS"];
+const TABS = ["OBJECTIVE", "CONTACTS", "INVENTORY", "ERRANDS", "STATS"];
 
 let canvas = null, g = null;
 let M = null;                        // shared engine state (kept for the DOM redraws)
 let tab = 0;
 let scroll = 0;                      // px, for tabs that overflow (CONTACTS/INVENTORY)
+let statCursor = 0;                  // selected attribute on the STATS tab (spend target)
 
 /* VR panel (built lazily by initJournalXR) */
 let xr = null;                       // { tex, mesh, group }
 let btnEdge = false, stickEdge = false, closeEdge = false;
+let statStickEdge = false, spendEdge = false;   // STATS-tab cursor + spend edges (VR)
 
 /* ---------- build (once) ---------- */
 export function buildJournal(state){
@@ -56,10 +58,14 @@ export function buildJournal(state){
     else if (k === "2"){ setTab(1); }
     else if (k === "3"){ setTab(2); }
     else if (k === "4"){ setTab(3); }
+    else if (k === "5"){ setTab(4); }
     else if (k === "arrowright" || k === "e"){ setTab((tab + 1) % TABS.length); }
     else if (k === "arrowleft"  || k === "q"){ setTab((tab + TABS.length - 1) % TABS.length); }
-    else if (k === "arrowdown" || k === "s"){ scrollBy(48); }
-    else if (k === "arrowup"   || k === "w"){ scrollBy(-48); }
+    // on the STATS tab ↑/↓ move the spend cursor and Enter/Space raises a stat;
+    // everywhere else they scroll the panel
+    else if (k === "arrowdown" || k === "s"){ onStatsTab() ? moveCursor(1)  : scrollBy(48); }
+    else if (k === "arrowup"   || k === "w"){ onStatsTab() ? moveCursor(-1) : scrollBy(-48); }
+    else if (k === "enter" || k === " "){ if (onStatsTab()) trySpend(); }
   });
   // wheel scroll on the DOM overlay
   canvas.addEventListener("wheel", e => { if (M.journalOpen){ e.preventDefault(); scrollBy(e.deltaY); } }, { passive: false });
@@ -102,6 +108,11 @@ export function closeJournal(){
 function setTab(i){ tab = i; scroll = 0; if (!M.inVR) draw(); }
 function scrollBy(dy){ scroll = Math.max(0, Math.min(scroll + dy, maxScroll)); if (!M.inVR) draw(); }
 let maxScroll = 0;
+
+/* ---------- STATS tab: spend OPERATOR POINTS ---------- */
+function onStatsTab(){ return TABS[tab] === "STATS"; }
+function moveCursor(d){ statCursor = (statCursor + d + STATS.length) % STATS.length; if (!M.inVR) draw(); }
+function trySpend(){ spendPoint(STATS[statCursor][0]); if (!M.inVR) draw(); }
 
 /* ---------- item-name resolver ---------- */
 const EXTRA_NAMES = { mayo: "Jar of Mayonnaise" };
@@ -168,7 +179,8 @@ export function draw(){
   if (tab === 0)      endY = drawObjective(top);
   else if (tab === 1) endY = drawContacts(top);
   else if (tab === 2) endY = drawInventory(top);
-  else                endY = drawErrands(top);
+  else if (tab === 3) endY = drawErrands(top);
+  else                endY = drawStats(top);
   g.restore();
 
   maxScroll = Math.max(0, endY - bottom + 20);
@@ -184,7 +196,10 @@ export function draw(){
 
   // footer hint
   g.fillStyle = DIM; g.font = "14px 'Share Tech Mono', monospace"; g.textAlign = "center";
-  g.fillText(M.inVR ? "X: CLOSE  ·  STICK ◂ ▸: TABS" : "TAB / J: CLOSE  ·  1·2·3·4: TABS  ·  ↑↓: SCROLL", W / 2, H - 14);
+  const hint = onStatsTab()
+    ? (M.inVR ? "STICK ▴▾: SELECT  ·  TRIGGER: RAISE  ·  STICK ◂ ▸: TABS" : "1-5: TABS  ·  ↑↓: SELECT  ·  ENTER: RAISE")
+    : (M.inVR ? "X: CLOSE  ·  STICK ◂ ▸: TABS" : "TAB / J: CLOSE  ·  1-5: TABS  ·  ↑↓: SCROLL");
+  g.fillText(hint, W / 2, H - 14);
   g.textAlign = "left";
 
   if (xr){ xr.tex.needsUpdate = true; }
@@ -316,6 +331,68 @@ function drawErrands(top){
   return y;
 }
 
+/* the operator's SPECIAL sheet + the OPERATOR POINTS spend UI. The stats were
+   invisible after creation until now; this makes the sheet persistent AND lets
+   the player spend points earned from the Custodian + deep friendships (W3). */
+function drawStats(top){
+  let y = top + 14;
+
+  // points remaining
+  g.font = "22px 'VT323', monospace";
+  g.fillStyle = player.points > 0 ? "#ffd24a" : DIM;
+  g.fillText(`OPERATOR POINTS: ${player.points}`, 24, y);
+  y += 28;
+  g.fillStyle = DIM; g.font = "14px 'Share Tech Mono', monospace";
+  y = wrap(player.points > 0
+    ? (M.inVR ? "Stick ▴▾ to select an attribute, trigger to raise it." : "↑↓ to select an attribute, ENTER to raise it.")
+    : "Earn points at each Custodian audience, and the first time a trapped user comes to adore you.",
+    24, y, W - 60, 20);
+  y += 12;
+
+  g.fillStyle = DIM; g.font = "16px 'VT323', monospace";
+  g.fillText("— S.P.E.C.I.A.L. —", 24, y); y += 26;
+
+  const ROW = 40;
+  for (let i = 0; i < STATS.length; i++){
+    const [key, abbr] = STATS[i];
+    const val = player.stats[key] ?? 0;
+    const sel = i === statCursor;
+    const atMax = val >= STAT_MAX;
+    const rowTop = y - 20;
+
+    if (sel){ g.fillStyle = "rgba(70,255,142,0.12)"; g.fillRect(20, rowTop, W - 40, ROW - 6); }
+
+    g.font = "18px 'Share Tech Mono', monospace";
+    g.fillStyle = sel ? GREEN : INK;
+    g.fillText(`${sel ? "▸" : " "} ${key.toUpperCase()}`, 30, y);
+    g.font = "16px 'VT323', monospace"; g.fillStyle = DIM;
+    g.fillText(abbr, 250, y);
+
+    // a wee bar so the value reads at a glance
+    const barX = 310, barW = 150, cell = barW / STAT_MAX;
+    for (let s = 0; s < STAT_MAX; s++){
+      g.fillStyle = s < val ? (atMax ? "#ffd24a" : (sel ? GREEN : DIM)) : "rgba(70,255,142,0.10)";
+      g.fillRect(barX + s * cell, y - 12, cell - 2, 12);
+    }
+
+    g.font = "18px 'Share Tech Mono', monospace";
+    g.fillStyle = atMax ? "#ffd24a" : (sel ? GREEN : INK);
+    g.fillText(String(val), W - 92, y);
+    g.fillStyle = DIM; g.font = "13px 'Share Tech Mono', monospace";
+    g.fillText(`/${STAT_MAX}`, W - 74, y);
+
+    // spend affordance on the selected row (disabled at the ceiling / with no points)
+    if (sel){
+      const can = player.points > 0 && !atMax;
+      g.font = "20px 'VT323', monospace";
+      g.fillStyle = can ? GREEN : "#7a1f1f";
+      g.fillText(atMax ? "MAX" : "＋", W - 44, y);
+    }
+    y += ROW;
+  }
+  return y;
+}
+
 /* ---------- VR panel ----------
    Same canvas, textured onto a plane parked in front of the dolly (like
    the debug panel). Toggled with the left controller's X button; the left
@@ -343,14 +420,16 @@ export function updateJournalXR(state, three, dt){
   const session = M.renderer.xr.getSession && M.renderer.xr.getSession();
   if (!session){ xr.group.visible = false; return; }
 
-  let openBtn = false, closeBtn = false, stickX = 0;
+  let openBtn = false, closeBtn = false, stickX = 0, stickY = 0, trigger = false;
   for (const src of session.inputSources){
     const gp = src.gamepad; if (!gp) continue;
     if (src.handedness === "left"){
       if (gp.buttons[4] && gp.buttons[4].pressed) openBtn = true;   // X
       stickX += (gp.axes[2] ?? 0) || (gp.axes[0] ?? 0);
+      stickY += (gp.axes[3] ?? 0) || (gp.axes[1] ?? 0);
     }
     if (gp.buttons[5] && gp.buttons[5].pressed) closeBtn = true;    // B / Y
+    if (gp.buttons[0] && gp.buttons[0].pressed) trigger = true;     // trigger: raise a stat (STATS tab)
   }
 
   // edge-detect the toggle (X), so a held press flips it once
@@ -365,10 +444,19 @@ export function updateJournalXR(state, three, dt){
   if (closeBtn && !closeEdge){ closeEdge = true; closeJournal(); return; }
   else if (!closeBtn) closeEdge = false;
 
-  // thumbstick flick cycles tabs
+  // thumbstick flick (horizontal) cycles tabs
   if (Math.abs(stickX) > 0.6){
     if (!stickEdge){ stickEdge = true; setTab((tab + (stickX > 0 ? 1 : TABS.length - 1)) % TABS.length); }
   } else stickEdge = false;
+
+  // STATS tab: stick ▴▾ moves the attribute cursor, trigger raises the stat
+  if (onStatsTab()){
+    if (Math.abs(stickY) > 0.6){
+      if (!statStickEdge){ statStickEdge = true; moveCursor(stickY > 0 ? 1 : -1); }
+    } else statStickEdge = false;
+    if (trigger && !spendEdge){ spendEdge = true; trySpend(); }
+    else if (!trigger) spendEdge = false;
+  } else { statStickEdge = false; spendEdge = false; }
 
   draw();     // redraw + tex.needsUpdate every frame while open
 }

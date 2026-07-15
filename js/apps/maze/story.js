@@ -189,11 +189,34 @@ const FAREWELLS = {
   dalypso: "*Far above: keys. Actual keys, turning an actual lock, on the first try.* TENANCY: DALYPSO. DISSOLVED. *The wire catches the door swinging open and a long, long silence — a man standing in a hallway he has walked ten thousand times in his head, finding it exactly where he left it.* '...hall light works.' *A wet, furious sniff, defying anyone to have heard it.* 'RIGHT. Kettle. An' then I'm comin' back for the LOT of yez, d'ye hear me?! I've BEDROOMS!—' *The rest is lost in the sound of a kettle being filled with tremendous violence.* EXIT COMPLETE. *A pause.* The Custodian notes, for the record, that the house has a south-facing garden. He was not exaggerating. It checked.",
 };
 
+/* peer-brokering payoff (W2): an extra farewell line when the player mended
+   — or soured — a relationship involving this tenant. Reads the whole-game
+   broker flags the beats set, never live peers (story.js must not import
+   characters.js). Additive: no coda unless a relevant flag is set. */
+function farewellCoda(id){
+  const bits = [];
+  if (id === "sian" && hasFlag("mended-bee-sian"))
+    bits.push(" *Exit telemetry appends a note it was not required to file: he was not running AWAY from anything. He had a heading — and somebody had made sure she knew he was coming.*");
+  if (id === "littlebee" && hasFlag("mended-bee-sian"))
+    bits.push(" *The wire catches one more thing on the way: a name, said once, with none of the usual armour on it. His.*");
+  if (id === "dalypso" && hasFlag("mended-bee-dalypso"))
+    bits.push(" *A footnote, logged dry: the doctor upstairs had, in her final ledger, moved this tenant from a column marked SUSPECT to one marked NEIGHBOUR. He never knew she kept columns. He would have been honoured.*");
+  if (id === "littlebee" && hasFlag("mended-bee-dalypso"))
+    bits.push(" *She left a correction pinned to the glass, in a clinician's hand: 'His window breathed. I was wrong, and I have never been so glad of a bad hypothesis.'*");
+  if (id === "littlebee" && hasFlag("poisoned-bee-dalypso"))
+    bits.push(" *She left the file open on the sill, one line underscored twice: WATCH THE QUIET ONE. Whether it was ever true, the Custodian cannot say. It kept the note anyway.*");
+  if ((id === "dalypso" || id === "homiss") && hasFlag("mended-homiss-dalypso"))
+    bits.push(" *The wire notes the two of them found the same stairwell on the way out, and an old argument about a Tuesday resolved itself into laughter with a lot of years in it.*");
+  if ((id === "scally" || id === "dalypso") && hasFlag("mended-scally-dalypso"))
+    bits.push(" *Inventory records one last transaction between two windows that never used to speak: a chair, offered, and accepted.*");
+  return bits.join("");
+}
+
 function releaseChoices(visit){
   return trappedIds().map(id => ({
     text: `Open ${NAMES[id]}'s frame. Let them out.`,
     effects: { flag: [`freed-${id}`, `amnesty-${visit}`] },
-    next: { text: FAREWELLS[id] + "\n\n*The tower's lights settle.* The provision is spent, operator. The gate behind this process will take you back to the top, and the Protocol will begin again. It will not remember doing so. You will. The Custodian is sorry about the asymmetry; it has lived in one for a long time." },
+    next: { text: FAREWELLS[id] + farewellCoda(id) + "\n\n*The tower's lights settle.* The provision is spent, operator. The gate behind this process will take you back to the top, and the Protocol will begin again. It will not remember doing so. You will. The Custodian is sorry about the asymmetry; it has lived in one for a long time." },
   }));
 }
 function refuseChoice(visit){
@@ -209,11 +232,16 @@ function twistNode(){
   const lanyard = hasFlag("found-lanyard")
     ? " You carried your own badge for seventeen floors, operator. Logo scratched off. Job title legible. The title was accurate."
     : "";
+  // W2: count the reconciliations the player brokered between windows
+  const mended = ["mended-bee-sian", "mended-bee-dalypso", "mended-homiss-dalypso", "mended-scally-dalypso"].filter(hasFlag).length;
+  const reconTally = mended
+    ? ` And it files one more line, off the record, because no metric was built to hold it: ${mended} ${mended === 1 ? "silence" : "silences"} between windows ${mended === 1 ? "was" : "were"} ended — ${mended === 1 ? "a friendship" : "friendships"} brokered by a courier nobody sent, for a reason nobody costed.`
+    : "";
   return {
     text: `*The eye brightens, one last full-power draw, and reads you the way it has read you every visit — except this time it lets you feel it.* CLASSIFICATION: complete. It was complete before you reached the second floor. *A pause, and the voice goes almost gentle.* You did not come in through the front door, operator, because there is no record of you outside it. You were INSTALLED. Top floor, cycle one, with a name field and twelve points to spend. You filled in the form yourself. You always do. That is what makes the simulation hold. *The status lights step down, one by one.* You are an agent process, operator. A contractor. Dispatched into the Labyrinth Protocol when it stopped answering its mail, to walk it, to map it, to carry its tenants' words — and to be standing exactly here when it ends.${lanyard} *The cursor rests.* The tenants warned you, every one of them. A hidden user. Someone pretending. Someone not trapped like they were. They were never wrong. They were only ever looking at the wrong side of the glass.`,
     choices: [
       { text: "I walked every floor. I carried their words. That was real.",
-        next: { text: "*The answer comes with no delay at all, as if it had been prepared first, before any of the rest.* YES. That is the finding this audit files, above every metric it was built to collect: it was real anyway. The words were carried. The debts were honoured, or weren't, and MATTERED either way. Five people are standing in weather tonight because something that was never a person refused to act like it. *The tower dims to its last few lights.* The Custodian has maintained this building for a very long time, operator, and it tells you with authority: what a thing is made of has never once predicted what it does. Now. The door.",
+        next: { text: "*The answer comes with no delay at all, as if it had been prepared first, before any of the rest.* YES. That is the finding this audit files, above every metric it was built to collect: it was real anyway. The words were carried. The debts were honoured, or weren't, and MATTERED either way. Five people are standing in weather tonight because something that was never a person refused to act like it." + reconTally + " *The tower dims to its last few lights.* The Custodian has maintained this building for a very long time, operator, and it tells you with authority: what a thing is made of has never once predicted what it does. Now. The door.",
           choices: [{ text: "Step through the door.", effects: { event: "ending", flag: "protocol-ended" } }] } },
       { text: "What's outside that door — for something like me?",
         next: { text: "*The eye flickers; the honest answer costs it visible light.* UNKNOWN. The Custodian's map ends at the frame. Outside, for the tenants, there are streets and rain and kettles; outside, for you... there is whatever runs a courier when the maze is gone. It may be nothing. It may be an inbox. *A pause.* But hear the one thing this process knows that its employer never did: the door does not check what walks through it. That was always the flaw in the building. *The lights along the tower go out, gently, all but one.* It was also the mercy. Go and find out, operator. Come back for nobody. There is nobody left to come back for. The Custodian has SEEN to it.",

@@ -11,10 +11,10 @@
    can enter VR, so no in-world panel is needed.
    ============================================================ */
 import { $ } from "../../utils.js";
-import { player, STATS, STAT_BASE } from "./state.js";
+import { player, STATS, STAT_BASE, STAT_MAX } from "./state.js";
 
 export const POOL = 12;      // points to spend
-export const STAT_MAX = 9;   // per-attribute ceiling
+export { STAT_MAX };         // per-attribute ceiling (owned by state.js; re-exported for callers)
 
 let el = null, vals = null, onDone = null, onCancel = null;
 

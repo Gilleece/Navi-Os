@@ -43,9 +43,10 @@ import { buildJournal, initJournalXR, updateJournalXR } from "./journal.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
 import { buildHands, updateHands } from "./hands.js";
 import { initVRBanner, showVRBanner, updateVRBanner, initVRPrompt } from "./vrbanner.js";
-import { initAudio, playGateUnlock, toggleMute, isMuted } from "./audio.js";
+import { initAudio, playGateUnlock, toggleMute, isMuted, updateListener } from "./audio.js";
 import { buildPause, openPause } from "./pause.js";
-import { toast } from "./hud.js";
+import { toast, objectiveLine, setObjective } from "./hud.js";
+import { createPostFX } from "./postfx.js";
 
 const layer = $("#maze-layer");
 let three = null;
@@ -103,6 +104,7 @@ const M = {
   vel:{x:0,z:0}, bobPhase:0, stepDist:0,   // movement juice (player.js)
   gateFlash:0,                              // emissive pulse when the ring unlocks
   fadeDiv:null, fadeQuad:null, fadeVal:0, fadeTarget:0,   // level-transition fade
+  postfx:null, fxMode:"bloom",              // non-VR bloom/CRT composer (pause.js sets fxMode; "off" bypasses)
 };
 
 /* free the GPU resources of a scene subtree (geometries, materials and
@@ -207,6 +209,7 @@ function buildMaze(){
   M.vel.x = M.vel.z = 0;         // no inherited momentum into a fresh wall
   M.yaw = Math.PI; M.pitch = 0; // face into the maze
   $("#hud-top").innerHTML = `MAZE.EXE <b>// depth ${shownDepth()}</b>`;
+  setObjective(objectiveLine(M));       // persistent objective line, from the same gate state
 
   if (M.runActive) saveGame(M.depth);   // autosave: one slot, every level entered
 }
@@ -257,6 +260,7 @@ function buildBase(){
   M.vel.x = M.vel.z = 0;
   M.yaw = s.playerStart.yaw; M.pitch = 0;
   $("#hud-top").innerHTML = `MAZE.EXE <b>// the base depth</b>`;
+  setObjective(objectiveLine(M));
 
   if (M.runActive) saveGame(M.depth);
 }
@@ -367,10 +371,11 @@ function updateGate(dt){
     M.gateT = 0.5;
     const wasLocked = M.gatePending.length > 0;
     M.gatePending = gatePendingNames();
+    setObjective(objectiveLine(M));      // reflect who (if anyone) still holds the ring
     if (wasLocked && !M.gatePending.length && M.goal){
       hudMsg("THE WAY DOWN OPENS", 1800);
       if (M.inVR) showVRBanner("THE WAY DOWN OPENS", 1800);
-      playGateUnlock();                  // the grand sting: the level's biggest moment
+      playGateUnlock(M.goal.position);   // the grand sting, localised to the ring
       M.gateFlash = 1;                    // and a matching emissive pulse on the ring
     }
   }
@@ -398,8 +403,33 @@ function triggerHeld(){
   return false;
 }
 
+/* reused scratch for the spatial-audio listener update (built once three
+   is loaded); avoids per-frame allocation in mazeLoop */
+let audioScratch = null;
+
+/* glue the Web Audio listener to the head each frame so world sounds pan +
+   attenuate correctly. Uses the real XR camera pose in VR (turning your
+   head then pans the maze), the flat camera otherwise. */
+function updateAudioListener(){
+  if (!three) return;
+  if (!audioScratch) audioScratch = {
+    p: new three.Vector3(), q: new three.Quaternion(),
+    f: new three.Vector3(), u: new three.Vector3(),
+  };
+  const cam = (M.inVR && M.renderer.xr.getCamera) ? M.renderer.xr.getCamera(M.camera) : M.camera;
+  if (!cam) return;
+  cam.updateWorldMatrix && cam.updateWorldMatrix(true, false);
+  cam.getWorldPosition(audioScratch.p);
+  cam.getWorldQuaternion(audioScratch.q);
+  audioScratch.f.set(0, 0, -1).applyQuaternion(audioScratch.q);
+  audioScratch.u.set(0, 1, 0).applyQuaternion(audioScratch.q);
+  updateListener(audioScratch.p, audioScratch.f, audioScratch.u);
+}
+
 function mazeLoop(){
   const dt = Math.min(M.clock.getDelta(), 0.1);
+
+  updateAudioListener();          // keep positional SFX oriented to the head
 
   // ease the VR transition veil toward its target (the DOM veil is CSS-eased)
   if (M.fadeQuad){
@@ -476,7 +506,18 @@ function mazeLoop(){
       }
     }
   }
-  M.renderer.render(M.scene, M.camera);
+  // non-VR: run the bloom/CRT composer (unless FX are OFF). VR keeps the direct
+  // path — WebXR owns its framebuffers and does not compose with the pipeline.
+  if (!M.inVR && M.postfx && M.fxMode !== "off"){
+    try { M.postfx.render(M.fxMode); }
+    catch (e){                       // a composer error must never freeze the loop
+      console.error("[MAZE] post-processing render error; disabling FX for this run:", e);
+      M.postfx = null;
+      M.renderer.render(M.scene, M.camera);
+    }
+  } else {
+    M.renderer.render(M.scene, M.camera);
+  }
 }
 
 /* --- lifecycle --- */
@@ -541,6 +582,13 @@ async function launchMaze(fromSave, btn){
     buildJournal(M);                 // operator log overlay (Tab/J) + its VR panel
     initJournalXR(three, M.dolly);
     initTransition();                // level-transition fade (DOM veil + camera quad)
+    try {                            // non-VR bloom/CRT (gated in the loop); never let it break the run
+      M.postfx = createPostFX(three, M.renderer, M.scene, M.camera);
+      console.info("[MAZE] post-processing ready — VISUAL FX:", M.fxMode);
+    } catch (e){
+      M.postfx = null;
+      console.error("[MAZE] post-processing failed to initialise; falling back to bare render:", e);
+    }
     initVRBanner(three, M);          // head-locked banner ("ENTERED DEPTH N", "+N LT")
     initVRPrompt();                  // world-anchored "PULL TRIGGER: SPEAK WITH X" prompt
     addEventListener("resize", sizeMaze);
@@ -633,6 +681,9 @@ function sizeMaze(){
   M.renderer.setSize(innerWidth, innerHeight);
   M.camera.aspect = innerWidth/innerHeight;
   M.camera.updateProjectionMatrix();
+  // match the composer's off-screen buffers to the actual drawing-buffer size
+  // (domElement.width/height already fold in the render-quality pixel ratio)
+  if (M.postfx) M.postfx.setSize(M.renderer.domElement.width, M.renderer.domElement.height);
 }
 
 let refreshLauncher = null;   // set by initMaze; exitMaze refreshes the CONTINUE label

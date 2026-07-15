@@ -16,7 +16,7 @@ import { getMasterVolume, setMasterVolume, getMusicVolume, setMusicVolume,
          getSfxVolume, setSfxVolume } from "./audio.js";
 
 /* device prefs (not part of a save), following audio.js's MUTE_KEY pattern */
-const SENS_KEY = "maze-sens", QUALITY_KEY = "maze-quality";
+const SENS_KEY = "maze-sens", QUALITY_KEY = "maze-quality", FX_KEY = "maze-fx";
 function readPref(key, dflt){ try { return globalThis.localStorage?.getItem(key) ?? dflt; } catch { return dflt; } }
 function writePref(key, v){ try { globalThis.localStorage?.setItem(key, String(v)); } catch {} }
 function readNum(key, dflt){ const v = parseFloat(readPref(key, "")); return Number.isFinite(v) ? v : dflt; }
@@ -37,6 +37,14 @@ export function applyQuality(q){
   if (!M || !M.renderer) return;
   M.renderer.setPixelRatio(pixelRatioFor(q));
   if (typeof innerWidth === "number") M.renderer.setSize(innerWidth, innerHeight);
+  // keep the post-processing buffers in step with the new drawing-buffer size
+  if (M.postfx) M.postfx.setSize(M.renderer.domElement.width, M.renderer.domElement.height);
+}
+
+/* VISUAL FX: "bloom" (subtle glow, default), "crt" (bloom + scanlines/vignette),
+   or "off" (bare render). Non-VR only — maze.js gates the composer to !inVR. */
+export function applyFx(mode){
+  if (M) M.fxMode = (mode === "crt" || mode === "off") ? mode : "bloom";
 }
 
 /* ---------- build (once) ---------- */
@@ -48,6 +56,7 @@ export function buildPause(state, opts = {}){
   // the launchMaze init block, ahead of startRun)
   M.sens = readNum(SENS_KEY, 1);
   applyQuality(readPref(QUALITY_KEY, "device"));
+  applyFx(readPref(FX_KEY, "bloom"));
 
   ensureDOM();
 }
@@ -85,6 +94,7 @@ function ensureDOM(){
   settingsView.appendChild(mkSlider("SFX VOLUME", 0, 1, 0.01,
     getSfxVolume, setSfxVolume, pct));
   settingsView.appendChild(mkQuality());
+  settingsView.appendChild(mkFx());
   settingsView.appendChild(mkButton("BACK", () => showView("main")));
 
   root.append(mainView, settingsView);
@@ -126,6 +136,22 @@ function mkQuality(){
   }
   sel.addEventListener("change", () => { writePref(QUALITY_KEY, sel.value); applyQuality(sel.value); });
   row._refresh = () => { sel.value = readPref(QUALITY_KEY, "device"); };
+  const spacer = document.createElement("span"); spacer.className = "pause-val";
+  row.append(name, sel, spacer);
+  return row;
+}
+
+function mkFx(){
+  const row = document.createElement("label");
+  row.className = "pause-row";
+  const name = document.createElement("span"); name.className = "pause-label"; name.textContent = "VISUAL FX";
+  const sel = document.createElement("select");
+  sel.className = "pause-select";
+  for (const [v, t] of [["bloom", "BLOOM"], ["crt", "BLOOM+CRT"], ["off", "OFF"]]){
+    const o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o);
+  }
+  sel.addEventListener("change", () => { writePref(FX_KEY, sel.value); applyFx(sel.value); });
+  row._refresh = () => { sel.value = readPref(FX_KEY, "bloom"); };
   const spacer = document.createElement("span"); spacer.className = "pause-val";
   row.append(name, sel, spacer);
   return row;

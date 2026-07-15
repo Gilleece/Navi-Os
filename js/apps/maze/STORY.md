@@ -72,6 +72,18 @@ of base-3 attributes (max 9 each; the pool must be fully spent). *(Note the
 retrospective irony of this screen after the twist lands — §3: the form is
 the agent parameterising itself. It always fills in the form itself.)*
 
+**Attribute progression (`state.js` `player.points`).** Stats are no longer
+fixed for the whole run. An **OPERATOR POINT** pool grows the sheet slowly:
+each **Custodian audience** grants one (`effects.points: +1` on the three
+sanctum beats), and the **first time** any trapped user's affinity reaches the
+"Adores you" band (≥90) a themed point is granted once, on a whole-game flag
+`trained-<id>` (so it never rewinds with the per-cycle memory). Points are
+spent one-at-a-time in the LOG's **STATS tab** (`journal.js`) — which is also
+the game's first persistent stat sheet — raising a chosen attribute up to the
+same ceiling of 9 (`STAT_MAX`, owned by `state.js`). Raised stats then satisfy
+higher `req` gates. The pool and stats round-trip through the save
+(`menu.js`). Guaranteed drip ≈ +2/run; milestones optional.
+
 ---
 
 ## 3. The Plot
@@ -525,11 +537,30 @@ is Scally↔Dalypso ("seems sound, sells things").
 | Dalypso → Little Bee | 44 | She took nothing that was his to keep; very nearly finished letting it go. |
 | Dalypso → Sian | 82 | Best mate FIRST. |
 
-> **TODO:** with future characters, deliberately leave **some pairs blank**
-> (= they've never met) so "introducing" them becomes a player action
-> (`meetPeer`). Decide the relay/brokering rules: how much relaying a message
-> or moving an item shifts peer affinity (current deliveries use ±2..4), and
-> whether peer affinity gates anything the player can do.
+> With future characters, deliberately leave **some pairs blank** (= they've
+> never met) so "introducing" them becomes a player action (`meetPeer`).
+
+### Peer-affinity payoff (implemented — the web now *matters*)
+
+The inter-character affinity web gates and shapes three things:
+
+- **Brokering (player shifts relationships).** Optional (`gate: false`) story
+  beats let the player nudge a pair AND set a durable **broker flag** (peers
+  are live, flags are the whole-game/cross-module signal the ending reads):
+  - `broker-dalypso` (Bee, needs `bee-suspects`): reassure → `peers littlebee→dalypso +8`, **`mended-bee-dalypso`**; or confirm → `−8`, **`poisoned-bee-dalypso`**.
+  - `broker-homiss` (Dalypso, needs `msg-h2d-done`): reconcile over the Tuesday → both ways +8, **`mended-homiss-dalypso`**.
+  - `broker-dalypso-scally` (Scally): introduce the thin pair → both ways +8, **`mended-scally-dalypso`**.
+  - `broker-bee` (Sian, needs `msg-b2s`): carry the warmth under Bee's tenner → `sian→littlebee +5`, **`mended-bee-sian`**.
+- **Gossip topics (peer-gated colour).** Optional beats whose `available(ctx)`
+  reads the **live** peer value (`ctx.character.feelsToward(otherId)`), so they
+  appear/vanish as the pair crosses a threshold: Bee's `gossip-dalypso-warm`
+  (≥40, after a mend) / `gossip-dalypso-cold` (≤30, after a poison); Sian's
+  `gossip-dalypso-sian` (≥70, shown by default at base 75).
+- **Ending shaping (via the flags).** `story.js farewellCoda(id)` appends a
+  release coda when a relevant broker flag is set (e.g. freeing Sian while
+  `mended-bee-sian`), and the twist's "it was real anyway" reply tallies how
+  many `mended-*` reconciliations the player brokered. All through flags —
+  `story.js` never imports `characters.js`.
 
 ---
 
@@ -570,7 +601,10 @@ material lands (this is the old depths 11–15 content, now correctly placed):
 | 13 | 03 | gradient ×3 | `lanyard` appears — "spot-lanyard" / "fear-lanyard". Bee "ground-him" (`msg-ground`). Sian "system-check". Dalypso "missed-appointment". Homiss "borrowed-tune". Scally "closing-time" (`scally-and-co`). |
 | 14 | 04 | gradient ×3 | `tv-guide` appears. Sian "grounded". Bee "results-day". Scally **"exit-interview"** (`heard-doorprice`). Dalypso "tv-guide-season". Homiss **"normal-enough"** (the trap inverts; `homiss-knows`). |
 | 15 | 05 | gradient ×3 | Capstones: Bee "drift", Sian "speedrun" (`sian-onboard`), Dalypso "keys" (`dalypso-keys`), Scally "manifest" (audits the promise flags), Homiss "one-for-the-road" (`homiss-answered`). |
-| 16–19 | 06–09 | shift ×2 | Echo territory: the cycle-1 beats for these shown depths replay (with callouts), plus echo greetings/topics. Room for future cycle-2-specific beats (**TBD**). |
+| 16 | 06 | shift ×2 | Cycle-1 echoes + **new cycle-2 beats**: Scally "old-stock" (the maze reruns old rooms) and Sian "asset-reuse" (they re-used the skybox). |
+| 17 | 07 | shift ×2 | Cycle-1 echoes + **Dalypso "the-repeats"** (he can smell a rerun; they only rerun when the ending's already written). |
+| 18 | 08 | shift ×2 | Cycle-1 echoes + **Homiss "da-capo"** (the corridor has a repeat sign on it; a da capo is only a prison played alone). |
+| 19 | 09 | shift ×2 | Cycle-1 echoes + **Bee "perseveration"** (`bee-loop`) — same walls, same crack; degrading, or dwelling? |
 | 20 | 10 | shift ×2 | Cycle-1 capstone echoes. **SANCTUM: Custodian `audience-2`** — the rewind explained ("tenancy state is premises"), INTEGRITY 61%, second amnesty. Recycle. |
 
 ### Cycle 3 — depths 21–30, shown 01–10 (caught in the static)
@@ -581,12 +615,15 @@ Everything echoes again — now with the text itself corrupting
 
 | Global | Shown | Visual band | New (non-echo) material |
 |---|---|---|---|
-| 21 | 01 | transition ×3 | Dark-window beats echo/fire for anyone freed at audience-2. Static greetings + rotating static topics from here down. |
+| 21 | 01 | transition ×3 | Dark-window beats echo/fire for anyone freed at audience-2. Static greetings + rotating static topics from here down. **Sian "eol-build"** (`sian-eol`) — end-of-life build; a build that stops pretending keeps only the essentials. |
 | 22 | 02 | transition ×3 | **Scally "unrendering"** — the stock is going grey; everything half off. |
 | 23 | 03 | transition ×3 | **Bee "seams-open"** (`bee-seams-open`) — her arm fits in the seam now; the back of the place is all one room. |
 | 24 | 04 | transition ×3 | **Homiss "last-bar"** (`homiss-duet` possible) — the building hums his missing bars back; stealing, or learning? |
+| 25 | 05 | flicker | **Dalypso "graveyard-slot"** — the schedule's down to the small hours of the whole world; one channel left worth watching. |
 | 26 | 06 | flicker | **Sian "render-distance"** (`sian-enddraw`) — the fog is inside his window; "keep lookin' at me, hai." |
 | 27 | 07 | flicker | **Dalypso "test-card"** (`dalypso-lastchannel`) — every channel is the player's corridor; channel 407's last broadcast. |
+| 28 | 08 | flicker | **Bee "self-inventory"** (`bee-inventory`) — inventory of herself against the forgetting; add one it can't touch. |
+| 29 | 09 | flicker | **Homiss "resolving-note"** (`homiss-resolving`) — the building's hum is resolving toward the root; be at the bottom for the last note. |
 | 30 | 10 | flicker | **FINAL SANCTUM: Custodian `audience-3`** — the termination order, every remaining tenancy dissolved (roll-call farewells), the classification: **the twist (§3)**, and the door (`event: "ending"` → the epilogue, `maze.js runEnding`). |
 
 **The sanctum (`sanctum.js`).** One wide 40 m hall under a 14 m roof — the
@@ -833,6 +870,30 @@ tenancies released, the agent process unaccounted for, *"the door did not
 check what walked through it"*, PROTOCOL TERMINATED, `[ DISCONNECT ]` back
 to the launcher. A safety net in `descend()` also routes any gate-walk out
 of the final sanctum into `runEnding` — there is no depth 31.
+
+### Presentation & feedback
+
+- **Persistent objective HUD (`hud.js` `setObjective` / `objectiveLine`).** A
+  standing one-line objective under the depth/LT readouts (`#hud-objective`),
+  driven off the same gate state as the LOG's OBJECTIVE tab (`M.gatePending` +
+  `M.inSanctum`): "SEALED — SPEAK WITH X & Y" until the last beat is heard,
+  then "WAY DOWN OPEN". Updated on level build and on every gate recheck. VR
+  keeps its existing transient banners (the DOM HUD isn't composited into
+  immersive-vr, and the proximity prompt owns `setVRPrompt`).
+- **Spatial audio (`audio.js`).** World sounds (token pickups, the gate
+  unlock) can pass a world position and route through an HRTF `PannerNode`
+  (distance attenuation + panning) instead of straight to `sfxBus`; the
+  listener is glued to the camera each frame (`updateListener`, driven from
+  `maze.js`), so it works in VR too. Footsteps and dialogue blips stay
+  non-spatial. Mute + the SFX-volume slider still govern everything (the
+  panner feeds `sfxBus`).
+- **Bloom + CRT post-processing (`postfx.js`, non-VR only).** A self-contained
+  composer built from core three r128 (render targets + full-screen-quad
+  passes — no vendored example scripts): scene → bright-pass → half-res blur →
+  additive bloom, with an optional CRT pass (scanlines + vignette + a hair of
+  chromatic aberration). Gated to `!M.inVR` (WebXR owns its framebuffers).
+  Setting in the pause menu (**VISUAL FX**: BLOOM / BLOOM+CRT / OFF), persisted
+  like the other device prefs; OFF bypasses the composer for the bare render.
 
 ---
 

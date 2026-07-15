@@ -227,6 +227,48 @@ export function dalypsoBeats(H){
             next: { text: "*He goes quiet, an' reaches for the remote, an' doesn't pick it up.* ...channel four-oh-seven. The house. *He says it like a score he can't argue with.* Not MY house — the channel that used to show a house, some house, hall light on, kettle goin', somebody's coat on the bannister. I never told the others I watched it. Ye don't tell people ye watch the HOUSE channel. *He looks at his hands.* Last broadcast was the hall light goin' out. Not sudden. Like somebody leavin' a room PROPERLY, last one out. An' then the test card, an' then... *He nods at the screens full of you.* ...the news. *He clears his throat with violence.* Anyway. When ye get us out, I'm findin' that house. I've QUESTIONS about the kettle." } },
           { text: "You've watched me this whole time. Rate the performance. Honestly.", effects: { like: +2 },
             next: { text: "*The pundit comes back up his spine one vertebra at a time, an' he takes a breath ye could hang washin' on.* HONESTLY? Pacin' issues in the early episodes. FAR too long talkin' to the wee Italian — I said so at the TIME, to an empty room, which is the critic's lot. Middle season: stronger. The relay stuff? *He kisses his fingers like a continental.* Appointment television. An' the bit where ye came back up an' NOBODY remembered ye — *he shakes his head slowly* — hardest watch of me LIFE, an' I've seen finales they wrote durin' a strike. *He leans in, an' drops the bit entirely.* Five stars, neighbour. Not because it's perfect. Because ye kept SHOWIN' UP, episode after episode, an' that's the only metric that ever mattered on this network. Now away — I don't do spoilers, but the last episode's a BELTER. I can feel it in me aerial." } },
+        ] } }) },
+
+  /* -- depth 17 . Dalypso: reruns, and he knows a rerun (cycle 2) -- */
+  { char: "dalypso", depth: 17, make: () => ({
+      id: "the-repeats", story: true, once: true,
+      label: "*He's watching the corridor behind you, not the telly.*",
+      effects: { like: +1 },
+      node: { text: "*He mutes the set, which is serious.* Here. Neighbour. I've watched forty years of television, an' if there's ONE thing I can smell through a wall, it's a REPEAT. This stretch? Seen it. The lightin's a shade off — they always drop the lightin' budget on the reruns — but it's the same EPISODE. *He folds his arms, grim.* An' d'ye know when a channel starts wheelin' out the old ones, back to back? When the new stuff's stopped comin'. When somethin' upstairs has quietly pulled the plug on the season.",
+        choices: [
+          { text: "They only rerun the old ones when the ending's already written.", effects: { like: +2 },
+            next: { text: "*He points at ye like ye've won the phone-in.* THERE it is. THAT'S the law of it. Nobody reruns a show that's still bein' WRITTEN. So somethin' down there already knows how this ends, an' it's just fillin' the schedule till we get to it. *He leans in.* So get to it, neighbour. I've a horrible feelin' about what happens if the broadcast catches up with us first." } },
+          { text: "Every night the same, is it? Doesn't that get to you?",
+            next: { text: "*He shrugs, an' it's almost peaceful.* Get to me? Sure that's half of LIVIN'. Same faces, same fixtures, the highlights at the same time of an evenin'. That's not a prison, that's a ROUTINE, an' there's a world of difference — the difference is WHO yer in it with. *He nods at ye.* Yer in mine now. No gettin' out of it. Onwards." } },
+        ] } }) },
+
+  /* -- depth 25 . Dalypso: the graveyard schedule (cycle 3) -- */
+  { char: "dalypso", depth: 25, make: () => ({
+      id: "graveyard-slot", story: true, once: true,
+      label: "*He's flicking channels, and they're nearly all one colour.*",
+      effects: { like: +1 },
+      node: { text: "*Click. Click. Corridor. Static. Corridor. A channel that's just the colour blue. Click.* ...the GOOD stuff's gone, neighbour. All of it. We're into the graveyard schedule now — ye know the graveyard schedule? Small hours, the proper programmes done, an' it's all repeats an' the shoppin' channel an' a wee dot in the middle of the screen. *He sets the remote down, careful.* Except it's not the small hours. It's the small hours of the whole WORLD. The channels are goin' out one by one, an' I'm watchin' the lights go with them.",
+        choices: [
+          { text: "One channel left worth watching — the one where a courier walks everybody home.", effects: { like: +2 },
+            next: { text: "*He looks at ye, an' the pundit falls away entirely, an' what's left is just the neighbour.* ...aye. That one's still on. *He turns the other channels off, one by one, till only that one's lit, an' he says it like layin' down a bet with his last coin.* Don't ye DARE get cancelled mid-season, d'ye hear me. Not now. Yer the only thing left on the whole network worth the licence fee. Walk on. I'll mind the schedule." } },
+          { text: "Turn it off, Dalypso. You don't have to watch the lights go out.",
+            next: { text: "*He shakes his head slow, an' there's steel in it.* Nah. Somebody should've sat up with me da's ward camera the whole last stretch, an' the nights that grainy wee window went unwatched — I've never forgave them. *He grips the remote.* So no. If a channel's goin' dark down here, it goes dark with somebody WATCHIN'. That's the only dignity the schedule has left. Away on. Give me somethin' to watch." } },
+        ] } }) },
+
+  /* -- peer brokering (W2): reconcile Dalypso and Homiss over the Tuesday -- */
+  { char: "dalypso", depth: 9,
+    available: () => hasFlag("msg-h2d-done") && !hasFlag("mended-homiss-dalypso"),
+    make: () => ({
+      id: "broker-homiss", story: true, once: true, gate: false,
+      label: "Homiss and you — is the Tuesday thing squared, or still smouldering?",
+      node: { text: "*He pauses the telly.* ...the Tuesday thing. *He turns the ball over.* He said sorry. I heard ye. An' I said the door's always open. But a grudge that size doesn't just switch OFF, neighbour — it wants a fella standin' between the two windows to say the words in the right order. That's you. So. Am I still cross at the man, or amn't I?",
+        choices: [
+          { text: "Let it go, Dalypso. He kept the seat warm for you every week. That's not a man who forgot you.",
+            effects: { peers: [{ of: "dalypso", toward: "homiss", delta: +8 }, { of: "homiss", toward: "dalypso", delta: +8 }], flag: "mended-homiss-dalypso", like: +2 },
+            next: { text: "*He's quiet a long moment, then nods, slow.* ...kept the seat warm. Aye. He would, the soft article. *He sets the ball down.* Right. It's squared. Tell him the amp's still tuned an' the good extension lead's HIS if he's ever on time again — which he won't be, an' that's — *his voice catches once* — that's the whole point of havin' him. Band's back on, courier. Put that in the minutes." } },
+          { text: "Honestly? Stay a bit cross. It's the one fixture the two of you never miss.",
+            effects: { like: +1 },
+            next: { text: "*He barks a laugh.* HA! Now THAT'S a man who understands us. *He picks the ball back up.* Aye. A good grudge, well-maintained, is the longest-runnin' show on the bill. We'll square it at the reunion, in person, at VOLUME, an' it'll be GORGEOUS. Leave us our one dispute, courier. A house needs one, or it's not a home." } },
         ] } }) }
   ];
 }
