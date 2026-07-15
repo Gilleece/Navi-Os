@@ -66,10 +66,56 @@ export function exteriorSides(cells, x, y){
   return sides;
 }
 
+/* structural decay — "braiding".
+   A freshly generated maze is *perfect*: exactly one route between any two
+   cells, no loops. As the Labyrinth Protocol ages (the caller scales `amount`
+   with global depth via chaosFor) its walls literally break down — so knock
+   out a fraction of the remaining interior walls, opening loops and blowing
+   dead-ends into through-passages. `amount` is 0..1 (0 removes nothing, a
+   pristine depth-1 maze; higher = more ruined). `protect`, if given, is a
+   {x,y} cell whose walls are left intact — pass the goal cell so the gate
+   keeps its dead-end alcove.
+
+   Only interior walls (shared by two in-bounds cells) are ever removed, so
+   the perimeter stays solid (character windows live there) and connectivity
+   only ever increases — every cell stays reachable. Mutates and returns
+   `cells`. Kept here, as pure grid logic; the depth→amount curve is the
+   caller's business. */
+export function braidMaze(cells, amount, protect = null){
+  if (!(amount > 0)) return cells;
+  const n = cells.length;
+  // look only S and E from each cell, so each interior wall is enumerated
+  // exactly once (a cell's S wall is its neighbour's N wall, and so on)
+  const DIRS = [["S", 0, 1, "N"], ["E", 1, 0, "W"]];
+  const removable = [];
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++){
+      if (protect && x === protect.x && y === protect.y) continue;
+      for (const [d, dx, dy, opp] of DIRS){
+        const nx = x + dx, ny = y + dy;
+        if (nx >= n || ny >= n) continue;                       // perimeter: no cell across it
+        if (protect && nx === protect.x && ny === protect.y) continue;
+        if (cells[y][x][d]) removable.push([x, y, d, nx, ny, opp]);   // wall present -> candidate
+      }
+    }
+  for (let i = removable.length - 1; i > 0; i--){               // shuffle
+    const j = Math.random() * (i + 1) | 0;
+    [removable[i], removable[j]] = [removable[j], removable[i]];
+  }
+  const take = Math.floor(removable.length * amount);
+  for (let i = 0; i < take; i++){
+    const [x, y, d, nx, ny, opp] = removable[i];
+    cells[y][x][d] = 0; cells[ny][nx][opp] = 0;                 // clear both shared faces
+  }
+  return cells;
+}
+
 /* pick the goal cell: the dead-end (single opening) furthest by
    path distance from the start (0,0). A perfect maze always has
    at least one dead-end, so reaching the goal there leaves nowhere
-   to go but back. Returns {x,y}. */
+   to go but back. Call this BEFORE braiding — braiding destroys
+   dead-ends, and the goal cell is then protected so it stays one.
+   Returns {x,y}. */
 export function findGoalCell(cells){
   const n = cells.length;
   const dist = bfsDistances(cells);

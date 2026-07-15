@@ -25,11 +25,11 @@
      minimap.js     : fog-of-war corner map (desktop/touch only)
    ============================================================ */
 import { $ } from "../../utils.js";
-import { buildEnvironment, wallKey } from "./environment.js";
+import { buildEnvironment, wallKey, chaosFor } from "./environment.js";
 import { buildProps, updateProps } from "./props.js";
 import { buildEntities, updateTokens } from "./entities.js";
 import { themeFor, animate, liveScene } from "./palette.js";
-import { genMaze, cellCenter, findGoalCell } from "./generator.js";
+import { genMaze, cellCenter, findGoalCell, braidMaze } from "./generator.js";
 import { bindInput, updatePlayer } from "./player.js";
 import { spawnCharacters, buildCharacters, recoverAffinity, updateCharacters, ROSTER } from "./characters/characters.js";
 import { initDialogue, initPanel, openDialogue, updateInteractions, updateDialogueXR, closeDialogue, onStoryEvent } from "./dialogue.js";
@@ -39,22 +39,47 @@ import { buildSanctum } from "./sanctum.js";
 import { saveGame, loadGame, resetGame, markCompleted, saveInfo, exportSave, importSave } from "./menu.js";
 import { showCreation, hideCreation } from "./creation.js";
 import { buildMinimap, updateMinimap, clearMinimap, initWristMap } from "./minimap.js";
+import { buildJournal, initJournalXR, updateJournalXR } from "./journal.js";
 import { initDebugUI, initDebugPanel, updateDebugXR } from "./debug.js";
 import { buildHands, updateHands } from "./hands.js";
 import { initVRBanner, showVRBanner, updateVRBanner, initVRPrompt } from "./vrbanner.js";
-import { initAudio } from "./audio.js";
+import { initAudio, playGateUnlock, toggleMute, isMuted } from "./audio.js";
+import { buildPause, openPause } from "./pause.js";
+import { toast } from "./hud.js";
 
 const layer = $("#maze-layer");
 let three = null;
 
+/* structural decay: the fraction of a floor's remaining interior walls that
+   the deepest, most-ruined level (global depth 30) knocks out. Scaled down
+   toward 0 for shallower depths by chaosFor. ~0.4 leaves the bottom clearly
+   braided but still a maze, not an open room. Tune here. */
+const BRAID_MAX = 0.4;
+
+/* three.js r128, self-hosted first with the CDN as a fallback. The vendored
+   copy means the game works offline / when the CDN is unreachable; the CDN
+   catches the case where the vendor file is missing from a deploy. Each URL
+   is tried in order; only when all fail does launchMaze show LOAD FAILED. */
+const THREE_SOURCES = [
+  "js/vendor/three.r128.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+];
 function loadThree(){
   if (three) return Promise.resolve();
   return new Promise((res, rej) => {
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-    s.onload = () => { three = window.THREE; res(); };
-    s.onerror = () => rej(new Error("three.js failed to load"));
-    document.head.appendChild(s);
+    let i = 0;
+    const tryNext = () => {
+      if (i >= THREE_SOURCES.length){ rej(new Error("three.js failed to load")); return; }
+      const s = document.createElement("script");
+      s.src = THREE_SOURCES[i++];
+      s.onload = () => {
+        if (window.THREE){ three = window.THREE; res(); }
+        else { s.remove(); tryNext(); }        // loaded but no global — try the next source
+      };
+      s.onerror = () => { s.remove(); tryNext(); };
+      document.head.appendChild(s);
+    };
+    tryNext();
   });
 }
 
@@ -65,7 +90,7 @@ const M = {
   walls:[], goal:null, goalLight:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   tokens:[], bursts:[], theme:null, ambient:null, paneMat:null, trimMat:null,
   props:[], propFx:null, grabs:null,
-  npcs:[], nearCharacter:null, dialogueOpen:false, talk:false,
+  npcs:[], nearCharacter:null, dialogueOpen:false, journalOpen:false, talk:false,
   // narrative gate: who still has unheard story beats (locks the exit ring),
   // the ring's rise animation state, and the recheck / message throttles
   gatePending:[], gateRise:1, gateTumble:{x:0,y:0}, gateT:0, gateMsgAt:0,
@@ -73,7 +98,11 @@ const M = {
   runActive:false,
   controllers:null, grips:null, hands:null, prevTrigger:false,
   keys:{}, joy:{x:0,y:0}, look:{drag:false,lx:0,ly:0}, yaw:0, pitch:0,
+  pauseOpen:false, pointerLocked:false, sens:1,   // pause menu + pointer-lock look (player.js/pause.js)
   snapReady:true, inVR:false, clock:null,
+  vel:{x:0,z:0}, bobPhase:0, stepDist:0,   // movement juice (player.js)
+  gateFlash:0,                              // emissive pulse when the ring unlocks
+  fadeDiv:null, fadeQuad:null, fadeVal:0, fadeTarget:0,   // level-transition fade
 };
 
 /* free the GPU resources of a scene subtree (geometries, materials and
@@ -115,7 +144,14 @@ function buildMaze(){
   M.theme = themeFor(M.depth);             // walls / fog / lights recolour as you descend
 
   const cells = genMaze(M.N);
-  const goalCell = findGoalCell(cells);   // furthest dead-end from start
+  const goalCell = findGoalCell(cells);   // furthest dead-end from start (pick before braiding)
+
+  // structural decay: the deeper (globally) we are, the more the Protocol's
+  // walls have broken down — knock interior walls out to open loops and ruin
+  // dead-ends, on the same chaosFor ramp that ages the textures and graffiti.
+  // Depth 01 is pristine; by cycle 3 the "same" floor is visibly holed. The
+  // goal alcove is protected so the gate keeps its dead-end.
+  braidMaze(cells, chaosFor(M.depth) * BRAID_MAX, goalCell);
 
   // decide where characters appear, then turn their host walls into windows.
   // A freed tenant's window still appears — dark: no light behind the glass.
@@ -168,6 +204,7 @@ function buildMaze(){
 
   // player start
   M.dolly.position.set(cellCenter(0, M.CELL), 0, cellCenter(0, M.CELL));
+  M.vel.x = M.vel.z = 0;         // no inherited momentum into a fresh wall
   M.yaw = Math.PI; M.pitch = 0; // face into the maze
   $("#hud-top").innerHTML = `MAZE.EXE <b>// depth ${shownDepth()}</b>`;
 
@@ -217,6 +254,7 @@ function buildBase(){
   poseGate(0);
 
   M.dolly.position.set(s.playerStart.x, 0, s.playerStart.z);
+  M.vel.x = M.vel.z = 0;
   M.yaw = s.playerStart.yaw; M.pitch = 0;
   $("#hud-top").innerHTML = `MAZE.EXE <b>// the base depth</b>`;
 
@@ -229,7 +267,9 @@ function buildBase(){
    next cycle); everything else is one more level down. The FINAL sanctum
    has no way onward but the Custodian's door (the "ending" story event) —
    the guard here is only a safety net in case the ring ever rises there. */
-function descend(){
+function descend(){ transition(descendNow); }
+
+function descendNow(){
   if (M.inSanctum){
     if (M.depth >= FINAL_DEPTH){ runEnding(); return; }
     M.depth++;
@@ -246,20 +286,56 @@ function descend(){
   }
 }
 
+/* ---------- level-transition fade ----------
+   A brief fade-to-black hides the level rebuild pop. Two surfaces cover
+   the two composites: a DOM veil on flat screens (CSS-eased), and a black
+   quad on the camera in VR (the DOM layer isn't composited there). fadeSet
+   drives the target; the render loop eases the VR quad's opacity toward it. */
+function initTransition(){
+  let d = $("#maze-fade");
+  if (!d){ d = document.createElement("div"); d.id = "maze-fade"; layer.appendChild(d); }
+  M.fadeDiv = d;
+
+  const q = new three.Mesh(
+    new three.PlaneGeometry(2, 2),
+    new three.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0,
+                                  depthTest: false, depthWrite: false, fog: false }));
+  q.position.z = -0.3; q.renderOrder = 10000; q.visible = false;
+  M.camera.add(q);
+  M.fadeQuad = q;
+}
+
+function fadeSet(v){
+  M.fadeTarget = v;
+  if (M.fadeDiv) M.fadeDiv.style.opacity = String(v);
+}
+
+/* fade out (~320ms), run `fn` at full black (the rebuild), then fade back in */
+function transition(fn){
+  if (!M.fadeDiv && !M.fadeQuad){ fn(); return; }   // no fade infra yet: just do it
+  fadeSet(1);
+  setTimeout(() => { fn(); fadeSet(0); }, 320);
+}
+
 /* debug-only: jump straight through the gate, skipping the walk */
 function debugNextLevel(){
   if (M.dialogueOpen) return;
   descend();
 }
 
-/* centre-screen HUD flash (shared timer, so messages replace each other) */
-function hudMsg(text, ms = 1600){
-  const el = $("#hud-msg");
-  if (!el) return;
-  el.textContent = text; el.classList.add("show");
-  clearTimeout(hudMsg._t);
-  hudMsg._t = setTimeout(() => el.classList.remove("show"), ms);
+/* reflect the mute state on the HUD icon (♪ audible / ♪̶ muted) */
+function updateMuteIcon(){
+  const btn = $("#btn-mute");
+  if (!btn) return;
+  const off = isMuted();
+  btn.innerHTML = off ? "&#9834;̸" : "&#9834;";   // musical note, struck through when muted
+  btn.classList.toggle("muted", off);
+  btn.title = off ? "Unmute (M)" : "Mute (M)";
 }
+
+/* centre-screen HUD flash. The VR banner is fired separately at each call
+   site here, so these stay DOM-only (vr defaults off in the shared toast). */
+const hudMsg = (text, ms = 1600) => toast(text, { ms });
 
 /* --- the narrative gate ---
    The exit ring lies flat on the floor while anyone on the level still has
@@ -294,11 +370,22 @@ function updateGate(dt){
     if (wasLocked && !M.gatePending.length && M.goal){
       hudMsg("THE WAY DOWN OPENS", 1800);
       if (M.inVR) showVRBanner("THE WAY DOWN OPENS", 1800);
+      playGateUnlock();                  // the grand sting: the level's biggest moment
+      M.gateFlash = 1;                    // and a matching emissive pulse on the ring
     }
   }
   const target = M.gatePending.length ? 0 : 1;
   M.gateRise = Math.max(0, Math.min(1, M.gateRise + (target ? 1 : -1) * dt / 1.1));
   poseGate(dt);
+
+  // the unlock pulse: a single swell on the ring's light + a gentle scale pop,
+  // layered over the rise so the moment lands rather than just resolving
+  if (M.gateFlash > 0){
+    M.gateFlash = Math.max(0, M.gateFlash - dt / 1.5);
+    const pulse = Math.sin(M.gateFlash * Math.PI);   // 0 -> 1 -> 0 over the flash
+    if (M.goalLight) M.goalLight.intensity += pulse * 2.2;
+    if (M.goal) M.goal.scale.setScalar(1 + pulse * 0.12);
+  }
 }
 
 /* --- main loop --- */
@@ -313,6 +400,13 @@ function triggerHeld(){
 
 function mazeLoop(){
   const dt = Math.min(M.clock.getDelta(), 0.1);
+
+  // ease the VR transition veil toward its target (the DOM veil is CSS-eased)
+  if (M.fadeQuad){
+    M.fadeVal += (M.fadeTarget - M.fadeVal) * (1 - Math.exp(-dt * 12));
+    M.fadeQuad.material.opacity = M.fadeVal;
+    M.fadeQuad.visible = M.fadeVal > 0.01;
+  }
 
   // animated colour bands (shift / transition / flicker): recolour the
   // lamp, ambient, fog and unlit materials each frame. Runs even during
@@ -332,6 +426,10 @@ function mazeLoop(){
 
   if (M.dialogueOpen){            // freeze the world while a conversation is open
     if (M.inVR) updateDialogueXR(M, three, dt);
+  } else if (M.journalOpen){      // frozen while reading the log; keep its VR panel live
+    if (M.inVR) updateJournalXR(M, three, dt);
+  } else if (M.pauseOpen){        // frozen behind the pause menu (desktop/touch DOM overlay)
+    /* render only — no player/interaction updates */
   } else {
     updatePlayer(three, M, dt);
     updateInteractions(M);
@@ -343,6 +441,7 @@ function mazeLoop(){
       if (t && !M.prevTrigger && M.nearCharacter) openDialogue(M, M.nearCharacter.character);
       M.prevTrigger = t;
       updateDebugXR(M, three);    // left-trigger debug panel + right-trigger click
+      updateJournalXR(M, three, dt);   // poll the left X button to open the log
     }
   }
 
@@ -430,7 +529,8 @@ async function launchMaze(fromSave, btn){
     M.grips = [M.renderer.xr.getControllerGrip(0), M.renderer.xr.getControllerGrip(1)];
     M.grips.forEach(g => M.dolly.add(g));
     M.clock  = new three.Clock();
-    bindInput(M, layer, exitMaze);
+    bindInput(M, layer);
+    buildPause(M, { onExit: exitMaze });   // pause/settings overlay (ESC / ⏸)
     initDialogue(M);                 // build the dialogue box DOM once
     onStoryEvent(ev => { if (ev === "ending") runEnding(); });   // the Custodian's final door
     initPanel(three, M.dolly);       // build the in-world VR dialogue panel
@@ -438,6 +538,9 @@ async function launchMaze(fromSave, btn){
     initDebugPanel(three, M.dolly);  // in-world VR debug panel (no-op unless DEBUG)
     buildHands(three, M);            // VR hands on the grips + pointer rays on the controllers
     initWristMap(three, M);          // minimap "watch" on the left wrist in VR
+    buildJournal(M);                 // operator log overlay (Tab/J) + its VR panel
+    initJournalXR(three, M.dolly);
+    initTransition();                // level-transition fade (DOM veil + camera quad)
     initVRBanner(three, M);          // head-locked banner ("ENTERED DEPTH N", "+N LT")
     initVRPrompt();                  // world-anchored "PULL TRIGGER: SPEAK WITH X" prompt
     addEventListener("resize", sizeMaze);
@@ -461,9 +564,41 @@ async function launchMaze(fromSave, btn){
     });
     $("#btn-exit-maze").addEventListener("click", exitMaze);
 
+    // pause: HUD ⏸ button (touch parity for the ESC menu; desktop can use it too)
+    const btnPause = $("#btn-pause");
+    if (btnPause) btnPause.addEventListener("click", () => openPause());
+
+    // mute: HUD icon + the M key (works even mid-conversation)
+    const btnMute = $("#btn-mute");
+    if (btnMute) btnMute.addEventListener("click", () => { toggleMute(); updateMuteIcon(); });
+    addEventListener("keydown", e => {
+      if (!layer.classList.contains("on")) return;
+      if (e.target && e.target.tagName === "INPUT") return;   // typing at creation
+      if (e.key.toLowerCase() === "m"){ toggleMute(); updateMuteIcon(); }
+    });
+    updateMuteIcon();
+
+    // autosave on tab-hide / close: the level-entry autosave only fires on
+    // descent, so a crash or an accidental tab close mid-level would lose
+    // everything since the current depth was entered. These backstop it.
+    addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden" && M.runActive) saveGame(M.depth);
+    });
+    addEventListener("pagehide", () => { if (M.runActive) saveGame(M.depth); });
+
+    // GPU context loss (driver reset, tab backgrounded too long) would
+    // otherwise leave a permanent black canvas — flag it so the player
+    // knows to reload rather than staring at a dead maze.
+    const cvEl = M.renderer.domElement;
+    cvEl.addEventListener("webglcontextlost", e => {
+      e.preventDefault();
+      toast("RENDER CONTEXT LOST — RELOAD", { ms: 6000 });
+    });
+    cvEl.addEventListener("webglcontextrestored", () => toast("RENDER CONTEXT RESTORED", { ms: 3000 }));
+
     if ("ontouchstart" in window || navigator.maxTouchPoints > 0) layer.classList.add("touch");
     if (layer.classList.contains("touch"))
-      $("#maze-help").textContent = "joystick: move · drag screen: look · ⟲ ⟳: turn";
+      $("#maze-help").textContent = "joystick: move · drag: look · ⟲ ⟳: turn · LOG · ♪ · ⏸";
   }
   // CONTINUE resumes the saved run at its depth; anything else is a NEW
   // GAME — the Protocol rewinds (menu.js resetGame) and the operator

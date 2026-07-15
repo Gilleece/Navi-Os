@@ -16,12 +16,9 @@
    is scheduled. By cycle 3 it is dying politely.
    ============================================================ */
 
-let LINE = "#46ff8e", FILL = "#0c2b1a";
-let GLOW0 = "rgba(70,255,142,.20)", GLOW1 = "rgba(70,255,142,0)";
-function applyInk(ink){
-  if (!ink) return;
-  LINE = ink.line; FILL = ink.fill; GLOW0 = ink.glow0; GLOW1 = ink.glow1;
-}
+/* shared drawing ink (LINE/FILL/GLOW + applyInk): live bindings set from the
+   level's palette on every draw, so all characters render in one colour. */
+import { LINE, FILL, GLOW0, GLOW1, applyInk } from "./portrait.js";
 
 /* the portrait: a towering slab with one reading eye. Mood barely moves
    it — a machine emotes in millimetres — but the eye and the status

@@ -11,15 +11,9 @@
    moods: "neutral" | "happy" | "angry" | "sad".
    ============================================================ */
 
-/* drawing ink — defaults to the original green, but every draw call is handed
-   the current level's ink (see palette.characterInk / characters.js) so all
-   characters render in one colour, like an old single-phosphor monitor. */
-let LINE = "#46ff8e", FILL = "#0c2b1a";
-let GLOW0 = "rgba(70,255,142,.20)", GLOW1 = "rgba(70,255,142,0)";
-function applyInk(ink){
-  if (!ink) return;
-  LINE = ink.line; FILL = ink.fill; GLOW0 = ink.glow0; GLOW1 = ink.glow1;
-}
+/* shared drawing ink (LINE/FILL/GLOW + applyInk): live bindings set from the
+   level's palette on every draw, so all characters render in one colour. */
+import { LINE, FILL, GLOW0, GLOW1, applyInk } from "./portrait.js";
 
 function scallyGlow(g, w, h){
   const grd = g.createRadialGradient(w/2, h*0.55, 12, w/2, h*0.55, w*0.62);
@@ -229,19 +223,23 @@ function scallyDialogue(ctx){
                                       flag: `bought-${sale.id}` } });
 
           // 2) barter: hand over something he openly covets for a trinket
-          const swapFor = character.giftable[0];
           for (const id of character.interestsOpen){
             const held = player.inventory.find(it => it.id === id);
-            if (held && swapFor)
-              choices.push({ text: `Trade your ${held.name} for the ${swapFor.name}.`,
-                             effects: { take: held.id, give: swapFor.id, like: +6,
+            // the reward is chosen by WHAT you hand over (character.trades.barter),
+            // not pocket order — so item-specific rewards land where the story wants
+            const rewardId = held && character.barterRewardId(id);
+            const reward = rewardId && character.inventory.find(it => it.id === rewardId);
+            if (held && reward)
+              choices.push({ text: `Trade your ${held.name} for the ${reward.name}.`,
+                             effects: { take: held.id, give: reward.id, like: +6,
                                         flag: `traded-${held.id}-to-${character.id}` } });
           }
 
           // 3) the hidden desire: only shows if the player actually holds it
           const secret = character.hiddenDesire && player.inventory.find(it => it.id === character.hiddenDesire);
           if (secret){
-            const prize = character.giftable[0];
+            const prizeId = character.hiddenPrizeId();
+            const prize = prizeId && character.inventory.find(it => it.id === prizeId);
             choices.push({ text: `Offer the ${secret.name}. *(He keeps stealing glances at it.)*`,
               effects: { take: secret.id, give: prize?.id, like: +18, flag: "gave-saints-finger" },
               next: { text: "*His hands tremble as he takes it, voice dropping to nothing.* ...the little saint, she comes home at last. You did not see this, eh? Here, take it, take it. Is the least Scally can do. *He will not meet your eyes.*" } });
@@ -274,6 +272,11 @@ function scallyDialogue(ctx){
           else
             text = "*He spreads his little wares.* Eh, let us deal! And... *his voice drops* ...if ever the maze gives up a little bone the old saints left behind, you bring it to Scally, eh? I ask-a no more. *He looks quickly away.*";
 
+          // carrying something he openly wants? he can't help but eye it
+          const eyeing = character.interestsOpen.map(id => player.inventory.find(it => it.id === id)).find(Boolean);
+          if (eyeing && character.affinity >= 40 && character.giftable.length)
+            text += ` ...and Scally cannot help but notice the ${eyeing.name} you are carrying, eh? *(His eyes keep drifting to it.)*`;
+
           return { text, choices };
         } },
     ],
@@ -303,5 +306,12 @@ export const scally = {
   interests: {
     open:   ["relic-shard", "data-vial"],
     hidden: "saints-finger",
+  },
+  // per-path trade rewards (STORY.md §4/§7): which of his items each barter
+  // hands back, and the prize the hidden-desire swap gives FREE. relic-shard
+  // -> coin is what makes Dalypso's "wants Scally's coin" chain reachable.
+  trades: {
+    barter: { "relic-shard": "coin", "data-vial": "sausage" },
+    hiddenPrize: "charm",   // the Tin Cornicello, for the Saint's Finger
   },
 };

@@ -10,9 +10,12 @@
    (happy / angry / sad / neutral) to match what just happened.
    ============================================================ */
 import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens, setFlag } from "./state.js";
+import { isErrandStart } from "./story.js";
 import { characterById } from "./characters/characters.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
-import { setVRPrompt, showVRBanner } from "./vrbanner.js";
+import { setVRPrompt } from "./vrbanner.js";
+import { playDialogueBlip } from "./audio.js";
+import { toast as hudToast } from "./hud.js";
 
 /* touch device -> tap the prompt rather than press a key (mirrors maze.js) */
 const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
@@ -170,6 +173,9 @@ export function openDialogue(state, character){
   // just opening the conversation counts as the visit (story.js pendingBeats)
   character.markSeen(M.depth, "@visited");
   M.dialogueOpen = true;
+  // release pointer lock so the cursor is free to click the dialogue choices
+  // (the canvas click handler won't re-lock while a modal is open)
+  try { document.exitPointerLock && document.exitPointerLock(); } catch {}
   M.keys = {};                       // drop held movement keys
   M.talk = false;
   shownAffinity = null;              // no pulse on the opening render
@@ -208,6 +214,7 @@ function present(text, choices){
   syncHeader();
   renderDOM();
   drawPanel();
+  playDialogueBlip();          // one short note per line/hub shown
 }
 
 /* deterministic small-menu rotation: the same level always offers the same
@@ -312,7 +319,10 @@ function applyEffects(fx){
       toast(`RECEIVED: ${item.name.toUpperCase()}`);
     }
   }
-  if (fx.flag) for (const f of [].concat(fx.flag)) setFlag(f);   // story flags
+  if (fx.flag) for (const f of [].concat(fx.flag)){              // story flags
+    setFlag(f);
+    if (isErrandStart(f)) toast("LOG UPDATED");                  // a new errand/promise is now in the log
+  }
   if (fx.others) for (const o of fx.others){       // word travels: shift ANOTHER character's
     const c = characterById(o.id);                 // affinity toward the player (dilemma fuel;
     if (c && typeof o.like === "number")           // same clamp as conversation)
@@ -626,14 +636,7 @@ export function updateDialogueXR(state, three_, dt){
 
 /* player notification (item received/given, etc.): the desktop HUD flash plus,
    in VR, the shared head-locked banner — the same one used for "+N LT" */
-function toast(msg){
-  if (M && M.inVR) showVRBanner(msg, 1600);
-  const el = document.querySelector("#hud-msg");
-  if (!el) return;
-  el.textContent = msg; el.classList.add("show");
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.classList.remove("show"), 1600);
-}
+const toast = (msg) => hudToast(msg, { ms: 1600, vr: !!(M && M.inVR) });
 
 /* ---------- proximity prompt (called from the main loop) ---------- */
 export function updateInteractions(state){

@@ -2,3 +2,6 @@ server.py
 
 # local dev TLS material — never commit private keys
 *.pem
+
+# local tooling config
+.claude/

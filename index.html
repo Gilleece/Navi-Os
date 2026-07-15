@@ -234,7 +234,7 @@
       <h2>LABYRINTH PROTOCOL</h2>
       <p>A first-person maze in the old screensaver style, rebuilt for the wired.
       Find the orange gate. The walls remember you.</p>
-      <p class="dim">desktop&nbsp;: WASD / arrows to move, drag mouse to look<br>
+      <p class="dim">desktop&nbsp;: WASD / arrows to move, click to look, ESC to pause<br>
       mobile&nbsp;&nbsp;: left joystick to move, right buttons to turn<br>
       headset&nbsp;: press ENTER VR inside the maze (WebXR)</p>
       <button class="big" id="btn-continue-maze" hidden>[ CONTINUE ]</button>
@@ -447,6 +447,9 @@
   <div id="maze-ui">
     <button id="btn-vr" hidden>ENTER VR</button>
     <button id="btn-debug-next" hidden>[ DEBUG: NEXT LEVEL ]</button>
+    <button id="btn-journal" aria-label="Operator log" title="Log (Tab / J)">LOG</button>
+    <button id="btn-mute" aria-label="Mute sound" title="Mute (M)">&#9834;</button>
+    <button id="btn-pause" aria-label="Pause" title="Pause (Esc)">&#9208;</button>
     <button id="btn-exit-maze">EXIT</button>
   </div>
   <div id="maze-rotate">
@@ -459,7 +462,7 @@
     <button id="turn-l" aria-label="Turn left">&#8634;</button>
     <button id="turn-r" aria-label="Turn right">&#8635;</button>
   </div>
-  <div id="maze-help">WASD / arrows move · drag to look · ESC to exit</div>
+  <div id="maze-help">WASD / arrows move · click to look · TAB log · M mute · ESC pause</div>
 </div>
 
 <!-- ============ NOTIFICATIONS ============ -->

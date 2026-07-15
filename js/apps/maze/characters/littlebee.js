@@ -17,15 +17,9 @@
    switches mood: "neutral" | "happy" | "angry" | "sad".
    ============================================================ */
 
-/* drawing ink — defaults to amber, but every draw call is handed the current
-   level's ink (see palette.characterInk / characters.js) so all characters
-   render in one colour, like an old single-phosphor monitor. */
-let LINE = "#ffc46b", FILL = "#33200c";
-let GLOW0 = "rgba(255,196,107,.20)", GLOW1 = "rgba(255,196,107,0)";
-function applyInk(ink){
-  if (!ink) return;
-  LINE = ink.line; FILL = ink.fill; GLOW0 = ink.glow0; GLOW1 = ink.glow1;
-}
+/* shared drawing ink (LINE/FILL/GLOW + applyInk): live bindings set from the
+   level's palette on every draw, so all characters render in one colour. */
+import { LINE, FILL, GLOW0, GLOW1, applyInk } from "./portrait.js";
 
 function beeGlow(g, w, h){
   const grd = g.createRadialGradient(w/2, h*0.6, 12, w/2, h*0.6, w*0.58);
@@ -316,19 +310,23 @@ function beeDialogue(ctx){
                                       flag: `bought-${sale.id}` } });
 
           // 2) barter: hand over something she openly wants for a trinket
-          const swapFor = character.giftable[0];
           for (const id of character.interestsOpen){
             const held = player.inventory.find(it => it.id === id);
-            if (held && swapFor)
-              choices.push({ text: `Trade your ${held.name} for the ${swapFor.name}.`,
-                             effects: { take: held.id, give: swapFor.id, like: +6,
+            // the reward is chosen by WHAT you hand over (character.trades.barter),
+            // not pocket order — so item-specific rewards land where the story wants
+            const rewardId = held && character.barterRewardId(id);
+            const reward = rewardId && character.inventory.find(it => it.id === rewardId);
+            if (held && reward)
+              choices.push({ text: `Trade your ${held.name} for the ${reward.name}.`,
+                             effects: { take: held.id, give: reward.id, like: +6,
                                         flag: `traded-${held.id}-to-${character.id}` } });
           }
 
           // 3) the hidden desire — iron — only shows if the player holds it
           const secret = character.hiddenDesire && player.inventory.find(it => it.id === character.hiddenDesire);
           if (secret){
-            const prize = character.giftable[0];
+            const prizeId = character.hiddenPrizeId();
+            const prize = prizeId && character.inventory.find(it => it.id === prizeId);
             choices.push({ text: `Offer the ${secret.name}. *(She has not taken her eyes off it.)*`,
               effects: { take: secret.id, give: prize?.id, like: +18, flag: "gave-horseshoe" },
               next: { text: "*She takes it in both hands, careful, like it might spook.* ...iron. Actual pitted iron, in a place with no iron in it. *She presses it flat to her cheek an' shuts her eyes, an' for one long second she is standin' somewhere with grass in it.* ...right. *One sniff. All business.* Ye didn't see that. Here, take this, an' if ye breathe a word to a livin' soul I'll have ye. *She hangs the shoe somewhere behind the glass, heels up. For the luck to pool in.*" } });
@@ -360,6 +358,11 @@ function beeDialogue(ctx){
             text = "*She pats her pockets, businesslike.* Yer after cleanin' me out. Give it a level or two to forage. Coin still talks, mind. Coin always talks.";
           else
             text = "*She lays her few bits out quick an' neat, like tack before a hunt.* Right. Deal or don't, I've no patience for hagglin'. ...here. Random one. If ye ever find somethin' iron down there, curved, heavy, about the size of a smile, I'd... *she catches her own hands shapin' it in the air, an' snaps them flat* Nothin'. Forget it. NEXT.";
+
+          // carrying something she openly wants? nothing gets past her
+          const eyeing = character.interestsOpen.map(id => player.inventory.find(it => it.id === id)).find(Boolean);
+          if (eyeing && character.affinity >= 40 && character.giftable.length)
+            text += ` ...an' that's a ${eyeing.name} in yer kit. I clocked it on the way in. I clock everythin'.`;
 
           return { text, choices };
         } },
@@ -393,5 +396,11 @@ export const littlebee = {
   interests: {
     open:   ["data-vial", "cassette"],
     hidden: "horseshoe",
+  },
+  // per-path trade rewards (STORY.md §4/§7): barter rewards by what you give,
+  // and the prized Prism Tab handed over free for the iron horseshoe.
+  trades: {
+    barter: { "data-vial": "horsehair", "cassette": "sugarcube" },
+    hiddenPrize: "prism",   // the Prism Tab, for the horseshoe
   },
 };

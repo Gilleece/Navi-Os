@@ -5,8 +5,12 @@
    Operates on the shared engine state object `M`.
    ============================================================ */
 import { $ } from "../../utils.js";
+import { playFootstep } from "./audio.js";
+import { togglePause } from "./pause.js";
 
 const SPEED = 3.2;
+const STEP_DIST = 1.5;    // metres of actual movement between footstep sounds (also paces the head-bob)
+const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
 
 /* --- collision + movement --- */
 export function collides(M, x, z){
@@ -22,25 +26,59 @@ export function tryMove(M, dx, dz){
 }
 
 /* --- input wiring (call once) --- */
-export function bindInput(M, layer, onExit){
+export function bindInput(M, layer){
   addEventListener("keydown", e => {
     if (!layer.classList.contains("on")) return;
-    if (M.dialogueOpen) return;                 // dialogue owns input while open
     if (e.target && e.target.tagName === "INPUT") return;   // typing (creation screen), not playing
+    // Escape toggles the pause menu (desktop/touch). The browser eats the
+    // first Esc to release pointer lock, so only the Esc that arrives while
+    // already unlocked opens the menu — that stops the doubled open/close.
+    if (e.key === "Escape"){
+      if (M.dialogueOpen || M.journalOpen) return;   // those own their own Esc
+      if (M.inVR) return;                             // VR has its own flows
+      if (!M.pauseOpen && M.pointerLocked) return;    // this Esc just released the lock
+      e.preventDefault();
+      togglePause();
+      return;
+    }
+    if (M.dialogueOpen) return;                 // dialogue owns input while open
+    if (M.journalOpen) return;                  // the log owns input while open (incl. Tab)
+    if (M.pauseOpen) return;                     // the pause menu owns input while open
     M.keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === "f") M.talk = true;
-    if (e.key === "Escape") onExit();
   });
   addEventListener("keyup", e => M.keys[e.key.toLowerCase()] = false);
 
-  // drag to look (mouse or touch outside joystick)
   const cv = $("#maze-canvas");
+
+  // pointer-lock look (desktop only): click the canvas to capture the mouse,
+  // then moving it turns the head directly. Drag-look (below) stays as the
+  // fallback and is the only path on touch / in VR.
+  cv.addEventListener("click", () => {
+    if (M.inVR || IS_TOUCH) return;
+    if (M.dialogueOpen || M.journalOpen || M.pauseOpen) return;   // don't fight a DOM modal
+    if (M.pointerLocked) return;
+    try { cv.requestPointerLock && cv.requestPointerLock(); } catch {}
+  });
+  document.addEventListener("pointerlockchange", () => {
+    M.pointerLocked = (document.pointerLockElement === cv);
+  });
+  addEventListener("mousemove", e => {
+    if (!M.pointerLocked || M.inVR) return;
+    const s = M.sens ?? 1;
+    M.yaw   -= e.movementX * 0.005 * s;
+    M.pitch -= e.movementY * 0.004 * s;
+    M.pitch = Math.max(-1.2, Math.min(1.2, M.pitch));
+  });
+
+  // drag to look (mouse or touch outside joystick) — the fallback when the
+  // pointer isn't locked
   cv.addEventListener("pointerdown", e => {
     M.look.drag = true; M.look.lx = e.clientX; M.look.ly = e.clientY;
     cv.setPointerCapture(e.pointerId);
   });
   cv.addEventListener("pointermove", e => {
-    if (!M.look.drag || M.inVR) return;
+    if (!M.look.drag || M.inVR || M.pointerLocked) return;
     M.yaw   -= (e.clientX - M.look.lx) * 0.005;
     M.pitch -= (e.clientY - M.look.ly) * 0.004;
     M.pitch = Math.max(-1.2, Math.min(1.2, M.pitch));
@@ -74,6 +112,7 @@ export function bindInput(M, layer, onExit){
 
 /* --- per-frame movement + camera, called from the main loop --- */
 export function updatePlayer(three, M, dt){
+  const sx = M.dolly.position.x, sz = M.dolly.position.z;   // for the footstep cadence
   // VR controller sticks
   if (M.inVR){
     const session = M.renderer.xr.getSession();
@@ -110,11 +149,38 @@ export function updatePlayer(three, M, dt){
     f += -M.joy.y; s += M.joy.x;
     const len = Math.hypot(f,s);
     if (len > 1){ f/=len; s/=len; }
-    if (f || s){
-      const sin = Math.sin(M.yaw), cos = Math.cos(M.yaw);
-      tryMove(M, (-sin*f + cos*s) * SPEED * dt, (-cos*f - sin*s) * SPEED * dt);
-    }
+
+    // acceleration/deceleration: ease a world-space velocity toward the
+    // desired direction instead of snapping. Gives movement weight without
+    // affecting VR (which keeps direct 1:1 control for comfort, above).
+    const sin = Math.sin(M.yaw), cos = Math.cos(M.yaw);
+    const wantX = (-sin*f + cos*s) * SPEED;
+    const wantZ = (-cos*f - sin*s) * SPEED;
+    const rate = (f || s) ? 10 : 14;                 // accel slower than decel
+    const kv = 1 - Math.exp(-rate * dt);
+    M.vel.x += (wantX - M.vel.x) * kv;
+    M.vel.z += (wantZ - M.vel.z) * kv;
+    if (Math.abs(M.vel.x) > 1e-4 || Math.abs(M.vel.z) > 1e-4)
+      tryMove(M, M.vel.x * dt, M.vel.z * dt);
+
     M.dolly.rotation.y = M.yaw;
     M.camera.rotation.x = M.pitch;
+  }
+
+  // footstep cadence: sound one step per STEP_DIST of real movement (works
+  // for keyboard, joystick and VR stick alike — it reads the actual dolly
+  // displacement, so blocked-by-a-wall motion never triggers it)
+  const moved = Math.hypot(M.dolly.position.x - sx, M.dolly.position.z - sz);
+  M.stepDist = (M.stepDist || 0) + moved;
+  if (M.stepDist >= STEP_DIST){ M.stepDist -= STEP_DIST; playFootstep(); }
+
+  // subtle head-bob (desktop/touch only, never in VR): a small camera-Y
+  // sway advanced by real distance travelled, so it rides the same cadence
+  // as the footsteps and settles to rest when standing still.
+  if (!M.inVR){
+    M.bobPhase = (M.bobPhase || 0) + moved * (Math.PI / STEP_DIST);   // a trough per step
+    const speed = Math.hypot(M.vel.x, M.vel.z);
+    const amp = 0.03 * Math.min(1, speed / SPEED);
+    M.camera.position.y = 1.6 + Math.sin(M.bobPhase) * amp;
   }
 }

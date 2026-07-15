@@ -21,9 +21,11 @@ import { player, addTokens, addItem, setFlag } from "./state.js";
 import { spawnableItems } from "./story.js";
 import { showVRBanner } from "./vrbanner.js";
 import { playPickup } from "./audio.js";
+import { toast as hudToast } from "./hud.js";
 
 const PICKUP_R    = 0.9;   // how close the player must get to collect
-const COLLECT_TIME = 0.55; // seconds of spin-and-shrink before it's gone
+const MAGNET_R    = 1.8;   // within this, a token drifts toward the player first
+const COLLECT_TIME = 0.5;  // seconds of the collect pop before it's gone
 const BURST_TIME   = 0.7;  // particle lifetime
 
 /* the three denominations: value -> geometry maker, radius, colour.
@@ -133,8 +135,18 @@ export function updateTokens(three, scene, cfg, dt){
 
     if (!tk.collecting){
       m.position.y = tk.baseY + Math.sin(now * 1.6 + tk.phase) * 0.12;   // idle bob
+      // magnet: once the player is close, the token drifts toward them (and
+      // pulls harder the nearer it gets) so pickups feel eager, not passive
+      const dist = Math.hypot(px - m.position.x, pz - m.position.z);
+      if (dist < MAGNET_R && dist > 0.001){
+        const pull = (1 - dist / MAGNET_R);            // 0 at the edge, 1 at the player
+        const k = 1 - Math.exp(-dt * (3 + pull * 12));
+        m.position.x += (px - m.position.x) * k * pull;
+        m.position.z += (pz - m.position.z) * k * pull;
+      }
       if (Math.hypot(px - m.position.x, pz - m.position.z) < PICKUP_R){
         tk.collecting = true; tk.t = 0;
+        m.material.transparent = true;                 // so the collect pop can fade it out
         if (tk.item){
           // a one-of-a-kind story item: into the inventory, never respawns
           const { id, name, desc } = tk.item;
@@ -155,8 +167,9 @@ export function updateTokens(three, scene, cfg, dt){
       tk.t += dt;
       const k = Math.min(1, tk.t / COLLECT_TIME);
       tk.spin = 8 + k * 36;                       // wind up as it goes
-      m.scale.setScalar(Math.max(0, 1 - k));      // shrink to nothing
-      m.position.y = tk.baseY + k * 0.8;          // and lift away
+      m.scale.setScalar(1 + k * 0.9);             // pop outward...
+      m.material.opacity = Math.max(0, 1 - k);    // ...as it fades away
+      m.position.y = tk.baseY + k * 0.6;          // and lift a little
       if (k >= 1){ scene.remove(m); m.geometry.dispose(); m.material.dispose(); tokens.splice(i, 1); }
     }
   }
@@ -210,12 +223,6 @@ export function refreshTokenHud(){
   if (el) el.textContent = `◈ ${player.tokens} LT`;
 }
 
-/* brief centre-screen flash (its own timer so it doesn't fight the
-   dialogue toast that shares #hud-msg) */
-function toast(msg){
-  const el = $("#hud-msg");
-  if (!el) return;
-  el.textContent = msg; el.classList.add("show");
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.classList.remove("show"), 1100);
-}
+/* brief centre-screen flash (its snappier 1100ms timing; the shared toast
+   owns #hud-msg). VR banners are fired separately at the call sites above. */
+const toast = (msg) => hudToast(msg, { ms: 1100 });

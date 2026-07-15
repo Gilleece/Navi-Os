@@ -140,6 +140,7 @@ export class Character {
     this.inventory   = (def.inventory ?? []).map(i => ({ ...i }));  // items[]; an item with a `price` is token-only (see economy note)
     this.interestsOpen = def.interests?.open ?? [];  // item ids this character openly wants from the player (barter)
     this.hiddenDesire  = def.interests?.hidden ?? null;  // the one item they crave but won't name; they speak of it in riddles
+    this.trades        = def.trades ?? null;         // explicit per-path reward map (barter by wanted-id + the hidden-desire prize)
     this.lastTradeLevel = null;                      // last level we handed the player a gift (trade cooldown; null = never)
     this.portrait    = def.portrait;                // (ctx, w, h, mood, ink) => void   flat portrait
     this.drawLayer   = def.drawLayer ?? null;       // (ctx, w, h, mood, layer, ink) => void   one depth slice
@@ -276,6 +277,29 @@ export class Character {
      casually, others the full "Labyrinth Tokens". */
   get forSale(){ return this.inventory.filter(it => it.price != null); }   // token-only items
   get giftable(){ return this.inventory.filter(it => it.price == null); }  // affinity-gift / barter pool
+
+  /* --- per-path trade rewards (the economy's differentiation) ------------
+     Rewards are chosen by WHAT the player gave, not pocket order, so a
+     riddle-hinted hidden desire pays out something momentous while a
+     throwaway barter pays out a trinket. Both resolve against the LIVE
+     inventory and fall back gracefully (loadGame replaces a character's
+     pocket from the save, so a mapped reward may already be spent). */
+  itemInStock(id){ return id != null && this.inventory.some(it => it.id === id); }
+  /* what handing over `wantedId` returns: the def's explicit map when that
+     item is still in stock, else the first giftable (old pocket-order path) */
+  barterRewardId(wantedId){
+    const mapped = this.trades?.barter?.[wantedId];
+    if (this.itemInStock(mapped)) return mapped;
+    return this.giftable[0]?.id ?? null;
+  }
+  /* the hidden-desire swap: the character's prized for-sale item, handed
+     over FREE (fallback: the first for-sale item, then the first giftable) */
+  hiddenPrizeId(){
+    const mapped = this.trades?.hiddenPrize;
+    if (this.itemInStock(mapped)) return mapped;
+    return this.forSale[0]?.id ?? this.giftable[0]?.id ?? null;
+  }
+
   wantsOpenly(id){ return this.interestsOpen.includes(id); }
   desiresSecretly(id){ return this.hiddenDesire != null && this.hiddenDesire === id; }
   isInterestedIn(id){ return this.wantsOpenly(id) || this.desiresSecretly(id); }

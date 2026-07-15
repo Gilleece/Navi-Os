@@ -22,6 +22,24 @@ import { ROSTER, resetRoster } from "./characters/characters.js";
 const KEY = "maze-save-v1";
 const VERSION = 1;
 
+/* ---------- schema migrations ----------
+   Policy: additive fields fill in via `??` defaults at load time and need
+   NO version bump — loadGame already defaults every field it reads. Only a
+   STRUCTURAL change (a field renamed/reshaped, or an old field's meaning
+   changed) bumps VERSION and adds a MIGRATIONS entry keyed by the
+   from-version. migrate() walks a save forward one version at a time until
+   it matches VERSION, so a file exported many versions ago still loads.
+   Every reader (loadGame / saveInfo / importSave) runs migrate() before
+   valid(); each migration must be pure and defensive (guard missing
+   fields) — the readers' try/catch is a backstop, not a licence to throw. */
+const MIGRATIONS = {
+  // 1: d => { d.someNewField ??= 0; d.v = 2; return d; },
+};
+function migrate(d){
+  while (d && typeof d.v === "number" && d.v < VERSION && MIGRATIONS[d.v]) d = MIGRATIONS[d.v](d);
+  return d;
+}
+
 /* localStorage can be unavailable (privacy modes) — degrade to no-op */
 function storage(){
   try { return globalThis.localStorage ?? null; } catch { return null; }
@@ -83,7 +101,7 @@ function savedRun(){
 export function saveInfo(){
   const s = storage(); if (!s) return null;
   try {
-    const d = JSON.parse(s.getItem(KEY));
+    const d = migrate(JSON.parse(s.getItem(KEY)));
     return valid(d) ? { depth: d.depth, run: d.run ?? 1, savedAt: d.savedAt } : null;
   } catch { return null; }
 }
@@ -93,7 +111,7 @@ export function saveInfo(){
 export function loadGame(){
   const s = storage(); if (!s) return null;
   let d;
-  try { d = JSON.parse(s.getItem(KEY)); } catch { return null; }
+  try { d = migrate(JSON.parse(s.getItem(KEY))); } catch { return null; }
   if (!valid(d)) return null;
 
   story.flags = new Set(d.flags ?? []);
@@ -152,7 +170,7 @@ export function exportSave(){
 export async function importSave(file){
   if (!file) return false;
   try {
-    const d = JSON.parse(await file.text());
+    const d = migrate(JSON.parse(await file.text()));
     if (!valid(d)) return false;
     const s = storage(); if (!s) return false;
     s.setItem(KEY, JSON.stringify(d));

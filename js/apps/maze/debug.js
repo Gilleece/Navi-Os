@@ -8,7 +8,10 @@
    ============================================================ */
 import { raycastPanel } from "./panel.js";
 
-export const DEBUG = true;   // flip to true to enable the debug menu
+// off for players; opt in per-session with ?debug in the URL (keeps the
+// skip-level button + VR debug panel out of the shipped game, but one query
+// param away for development). Everything else here is gated on this flag.
+export const DEBUG = new URLSearchParams(location.search).has("debug");
 
 const PANEL_W = 480, PANEL_H = 220;
 const BTN = { x: 40, y: 76, w: PANEL_W - 80, h: 100 };

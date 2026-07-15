@@ -19,15 +19,9 @@
    switches mood: "neutral" | "happy" | "angry" | "sad".
    ============================================================ */
 
-/* drawing ink — defaults to cyan, but every draw call is handed the current
-   level's ink (see palette.characterInk / characters.js) so all characters
-   render in one colour, like an old single-phosphor monitor. */
-let LINE = "#5be7ff", FILL = "#0a2733";
-let GLOW0 = "rgba(91,231,255,.20)", GLOW1 = "rgba(91,231,255,0)";
-function applyInk(ink){
-  if (!ink) return;
-  LINE = ink.line; FILL = ink.fill; GLOW0 = ink.glow0; GLOW1 = ink.glow1;
-}
+/* shared drawing ink (LINE/FILL/GLOW + applyInk): live bindings set from the
+   level's palette on every draw, so all characters render in one colour. */
+import { LINE, FILL, GLOW0, GLOW1, applyInk } from "./portrait.js";
 
 function sianGlow(g, w, h){
   const grd = g.createRadialGradient(w/2, h*0.5, 12, w/2, h*0.5, w*0.66);
@@ -324,21 +318,25 @@ function sianDialogue(ctx){
                                       flag: `bought-${sale.id}` } });
 
           // 2) barter: hand over something he openly wants for a trinket
-          const swapFor = character.giftable[0];
           for (const id of character.interestsOpen){
             const held = player.inventory.find(it => it.id === id);
-            if (held && swapFor)
+            // the reward is chosen by WHAT you hand over (character.trades.barter),
+            // not pocket order — so item-specific rewards land where the story wants
+            const rewardId = held && character.barterRewardId(id);
+            const reward = rewardId && character.inventory.find(it => it.id === rewardId);
+            if (held && reward)
               choices.push({ text: id === "plectrum"
-                               ? `Trade Homiss's ${held.name} for the ${swapFor.name}. *(He wants the trophy.)*`
-                               : `Trade your ${held.name} for the ${swapFor.name}.`,
-                             effects: { take: held.id, give: swapFor.id, like: +6,
+                               ? `Trade Homiss's ${held.name} for the ${reward.name}. *(He wants the trophy.)*`
+                               : `Trade your ${held.name} for the ${reward.name}.`,
+                             effects: { take: held.id, give: reward.id, like: +6,
                                         flag: `traded-${held.id}-to-${character.id}` } });
           }
 
           // 3) the hidden desire — the lanyard — only shows if the player holds it
           const secret = character.hiddenDesire && player.inventory.find(it => it.id === character.hiddenDesire);
           if (secret){
-            const prize = character.giftable[0];
+            const prizeId = character.hiddenPrizeId();
+            const prize = prizeId && character.inventory.find(it => it.id === prizeId);
             choices.push({ text: `Offer the ${secret.name}. *(He has gone very still.)*`,
               effects: { take: secret.id, give: prize?.id, like: +18, flag: "gave-lanyard" },
               next: { text: "*He takes it an' turns it over, an' for a long moment he isn't playin' anything at all.* ...I had one of these. This exact lanyard. Same scratch where the logo goes. We all scratched it off. It was that kind of place. *He looks up at ye, an' the visor hides whatever his eyes are doin'.* This was WORK, hai. This was us. The Protocol isn't somebody's game. It's somebody's PRODUCT. Somebody stood up in a plannin' meetin' an' SHIPPED this. *He pockets it, an' the grin that comes back on is the one he used to wear to stand-ups.* Here. Take somethin' for it. An' keep yer save backed up, hai. I mean that as a friend." } });
@@ -371,6 +369,11 @@ function sianDialogue(ctx){
           else
             text = "Vendor mode: ENGAGED. *He mimes a till openin'.* Right, what are ye buyin', what are ye sellin'? ...oh, an' a random one, off the books: if ye ever come across a wee card on a string out there, plastic, photo on it, like a work badge, grab it for me. Don't ask why. *The grin doesn't move, but somethin' behind it does.* Just grab it, hai.";
 
+          // carrying something he openly wants? he'll angle for it
+          const eyeing = character.interestsOpen.map(id => player.inventory.find(it => it.id === id)).find(Boolean);
+          if (eyeing && character.affinity >= 40 && character.giftable.length)
+            text += ` ...an' is that a ${eyeing.name} yer carryin', hai? Askin' for a friend. I'm the friend.`;
+
           return { text, choices };
         } },
     ],
@@ -402,5 +405,11 @@ export const sian = {
   interests: {
     open:   ["plectrum", "relic-shard"],
     hidden: "lanyard",
+  },
+  // per-path trade rewards (STORY.md §4/§7): barter rewards by what you give,
+  // and the prized battlebot handed over free for the corporate lanyard.
+  trades: {
+    barter: { "plectrum": "servo", "relic-shard": "patchlead" },
+    hiddenPrize: "battlebot",   // the palm-size battlebot, for the lanyard
   },
 };

@@ -296,6 +296,9 @@ thawed (gift them something they covet).
 - **Wants from the player:**
   - `open`: `relic-shard`, `data-vial` (haggles for these out loud)
   - `hidden`: `saints-finger` (craves it; won't name it, hints in riddles)
+- **Trade rewards (`trades`):** barter `relic-shard → coin` (unlocks Dalypso's
+  coin want), `data-vial → sausage`; hidden-desire prize = **`charm`** (the Tin
+  Cornicello, free, for the Saint's Finger).
 
 ### HOMISS  (`id: "homiss"`)
 
@@ -318,6 +321,8 @@ thawed (gift them something they covet).
   - `open`: `sausage`, `data-vial`
   - `hidden`: `mayo` (a jar of mayonnaise — he won't name it, but he can't stop
     bringing the conversation around to it)
+- **Trade rewards (`trades`):** barter `sausage → plectrum`, `data-vial → napkin`;
+  hidden-desire prize = **`cassette`** (the "DREAD (live)" tape, free, for the mayo; `+25`).
 
 ### LITTLE BEE  (`id: "littlebee"`, spawns from depth 2)
 
@@ -346,6 +351,8 @@ thawed (gift them something they covet).
   - `open`: `data-vial` (science — a third bidder against Scally and Homiss),
     `cassette` (Homiss's tape: "theta entrainment ye can dance to")
   - `hidden`: `horseshoe` (homesickness she will deny under oath)
+- **Trade rewards (`trades`):** barter `data-vial → horsehair`, `cassette → sugarcube`;
+  hidden-desire prize = **`prism`** (the Prism Tab, free, for the horseshoe).
 
 ### SIAN  (`id: "sian"`, spawns from depth 3, minimap letter `5`)
 
@@ -374,6 +381,8 @@ thawed (gift them something they covet).
     programmer wants source to decompile)
   - `hidden`: `lanyard` (the one artifact of his old life that has no
     business being inside a game — and, after the twist: it was never his)
+- **Trade rewards (`trades`):** barter `plectrum → servo`, `relic-shard → patchlead`;
+  hidden-desire prize = **`battlebot`** (the palm-size battlebot, free, for the lanyard).
 
 ### DALYPSO  (`id: "dalypso"`, spawns from depth 4)
 
@@ -407,6 +416,9 @@ thawed (gift them something they covet).
     token — "I respect a man with stock, an' I respect his memorabilia more")
   - `hidden`: `tv-guide` (the Christmas one; he hides this desire with the
     subtlety of a hand grenade)
+- **Trade rewards (`trades`):** barter `coin → stub` (Scally's coin lands here),
+  `sticker → housekey`; hidden-desire prize = **`remote`** (the universal remote,
+  free, for the Christmas TV guide; `+20`).
 
 ### THE CUSTODIAN  (`id: "custodian"`, met only in the sanctum)
 
@@ -442,7 +454,10 @@ thawed (gift them something they covet).
 > **and Bee** all want a `data-vial` (three-way choice). Bee wants Homiss's
 > `cassette` (buy for 30 LT, barter on — a brokering play). Sian wants
 > Homiss's `plectrum`; Dalypso wants Scally's `coin`. Barter paths only light
-> up once the wanted item is actually in the player's inventory.
+> up once the wanted item is actually in the player's inventory. **Each barter
+> now pays a specific reward** (per `trades.barter`, see §7) rather than "the
+> first item in the pocket" — and Scally's `relic-shard → coin` is what makes
+> the player able to *obtain* a `coin`, so Dalypso's coin want is reachable.
 
 **Item sources (decided).** The once-TBD items now exist in the world
 (`story.js WORLD_ITEMS` + `applyLevelEvents`); each is **one of a kind** —
@@ -790,8 +805,24 @@ A conversation is a few things deep, not a wall of choices:
    MUTE."*). The refusal itself costs nothing — asking isn't punished, just
    read. When a 75+ friend is only blocked by the cooldown, the trade
    topic's intro line apologises instead.
-3. **Barter** — un-priced items swapped for something the character wants
-   (`interests.open` / `interests.hidden`).
+3. **Barter** — un-priced items swapped for something the character *openly*
+   wants (`interests.open`). **The reward is item-specific:** each def's
+   `trades.barter` maps *what you hand over* → *which of their items you get
+   back* (e.g. Scally's `relic-shard → coin`, which is what makes Dalypso's
+   "wants Scally's coin" chain reachable). A missing mapping falls back to the
+   first giftable (the old pocket-order behaviour), and rewards resolve against
+   the **live** inventory so a reward already spent still falls back cleanly.
+   Barter is surfaced twice now: the journal's CONTACTS line ("Will trade for
+   your …") and the trade node's intro when you're carrying a wanted item.
+4. **The hidden-desire swap** — bringing the one item a character *secretly*
+   craves (`interests.hidden`) triggers a momentous, one-of-a-kind exchange:
+   they hand over their **prized for-sale item, for free** (`trades.hiddenPrize`
+   — e.g. the Saint's Finger buys Scally's Tin Cornicello, not a sausage).
+   This is the one sanctioned big affinity swing (**+18**, up to +25 for
+   Homiss's mayo). Fallback: the first for-sale item, then the first giftable,
+   if the prize has already been bought. Because the prize is a for-sale item,
+   the "buy" choice for it simply drops off once it's been given (the sale list
+   re-reads `forSale` each open).
 
 ### The ending (`maze.js runEnding`)
 

@@ -16,6 +16,7 @@
    a little "watch" worn on the left wrist in VR (initWristMap).
    ============================================================ */
 import { $ } from "../../utils.js";
+import { depthInCycle } from "./state.js";
 
 const SIZE = 176;    // css pixels, square
 const DPR  = 2;      // supersample for crisp lines
@@ -114,12 +115,68 @@ function updateWatch(M){
   watch.tex.needsUpdate = true;        // push this frame's redraw to the GPU
 }
 
+/* --- signal decay -------------------------------------------------------
+   The minimap is a Protocol instrument, and the Protocol fails toward the
+   bottom of every cycle. Keyed on the SHOWN depth (depthInCycle, 1..10) so
+   it resets when the Protocol recycles: clean through depth 05, static
+   creeping in over 06-08, and dead ("MINIMAP OFFLINE") at 09-10. Shown
+   depth 10 is always the sanctum, so the base depth reads offline too. */
+function mapStatic(depth){
+  const shown = depthInCycle(depth);
+  if (shown >= 9) return "offline";
+  if (shown >= 6) return 0.3 + (shown - 6) * 0.25;   // 0.30 / 0.55 / 0.80
+  return 0;
+}
+
+/* TV-snow overlaid on whatever's already drawn. Re-randomised each frame,
+   so it flickers. `intensity` 0..1 scales the speck count and brightness. */
+function drawStatic(intensity){
+  const px = SIZE * DPR;
+  const specks = Math.floor(intensity * 900);
+  for (let i = 0; i < specks; i++){
+    const a = 0.05 + Math.random() * 0.5 * intensity;
+    g.fillStyle = Math.random() < 0.5 ? `rgba(255,255,255,${a})` : `rgba(70,255,142,${a})`;
+    g.fillRect(Math.random() * px, Math.random() * px, DPR * 0.9, DPR * 0.9);
+  }
+  const tears = Math.floor(intensity * 4 + Math.random() * 2);   // horizontal roll tears
+  for (let i = 0; i < tears; i++){
+    g.fillStyle = `rgba(190,225,205,${0.05 + Math.random() * 0.12 * intensity})`;
+    g.fillRect(0, Math.random() * px, px, (Math.random() * 2 + 1) * DPR);
+  }
+}
+
+/* the dead readout shown at shown-depth 09/10: heavy snow + a blinking
+   "MINIMAP OFFLINE" warning. Redraws from scratch (ignores fog/goal). */
+function drawOffline(){
+  const px = SIZE * DPR;
+  g.clearRect(0, 0, px, px);
+  g.fillStyle = "rgba(4,8,10,0.92)"; g.fillRect(0, 0, px, px);
+  drawStatic(0.9);
+  g.strokeStyle = "rgba(255,90,60,0.5)"; g.lineWidth = 2 * DPR;
+  g.strokeRect(3 * DPR, 3 * DPR, px - 6 * DPR, px - 6 * DPR);
+  const blink = 0.55 + 0.45 * Math.sin(performance.now() * 0.006);
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = `rgba(255,90,60,${blink})`;
+  g.font = `bold ${15 * DPR}px 'Share Tech Mono', monospace`;
+  g.fillText("MINIMAP", px / 2, px / 2 - 11 * DPR);
+  g.fillText("OFFLINE", px / 2, px / 2 + 11 * DPR);
+  g.textAlign = "left"; g.textBaseline = "alphabetic";
+}
+
 /* call once per frame; redraws in the level neon. Desktop/touch reads
    the DOM canvas top-right; in VR the DOM layer isn't composited, so
    the same pixels show on the wrist watch instead */
 export function updateMinimap(M){
-  if (!canvas || !seen) return;
+  if (!canvas) return;
   canvas.style.display = M.inVR ? "none" : "block";
+
+  const decay = mapStatic(M.depth);
+  if (decay === "offline"){          // depth 09/10 (incl. the sanctum): dead instrument
+    drawOffline();
+    updateWatch(M);
+    return;
+  }
+  if (!seen) return;                 // non-offline with no fog map (shouldn't happen: sanctum is shown 10)
 
   const px = M.dolly.position.x, pz = M.dolly.position.z;
   reveal(clampCell(px / CELL), clampCell(pz / CELL));
@@ -200,6 +257,9 @@ export function updateMinimap(M){
   g.lineTo(cx - dx * r * 0.6 + dz * r * 0.55, cz - dz * r * 0.6 - dx * r * 0.55);
   g.closePath();
   g.fill();
+
+  // instrument decay: static creeps in over shown-depths 06-08 of each cycle
+  if (decay) drawStatic(decay);
 
   updateWatch(M);
 }

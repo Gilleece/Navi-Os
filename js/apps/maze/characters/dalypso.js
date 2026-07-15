@@ -17,16 +17,9 @@
    switches mood: "neutral" | "happy" | "angry" | "sad".
    ============================================================ */
 
-/* drawing ink — defaults to red-orange (the hair insists), but every draw
-   call is handed the current level's ink (see palette.characterInk /
-   characters.js) so all characters render in one colour, like an old
-   single-phosphor monitor. */
-let LINE = "#ff8c5a", FILL = "#331409";
-let GLOW0 = "rgba(255,140,90,.20)", GLOW1 = "rgba(255,140,90,0)";
-function applyInk(ink){
-  if (!ink) return;
-  LINE = ink.line; FILL = ink.fill; GLOW0 = ink.glow0; GLOW1 = ink.glow1;
-}
+/* shared drawing ink (LINE/FILL/GLOW + applyInk): live bindings set from the
+   level's palette on every draw, so all characters render in one colour. */
+import { LINE, FILL, GLOW0, GLOW1, applyInk } from "./portrait.js";
 
 function dalGlow(g, w, h){
   const grd = g.createRadialGradient(w/2, h*0.55, 12, w/2, h*0.55, w*0.62);
@@ -339,19 +332,23 @@ function dalypsoDialogue(ctx){
                                       flag: `bought-${sale.id}` } });
 
           // 2) barter: hand over something he openly wants for a trinket
-          const swapFor = character.giftable[0];
           for (const id of character.interestsOpen){
             const held = player.inventory.find(it => it.id === id);
-            if (held && swapFor)
-              choices.push({ text: `Trade your ${held.name} for the ${swapFor.name}.`,
-                             effects: { take: held.id, give: swapFor.id, like: +6,
+            // the reward is chosen by WHAT you hand over (character.trades.barter),
+            // not pocket order — so item-specific rewards land where the story wants
+            const rewardId = held && character.barterRewardId(id);
+            const reward = rewardId && character.inventory.find(it => it.id === rewardId);
+            if (held && reward)
+              choices.push({ text: `Trade your ${held.name} for the ${reward.name}.`,
+                             effects: { take: held.id, give: reward.id, like: +6,
                                         flag: `traded-${held.id}-to-${character.id}` } });
           }
 
           // 3) the hidden desire — the Christmas TV guide — only if the player holds it
           const secret = character.hiddenDesire && player.inventory.find(it => it.id === character.hiddenDesire);
           if (secret){
-            const prize = character.giftable[0];
+            const prizeId = character.hiddenPrizeId();
+            const prize = prizeId && character.inventory.find(it => it.id === prizeId);
             choices.push({ text: `Offer the ${secret.name}. *(He has already extended both hands.)*`,
               effects: { take: secret.id, give: prize?.id, like: +20, flag: "gave-tv-guide" },
               next: { text: "*He holds it at arm's length like a newborn, then against his chest.* The Christmas one. THE Christmas one. *He opens it dead centre, an' his eyes are shinin'.* Look at it. Two full weeks where everythin' good is on an' nothin' bad can happen an' the whole COUNTRY is watchin' the same thing at the same time. That's not a magazine, that's a CEASEFIRE. *He tucks it somewhere safe below the window, an' when he straightens up he has to clear his throat.* Ye don't understand what ye've done. Come round to the house. I MEAN it. Yer name's goin' on a key." } });
@@ -384,6 +381,11 @@ function dalypsoDialogue(ctx){
           else
             text = "Go on, let's do business. An' I'll have ye know everythin' here is MINT condition, one careful owner. *Then, with the subtlety of a hand grenade:* ...also. Hypothetically. If a person were to find a magazine down there, thick one, comes out the once a year, all the listin's in it, maybe a festive cover, HYPOTHETICALLY, that person should bring it here IMMEDIATELY an' name their price. *He examines his nails.* Anyway. What'll it be?";
 
+          // carrying something he openly wants? he'll have spotted it already
+          const eyeing = character.interestsOpen.map(id => player.inventory.find(it => it.id === id)).find(Boolean);
+          if (eyeing && character.affinity >= 40 && character.giftable.length)
+            text += ` ...an' don't think I didn't spot that ${eyeing.name} on ye. Eyes like a linesman, me.`;
+
           return { text, choices };
         } },
     ],
@@ -414,5 +416,11 @@ export const dalypso = {
   interests: {
     open:   ["sticker", "coin"],
     hidden: "tv-guide",
+  },
+  // per-path trade rewards (STORY.md §4/§7): Scally's coin barters for the Cup
+  // Final Stub; the prized remote is handed over free for the Christmas TV guide.
+  trades: {
+    barter: { "coin": "stub", "sticker": "housekey" },
+    hiddenPrize: "remote",   // the universal remote, for the tv-guide
   },
 };

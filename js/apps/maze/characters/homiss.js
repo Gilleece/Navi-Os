@@ -17,15 +17,9 @@
    switches mood: "neutral" | "happy" | "angry" | "sad".
    ============================================================ */
 
-/* drawing ink — defaults to violet, but every draw call is handed the current
-   level's ink (see palette.characterInk / characters.js) so all characters
-   render in one colour, like an old single-phosphor monitor. */
-let LINE = "#b794ff", FILL = "#190f33";
-let GLOW0 = "rgba(183,148,255,.20)", GLOW1 = "rgba(183,148,255,0)";
-function applyInk(ink){
-  if (!ink) return;
-  LINE = ink.line; FILL = ink.fill; GLOW0 = ink.glow0; GLOW1 = ink.glow1;
-}
+/* shared drawing ink (LINE/FILL/GLOW + applyInk): live bindings set from the
+   level's palette on every draw, so all characters render in one colour. */
+import { LINE, FILL, GLOW0, GLOW1, applyInk } from "./portrait.js";
 
 function homissGlow(g, w, h){
   const grd = g.createRadialGradient(w/2, h*0.55, 12, w/2, h*0.55, w*0.62);
@@ -371,19 +365,23 @@ function homissDialogue(ctx){
                                       flag: `bought-${sale.id}` } });
 
           // 2) barter: hand over something he openly wants for a trinket
-          const swapFor = character.giftable[0];
           for (const id of character.interestsOpen){
             const held = player.inventory.find(it => it.id === id);
-            if (held && swapFor)
-              choices.push({ text: `Trade your ${held.name} for the ${swapFor.name}.`,
-                             effects: { take: held.id, give: swapFor.id, like: +6,
+            // the reward is chosen by WHAT you hand over (character.trades.barter),
+            // not pocket order — so item-specific rewards land where the story wants
+            const rewardId = held && character.barterRewardId(id);
+            const reward = rewardId && character.inventory.find(it => it.id === rewardId);
+            if (held && reward)
+              choices.push({ text: `Trade your ${held.name} for the ${reward.name}.`,
+                             effects: { take: held.id, give: reward.id, like: +6,
                                         flag: `traded-${held.id}-to-${character.id}` } });
           }
 
           // 3) the hidden desire — mayonnaise — only shows if the player holds it
           const secret = character.hiddenDesire && player.inventory.find(it => it.id === character.hiddenDesire);
           if (secret){
-            const prize = character.giftable[0];
+            const prizeId = character.hiddenPrizeId();
+            const prize = prizeId && character.inventory.find(it => it.id === prizeId);
             choices.push({ text: `Offer the ${secret.name}. *(His eyes go wide as dinner plates.)*`,
               effects: { take: secret.id, give: prize?.id, like: +25, flag: "gave-mayo" },
               next: { text: "*He takes it in both hands like a holy relic, barely breathin'.* ...mayonnaise. Real, actual mayonnaise. *His voice cracks.* Ye beautiful, beautiful creature. Whatever ye need off me, ever, it's yours. I mean that now. I'll never forget this. *He's not letting go of the jar.*" } });
@@ -416,6 +414,11 @@ function homissDialogue(ctx){
           else
             text = "Go on so, let's see what we've got! *Then, casual as anythin', which is to say not at all:* ...an' ye'd tell me, sure ye would, if ye ever came across a drop o' mayonnaise out there? Ye'd tell me. That's all I ask.";
 
+          // carrying something he openly wants? he'll not-so-subtly clock it
+          const eyeing = character.interestsOpen.map(id => player.inventory.find(it => it.id === id)).find(Boolean);
+          if (eyeing && character.affinity >= 40 && character.giftable.length)
+            text += ` ...an' here, is that a ${eyeing.name} on ye? Don't mind me lookin'. I'm only lookin'.`;
+
           return { text, choices };
         } },
     ],
@@ -446,5 +449,11 @@ export const homiss = {
   interests: {
     open:   ["sausage", "data-vial"],
     hidden: "mayo",
+  },
+  // per-path trade rewards (STORY.md §4/§7): barter rewards by what you give,
+  // and the prized cassette handed over free for the jar of mayonnaise.
+  trades: {
+    barter: { "sausage": "plectrum", "data-vial": "napkin" },
+    hiddenPrize: "cassette",   // the 'DREAD (live)' tape, for the mayo
   },
 };
