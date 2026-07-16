@@ -160,7 +160,7 @@ function scallyDialogue(ctx){
     // shownDepth, not depth: his memory rewinds with the cycle, so to him
     // the counter really has reset — only the player hears the wrongness
     greet: `${greet} Down here on level ${shownDepth ?? depth}, eh, is dangerous. But Scally, he knows-a things.`,
-    exhausted: "Eh, amico, we have-a talked enough for now. Go, go! The maze, she is waiting. *Scally rubs his hands and melts back into the static.*",
+    exhausted: "Eh, amico, we've talked enough for now. Go, go! The maze is waiting. *Scally rubs his hands and melts back into the static.*",
     hostile: "*He turns his back, muttering in Italian.* Pah! I got nothing for you. You bring Scally something nice, eh? Then maybe we talk again.",
     topics: [
       { id: "place", label: "Well met, friend. What is this place?", effects: { like: +1 },
@@ -171,16 +171,16 @@ function scallyDialogue(ctx){
       // can't be rotated out of the one level it exists on.
       { id: "tokens", label: "Anything I should know while travelling through this place?",
         available: () => depth === 1, keep: true, effects: { like: +1 },
-        node: { text: "Ahh, smart to ask! See the little shapes floating in the halls? LT, amico. Labyrinth Tokens. The coin of this place! Big crystals are five, middle ones three, little ones one. Walk into them, *poof*, yours. And everybody down here wants LT. So you grab every one you see, eh? Every. Single. One." } },
+        node: { text: "Ahh, smart to ask! See the little shapes floating in the halls? LT, amico. Labyrinth Tokens — the coin of this place. Big crystals are five, middle ones three, little ones one. Walk into them, *poof*, yours. And everybody down here wants LT. So grab every one you see, eh? Every. Single. One." } },
 
       { id: "others", label: "Who else wanders down here?",
         node: { text: "The others? Pfft. Things in the static, wearing faces, amico. Me, Scally, I am the only honest one. *grin*",
           choices: [
             { text: "Then I'll stick close to the honest one.", effects: { like: +1 },
-              next: { text: "*He spreads his arms, delighted.* Ecco! Wisdom! You stay close to Scally, and the static she stays hungry. Is a good arrangement. For you, ESPECIALLY for you. *wink*" } },
+              next: { text: "*He spreads his arms, delighted.* Ecco! Wisdom! Stay close to Scally, and the static stays hungry. A good arrangement — for you, ESPECIALLY for you. *wink*" } },
             // the trap: a sensible-sounding question he hears as an informer's
             { text: "Which of the others is lying to me, then?", effects: { like: -3 },
-              next: { text: "*The grin cools by several degrees.* ...eh. You misunderstand the shop, amico. You ask Scally to sell his NEIGHBOURS. *He tidies something that does not need tidying.* Scally sells THINGS. Never the windows. *He looks up, and the eyes are flat.* The ones who buy neighbours... sooner or later, somebody sells THEM. Think on it." } },
+              next: { text: "*The grin cools several degrees.* ...eh. You misunderstand the shop. You ask Scally to sell his NEIGHBOURS. *He tidies something that doesn't need it.* Scally sells THINGS. Never the windows. *He looks up, eyes flat.* The ones who buy neighbours... sooner or later, somebody sells THEM. Think on it." } },
           ] } },
 
       { id: "charm", label: "*Flatter him* A man of your style must run this whole place.",
@@ -201,7 +201,7 @@ function scallyDialogue(ctx){
 
       { id: "fortuna", label: "That little horn of yours. Does it actually work?",
         req: { attr: "luck", level: 6 }, effects: { like: +2 },
-        node: { text: "*He looks at you sideways, then chuckles, low.* You would know better than Scally, eh? Fortuna follows some people like a little dog. The maze feels it too: for the lucky ones she leaves doors where there were no doors, coins where there were no coins. *He polishes the cornicello on his sleeve.* Stay lucky, amico. Down here is a bad place to run out." } },
+        node: { text: "*He looks at you sideways, then chuckles, low.* You'd know better than Scally, eh? Fortuna follows some people like a little dog. The maze feels it too — for the lucky ones she leaves doors where there were none, coins where there were none. *He polishes the cornicello on his sleeve.* Stay lucky, amico. Down here's a bad place to run out." } },
 
       { id: "rude", label: "Get out of my way, little man.", effects: { like: -10 },
         node: { text: "*The smile stays, but his eyes go cold.* Tsk. So rude. Va bene." } },
@@ -256,8 +256,8 @@ function scallyDialogue(ctx){
             else if (character.affinity < 75)
               choices.push({ text: "Anything spare for a friend?",
                 next: { text: character.affinity < 40
-                  ? "*The laugh comes out flat, like a coin dropped on the counter.* A gift. For YOU. Amico, a gift is a thing you give a FRIEND, and what are you to Scally, eh? Foot traffic. *He turns back to his shelf.* The coin talks. You, not so much."
-                  : "*He wags a finger, almost fond.* Ehhh. Gifts, amico, gifts are for famiglia. You and Scally, we are... promising. PROMISING. Is not nothing! *He taps his temple.* Keep walking, keep talking, keep bringing that face to the window. The shelf, she remembers who her friends are. One day she opens for you. Not today." } });
+                  ? "*The laugh comes out flat, like a coin dropped on the counter.* A gift. For YOU. Amico, a gift is a thing you give a FRIEND — and what are you to Scally? Foot traffic. *He turns back to his shelf.* The coin talks. You, not so much."
+                  : "*He wags a finger, almost fond.* Ehhh. Gifts are for famiglia. You and Scally, we are... promising. PROMISING. Is not nothing! *He taps his temple.* Keep walking, keep talking, keep bringing that face to the window. The shelf remembers who her friends are. One day she opens for you. Not today." } });
           }
 
           choices.push({ text: "(Maybe later.)" });
@@ -268,7 +268,7 @@ function scallyDialogue(ctx){
           if (character.affinity < 40)
             text = "*He keeps the goods close to his chest.* Trade? With you, amico, only the coin talks. You show Scally the LT, eh?";
           else if (character.affinity >= 75 && !character.canTrade(depth))
-            text = "*Scally pats his coat, apologetic.* Favours you must wait for, my friend. Things are-a scarce in the Labyrinth Protocol right now. But coin? Coin always talks. *winks*";
+            text = "*Scally pats his coat, apologetic.* Favours you must wait for, friend. Things are-a scarce right now. But coin? Coin always talks. *winks*";
           else
             text = "*He spreads his little wares.* Eh, let us deal! And... *his voice drops* ...if ever the maze gives up a little bone the old saints left behind, you bring it to Scally, eh? I ask-a no more. *He looks quickly away.*";
 

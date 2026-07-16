@@ -10,7 +10,7 @@
    (happy / angry / sad / neutral) to match what just happened.
    ============================================================ */
 import { player, STATS, meetsReq, addItem, removeItem, canAfford, spendTokens, setFlag, hasFlag, grantPoints } from "./state.js";
-import { isErrandStart } from "./story.js";
+import { isErrandStart, introFor, markIntroSeen } from "./story.js";
 import { characterById } from "./characters/characters.js";
 import { createPanel, raycastPanel, PANEL_W, PANEL_H } from "./panel.js";
 import { setVRPrompt } from "./vrbanner.js";
@@ -187,7 +187,18 @@ export function openDialogue(state, character){
   ui.name.textContent = character.name;
   ui.foot.textContent = [player.name, ...STATS.map(([k]) => `${STAT_ABBR[k]} ${player.stats[k]}`)].join("  ·  ");
 
-  renderHub();                       // builds the view + renders DOM + panel
+  // first meeting this cycle: play the introduction before the hub, so the
+  // player meets the person before the whole topic list lands. Cycles 2/3
+  // greet you as a stranger, with a slip (story.js INTROS). Skipped when
+  // they're too hostile to talk (renderHub handles the thaw). Every intro
+  // leaf flows into the hub (a choice with no `next` → renderHub).
+  const intro = current.wontTalk ? null : introFor(current, hub.ctx);
+  if (intro){
+    markIntroSeen(current, hub.ctx);
+    renderNode(intro);
+  } else {
+    renderHub();                     // builds the view + renders DOM + panel
+  }
   ui.prompt.classList.remove("on");
   setVRPrompt(null);                 // clear the proximity prompt while talking
   ui.box.classList.add("on");

@@ -476,6 +476,176 @@ const REPLAY_GREETS = {
   dalypso: "A REBOOT. I knew it. Same lead, same wardrobe, actin' like the first nine seasons never happened. *He mutters, settling back.* They never recast when they SHOULD, that's the industry all over...",
 };
 
+/* ---------- first-meeting introductions (once per cycle) -----------------
+   The first time the player opens a character's dialogue in a given cycle,
+   a short scripted introduction plays BEFORE the topic hub — so you meet
+   the person before the whole option list lands on you.
+
+   Cycle 1 is a genuine hello. Cycles 2 and 3 are the same person greeting
+   you as a STRANGER: their episodic memory of you rewound with the building
+   (the echoes are real, §3). BUT affinity and some wordless instinct did
+   NOT rewind — so the not-knowing lands a beat too rehearsed. There is
+   always a SLIP: they half-recognise the face, reach for a name that isn't
+   there, and cover. The player alone remembers, and can push on it; nobody
+   ever resolves whether it is honest amnesia or a performance being run on
+   the walking thing they half-sense is not what it claims (the very thing
+   they keep warning about — §3 twist). Cycle 3 does the same, degraded, from
+   inside the shutdown.
+
+   Gated per cycle on character memory (`intro#<cycle>`) so it fires once in
+   each of the three cycles and rewinds on a new game. The Custodian is
+   exempt — its sanctum audiences ARE its introductions. Every leaf flows
+   back into the hub: a choice with no `next` returns to renderHub
+   (dialogue.js). Kept affinity-neutral on purpose — the intro sets the
+   scene; the hub topics carry the affinity game. */
+const INTROS = {
+  scally: {
+    1: () => ({
+      text: "*A hunched little man in a loud coat presses to the glass, hands going like he's washing them in air.* Ohó. Ohó! A new face in the wires. Come, come — don't be shy of the window. *A grin that has sold a thousand things.* Scally. Just Scally. Fixer, finder, friend to the friendless — and down here, amico, EVERYBODY is friendless. Lucky for you, Scally is the one honest man in the maze. *The grin widens.* He swears.",
+      choices: [
+        { text: "One honest man in a maze full of liars. Convenient.",
+          next: { text: "*He claps, delighted.* HAH! Suspicious already! Bellissimo. You will last longer than the trusting ones, amico. They make lovely wallpaper." } },
+        { text: "Friend to the friendless. What does that cost me?",
+          next: { text: "*A hand to the heart, wounded, thrilled.* Cost? Between friends? ...eh. We discuss it. Everything down here, we discuss it. Come — Scally shows you how the maze is walked." } },
+      ] }),
+    2: () => ({
+      text: "*The little man in the loud coat looks up like fresh custom — then something crosses his face, quick, and is filed away.* Ohó. New face in the wires, eh? To the glass, come. Scally. Just Scally, the one honest— *He stops. Squints.* ...you have one of those faces, amico. Scally is very good with faces, and he would SWEAR he has sold to you before. *A beat. Then the coat and the grin go back on together.* No. No. New face. Benvenuto.",
+      choices: [
+        { text: "You've sold to me before, Scally. Twice. I remember every word.",
+          next: { text: "*The hands go still for exactly one second, then resume.* ...twice, he says. *A laugh, a hair too smooth.* Down here every man feels he has been everywhere twice. Is the fog, amico. Is the walls. *He will not quite look at you.* ...but Scally does not argue with a customer about what the customer remembers. Bad for business. Come." } },
+        { text: "*Say nothing. Let him meet you fresh.*",
+          next: { text: "*He relaxes, or performs it.* Ecco. A quiet one. Scally LIKES the quiet ones — they let a man do the talking. Come, new face." } },
+      ] }),
+    3: () => ({
+      text: "*Half the window is unlit, and he stands in the lit half like a man out of the rain, already talking.* —and STILL the rent, still the— ah! A face. New face? *He peers, and the peering costs him.* ...Scally is not so sure of NEW anymore, amico. The faces come around now, like the corridors. Round and round. *He touches his chest.* He knows yours the way he knows a song he cannot name. Cold finger, right here. *The grin tries, and mostly fails.* Benvenuto anyway. Everyone is welcome, at closing time.",
+      choices: [
+        { text: "You know me because we've done this three times. The place is looping.",
+          next: { text: "*He nods, and does not deny it, which frightens you more than anything he ever sold.* Sì. Three, thirty — Scally stopped counting when the counting started repeating. *Quiet.* Listen: if you are the one who keeps coming back, you are the only one who can reach the bottom. So reach it. Before the shop closes on all of us, eh?" } },
+        { text: "*Let him welcome you. Don't add to his weight.*",
+          next: { text: "*Something in the little shoulders eases.* ...grazie. For not making an old fixer do the sums tonight. Come. What is left of the shop is yours to look at." } },
+      ] }),
+  },
+
+  homiss: {
+    1: () => ({
+      text: "*A big rumpled fella with a bass slung across him beams like you've walked into his kitchen.* Ah, HOWaya! C'mere to me, c'mere. God, a new one. *He sets the bass aside, delighted.* Homiss. Bass, mostly — composition, did the doctorate an' all, not that ye'd know it to look at the state of me. *He leans on the glass, warm as a range.* Sure ye'll keep me company a minute? A man does his best thinkin' with somebody to think AT.",
+      choices: [
+        { text: "A doctorate in bass. Go on, impress me.",
+          next: { text: "*He lights up like a fairground.* Oh, yer TROUBLE, you. Grand. I'll have somethin' ready — nothin' with words, words are a distraction, but somethin' that'll rearrange yer week. Stick around." } },
+        { text: "You alright there, Homiss? You've a look on you.",
+          next: { text: "*The beam holds a half-beat too long.* ...ah, I'm grand. Grand! It's a grand day. *He picks at a string.* Sure they're all grand days down here. That's the... that's the lovely thing about it. C'mere, never mind me — tell us who YOU are." } },
+      ] }),
+    2: () => ({
+      text: "*The big fella looks up from the bass, and his face does something complicated before it settles on welcome.* Ah— howaya. A new... *He trails off, frowning gently at you, like a word on the tip of his tongue.* ...sorry. Sorry, ye caught me. For a second there I'd have SWORN— *He laughs it off.* Ah, no. Ye've one of them faces. Homiss. Bass man. Forgive an oul' fella his wires crossin', it's been a strange... *the counting gives up* ...a strange while.",
+      choices: [
+        { text: "You'd have sworn what, Homiss? Say it.",
+          next: { text: "*He opens his mouth, and whatever's there won't come.* ...that I KNEW ye. Isn't that mad? Full certain, for a second, like the middle of a tune ye don't remember startin'. *He rubs the back of his neck.* But sure — ye don't forget a friend. *He says it like a question he's afraid to finish.* ...come here to me anyway. Fresh ears are fresh ears." } },
+        { text: "Fresh face, fresh start. Play me something.",
+          next: { text: "*Relief floods him.* THERE'S a man knows what to ask for. Aye. C'mere, the day's improvin' already." } },
+      ] }),
+    3: () => ({
+      text: "*He's playing one low note over and over, and the walls hum it back a half-beat late. He doesn't stop when you arrive.* ...ah. There's a face. *He watches you the way you'd watch weather comin' in.* New, is it? Everythin's new an' nothin' is, down here, at the end. *The note goes round again.* Homiss. Bass. I'd tell ye it's grand to meet ye, an' I'd MEAN it — only me chest does this quare thing when I look at ye. Like the room already knows yer name an' won't tell me it.",
+      choices: [
+        { text: "The room knows my name because we've met. Three times, Homiss.",
+          next: { text: "*The note stops.* ...three. *He nods, slow, like it fits a shape he's been carryin'.* Aye. That'd be the thing I keep near-rememberin' an' losin'. *Very quiet.* If yer the one who keeps comin' back — ye'll be there at the bottom when the hummin' lands, won't ye? Somebody has to catch the last note. Might as well be a friend I can't quite place." } },
+        { text: "Don't strain for it. Just play.",
+          next: { text: "*He exhales, and the smile that finds him is real, which is his whole miracle.* ...aye. Ye can't chase a note. Ye let it come. C'mere, so, an' let it come." } },
+      ] }),
+  },
+
+  littlebee: {
+    1: () => ({
+      text: "*A small sharp woman clocks you before you've stopped walkin', eyes doing a fast circuit — pupils, posture, gait.* Right. New. Recent too, yer still calibrated. *She folds her arms.* Bee. Neuroscientist, before ye ask — an' before ye ask the OTHER thing, aye, I came in here on purpose. Chasin' somethin'. Found more than I bargained for, didn't surface. *A brisk nod.* That's the whole tragic backstory, we'll not dwell. What are ye at?",
+      choices: [
+        { text: "In here on purpose. That's either brave or daft.",
+          next: { text: "*A short, surprised bark of a laugh.* BOTH. It's always both — first thing they don't teach ye. *She almost approves.* Good instinct. Keep it. Ye'll need it more than yer manners down here." } },
+        { text: "On purpose — so you know the way out.",
+          next: { text: "*The arms tighten a fraction.* ...I know the way IN. Different door, turns out. *She waves it off, fast.* We'll get to it. Or we won't. Either way I've tests to run an' yer the only subject with legs. Ye'll do." } },
+      ] }),
+    2: () => ({
+      text: "*The fast circuit of the eyes — pupils, posture, gait — and then a hitch. A frown.* ...new. New face. *She says it like she's confirming a reading she doesn't trust.* Bee. Neuroscientist. Eyes fr— *She stops. Looks at you properly.* That's odd. Yer a stranger an' me own baseline's tellin' me yer NOT. Elevated familiarity, no recall to hang it on. *She writes something small.* Ignore me. The instrument's the one degradin', obviously.",
+      choices: [
+        { text: "Your instrument's fine, Bee. We've met. Three times now.",
+          next: { text: "*She goes very still — the clinician's stillness.* ...three. *She does not write it down, which from her is a scream.* If that were true I'd have a memory. I don't misplace data, courier, I'm the one thing down here that DOESN'T. *A beat, and something flickers behind the certainty.* ...so either yer lyin', or I've been EDITED. An' I've decided which of those I can survive believin'. Don't push me off it today." } },
+        { text: "Trust your instrument. But let it go for now.",
+          next: { text: "*She exhales through her nose.* ...noted. Filed under ANOMALY, pendin' data. *A short nod.* Fine. Eyes front. Let's see what ye are today." } },
+      ] }),
+    3: () => ({
+      text: "*The glass around her is covered in tally marks, some strokes dropped out like a bad signal. Her eyes find you slower than they used to.* ...right. A face. Give us a second to— *The circuit runs, stutters.* ...there. New. Or new-ish. Bee. I'm Bee, I've it written here so I don't— *She taps a tally.* Familiarity's off the CHART for a stranger, an' I've stopped trustin' the chart. So. We'll call ye a friend an' not check the workin'. Cheaper that way.",
+      choices: [
+        { text: "We are friends. That's the working. You just can't keep it anymore.",
+          next: { text: "*She looks at you a long time, an' for once doesn't reach for the marker.* ...aye. That'd explain the numbers. *Quiet, fierce.* Then here's me one clean reading, an' I'll not soften it: if yer the one that keeps comin' back, yer the only continuity this place has left. Get to the bottom an' END it — before the thing writin' over me gets to the horse. It's not havin' the horse." } },
+        { text: "Doesn't matter what you can't hold. I'll hold it for both of us.",
+          next: { text: "*Something in her face gives way, just at the edges.* ...that's the most unscientific thing anyone's said to me down here. *A crack of a smile.* An' I've no counter for it. Go on. Eyes front while ye still can." } },
+      ] }),
+  },
+
+  sian: {
+    1: () => ({
+      text: "*A big lad in a VR headset spots you an' near takes off.* Ah, another USER! Deadly, hai! *He air-drums on the window frame.* Sian. Cavan. I write code — wrote some of THIS, maybe, hard to tell, it's class though isn't it? *He gestures at the fog like a showroom.* Look at the draw distance on that. Only ragin' I didn't build the whole thing. C'mere — what's the craic, ye a player, or one of the good NPCs?",
+      choices: [
+        { text: "Definitely a player. This your first time deep in it?",
+          next: { text: "*He grins wide.* Player! KNEW it, ye move with intent, hai. First time? Nah — I've been LIVIN' in here. Best headset session of me life. Bit long, maybe. Grand though. Grand." } },
+        { text: "You built some of this? Then how do you get out?",
+          next: { text: "*A flicker, gone fast.* Ye don't 'get out' of a good build, ye ENJOY it, hai. There's a window here won't let me through, but that's a day-one bug, they'll patch it. *He knocks the glass, cheerful.* Anyway! Craic. Tell us yours." } },
+      ] }),
+    2: () => ({
+      text: "*The headset swings toward you.* Ah, a user! New spawn, hai? Sian. Cavan, code, combat robots, ask me anythin'— *He stops mid-air-drum.* ...hang on. Have you played this server before? Ye've got returning-player energy, hai, ye move like ye know where the walls are. *He shrugs it off, big.* Nah. Fresh face. I'd remember a co-op partner. Ye don't forget yer party members.",
+      choices: [
+        { text: "I'm not new, Sian. We've partied up three times. You keep respawning.",
+          next: { text: "*The grin locks — that worse thing than droppin'.* ...respawnin'. *He turns a controller over, slow.* That's a rollback, hai. Ye roll back to a clean save when somethin' upstream gets corrupted. *A beat, and you watch him decline to finish the thought.* ...but our stats CARRIED, look, I like ye, that's persistent data. So somethin' of us saves. I'm takin' that an' not readin' the patch notes. Grand?" } },
+        { text: "Sure. Fresh face. Let's party up.",
+          next: { text: "*He points at you, delighted.* THAT'S the attitude, hai. New run, best run. C'mon, I'll show ye the good bugs." } },
+      ] }),
+    3: () => ({
+      text: "*His visor glow stutters like a dyin' bulb, an' he's watchin' the air an inch in front of it.* ...ah. A user. Hai. *He focuses on you with effort.* Sian. Sorry, frame's droppin', I can see the— doesn't matter. New player? *He tilts his head.* Naw, yer... yer cached, hai. Loadin' faster than a stranger should. Like the engine already HAS ye. *A laugh, mostly his.* Which is grand. Somethin' should remember somethin' round here.",
+      choices: [
+        { text: "The engine has me because I keep coming back, Sian. Three runs now.",
+          next: { text: "*He nods, watchin' the tick rate instead of you.* Three. Aye. That tracks, hai. *Quiet — then the grin sharpens instead of fadin'.* Right. Then yer me continuity, an' the servers are shuttin' down, so ye know what we do? We run the best lap of our LIVES an' nobody's left to patch out the shortcuts. Get to the bottom. Names at the top of the board. B-E-E first, obviously." } },
+        { text: "Doesn't matter if it's cached or real. I've got you.",
+          next: { text: "*The stutter seems to ease, or he decides it does.* ...sound. That's — aye, sound, hai. Ye don't need the frame perfect to have a laugh. C'mon. While she still renders us." } },
+      ] }),
+  },
+
+  dalypso: {
+    1: () => ({
+      text: "*A red-headed fella with a ball under his arm is mid-sentence before you arrive.* —an' THAT'S why they don't make them like that anymore, but sure ye'll disagree, everyone disagrees, that's the— *He clocks you.* Oh! A new one. Good. Fresh ears. Dalypso. *He points the ball at you like a credential.* Opinions on everythin', RIGHT about most of it, an' this window gets every channel there ever was. Ye'll call round. Everyone calls round. Now — quick — best film ever made, go. An' mind: say the obvious one an' I'll think less of ye for it.",
+      choices: [
+        { text: "I'm not answering that cold. Ambush a man properly next time.",
+          next: { text: "*He beams like a porch light.* HA! A man who won't be rushed. We'll get ALONG, you an' me — which is to say we'll fight like cats an' both enjoy it. C'mere. Sit in. Metaphorically. Ye can't sit." } },
+        { text: "Every channel? What are you watching down here?",
+          next: { text: "*He lights up.* EVERYTHIN', neighbour. Shows that got cancelled — in the timeline where they DIDN'T. A match that's not been played yet. *He leans in, delighted, missin' the horror of it entirely.* Reception's unbelievable. Best thing about the place." } },
+      ] }),
+    2: () => ({
+      text: "*Ball under the arm, remote in the other hand, mid-opinion as ever.* —cancelled after ONE season, a CRIME— oh. New face. Dalypso. Opinions, football, all the channels, ye'll call— *He squints at you, thumbin' the remote absently.* ...here. Do I know you off somethin'? Ye've a guest-star face on ye. A fella ye can't place but ye KNOW ye've seen, three or four episodes back. *He shakes his head.* Ah, I watch too much telly. Everyone looks like someone. New face. Welcome to the estate.",
+      choices: [
+        { text: "Three or four episodes back is exactly right, Dalypso. We've met. Twice.",
+          next: { text: "*The remote stops.* ...have we. *He narrows his eyes, an' for once there's no opinion queued behind them — just a man checkin' a listing that won't load.* See, that's the thing does me head in down here. I can smell a rerun a mile off, but I can't tell ye when it first AIRED. *He recovers, gruff.* ...ah, we'll call it a pilot, then. Clean slate. But I'm WATCHIN' ye now. In a neighbourly way." } },
+        { text: "First time, I promise. What's on?",
+          next: { text: "*He brightens, suspicion dropped.* Now THAT'S a question a man can work with. C'mere. Half these channels are new even to me." } },
+      ] }),
+    3: () => ({
+      text: "*Every screen behind him shows the same thing, an' the same thing is snow. He's sittin' close to the glass like a man near a fire in a cold house.* ...ah. There ye are. *He doesn't ask if yer new.* I stopped askin' that. *He nods at the dead channels.* Whole schedule's down to static, neighbour — but YOU come in clear. Ye always come in clear. Dalypso, by the way, in case the credits rolled on that too. *A tired grin.* Yer the last thing worth watchin' in the whole listings.",
+      choices: [
+        { text: "I come in clear because we've done this before, Dalypso. Every cycle.",
+          next: { text: "*He nods slowly, remote restin' in his lap like laid-down arms.* Aye. I'd a feelin'. The good ones always turn out to be the returnin' character. *He points at you, gentle but certain.* So here's me review, an' I've watched a thousand endin's: a show that keeps bringin' its lead back is buildin' to somethin'. Get to the bottom an' STICK the landin'. Don't ye dare fade to static on me." } },
+        { text: "Then let's watch it out together. Whatever's left.",
+          next: { text: "*Somethin' in him settles.* ...good man. That's the only way to watch the last of anythin'. C'mere. Pull up a— ah, ye can't. Stand, then. Stand with us." } },
+      ] }),
+  },
+};
+
+/* the first-meeting intro for this character in the current cycle, or null
+   (already seen this cycle, or the Custodian). Resolved to a node. */
+export function introFor(character, ctx){
+  if (!character || character.id === "custodian") return null;
+  if (character.recalls(`intro#${ctx.cycle}`)) return null;
+  const make = INTROS[character.id]?.[Math.min(ctx.cycle, 3)];
+  return make ? make(ctx) : null;
+}
+/* mark it spent for this cycle (rewinds on a new game with the rest of memory) */
+export function markIntroSeen(character, ctx){ character.remember(`intro#${ctx.cycle}`); }
+
 /* ---------- graffiti -----------------------------------------------------
    What the previous users scratched into the walls (rendered by
    textures.graffitiTexture, placed by environment.js). Some entries only

@@ -166,6 +166,37 @@ the maze because the maze was always broadcast-side), Homiss's **hum** (the
 Custodian learning his tune — it keeps the four bars, and plays them in the
 ending's sanctum).
 
+### The re-introductions — the ambiguous slip (implemented — `story.js` `INTROS`)
+
+The three-cycle memory rewind above is the **primary, stated mechanic** and it
+stays true: episodic memory really does reset, the echoes are real, and the
+Custodian's audience-2 line ("tenancy state is premises") is the in-fiction
+account of it. What rides *underneath* it — added deliberately — is a doubt the
+player can never settle.
+
+**What does not rewind:** affinity (canon, §7) and a **wordless instinct**. So
+the first time the player meets a character in **cycle 2 or 3**, the character
+greets them as a **stranger** — and the not-knowing lands a beat too rehearsed.
+There is always a **slip**: they half-recognise the face and reach for a name
+that isn't there (Scally "would SWEAR he has sold to you before"; Bee's baseline
+reads "elevated familiarity, no recall to hang it on"; Sian: "yer cached, hai —
+loadin' faster than a stranger should"), then cover. The player alone remembers,
+and can **push on the slip**; each deflects in their own register, and none of
+it resolves.
+
+**The doubt (this is the point).** Is that honest amnesia — the premises
+rewinding — or a **performance**: the tenants half-sensing that the walking
+thing is not what it claims (the hidden user, the one they keep warning about,
+the §3 twist) and quietly **managing** it toward the one thing they all want,
+the door? The game never answers. The Custodian believes the rewind is total;
+the tenants may know more than their landlord; the player — being, unknowingly,
+the very agent they'd be handling — feels the wrongness and cannot prove it.
+Both readings are true to the text on purpose: the affinity that "took a second
+to load" is either a friend's face resurfacing, or a con artist recovering their
+footing. **Keep it unresolved.** The moment the game answers it, the game gets
+smaller. (Nothing else changes: the rewind spine, the echoes, and the audiences
+are all still literally true. This only teaches the player to *watch* them.)
+
 ### The relay chain (implemented — `story.js`)
 
 The first concrete go-between quest, running across depths 1+ (each step
@@ -709,6 +740,16 @@ loop. They are different machines: runs rewind flags, cycles don't.)*
 - **Cycle dressing.** Cycle 2 appends a déjà-vu line to greetings
   (`ECHO_GREETS`) and offers one rotating `ECHO_TOPICS` entry per level;
   cycle 3 uses `STATIC_GREETS` / `STATIC_TOPICS`. All of it gates the ring.
+- **First-meeting intros.** The first time the player opens a character's
+  dialogue *in a given cycle*, a short scripted introduction plays **before the
+  topic hub** (`story.js INTROS` / `introFor`, shown by `dialogue.js
+  openDialogue`), so the whole option list doesn't land the instant you walk up.
+  Cycle 1 is a genuine hello; cycles 2–3 greet the player as a stranger with the
+  **ambiguous slip** (§3). Gated per cycle on character memory (`intro#<cycle>`),
+  so it fires once per cycle and rewinds on a new game; **the Custodian is
+  exempt** (its audiences are its intros); it's skipped while a character is too
+  hostile to talk; every leaf flows back into the hub; kept **affinity-neutral**
+  (the hub topics carry the affinity game).
 - **The Custodian is exempt** from every rule above: exact-depth beats, no
   echoes, memory intact. It is the fixed point the player triangulates the
   loop against.
@@ -923,8 +964,10 @@ of the final sanctum into `runEnding` — there is no depth 31.
    static answer), `ECHO_GREETS` + `STATIC_GREETS` (2 lines each),
    `ECHO_TOPICS` + `STATIC_TOPICS` (2 rotating topics each), a
    `dark-window` reaction beat, a cycle-3 capstone (pick a free global depth
-   21–29), a `FAREWELLS` entry (their release, watched from the base), and a
-   `REPLAY_GREETS` line. If they should be freeable, that's it — `FREEABLE`
+   21–29), a `FAREWELLS` entry (their release, watched from the base), a
+   `REPLAY_GREETS` line, and an `INTROS` entry (three per-cycle first-meeting
+   intros — cycle 1 a hello, cycles 2–3 the stranger-with-a-slip, §3). If they
+   should be freeable, that's it — `FREEABLE`
    derives from `NAMES`; if not (another Custodian-like fixture), keep them
    out of `NAMES` and pin their beats to exact depths.
 10. Optional def fields: `minDepth` (the first depth their window appears —
