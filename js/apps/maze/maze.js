@@ -88,7 +88,7 @@ function loadThree(){
 const M = {
   N: 7, CELL: 4, WALL_H: 3.4, WALL_T: 0.5, R: 0.45,
   renderer:null, scene:null, camera:null, dolly:null,
-  walls:[], goal:null, goalLight:null, spinners:[], depth:1, lamp:null, cyberMat:null,
+  walls:[], goal:null, goalLight:null, goalBeam:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   tokens:[], bursts:[], theme:null, ambient:null, paneMat:null, trimMat:null,
   props:[], propFx:null, grabs:null,
   npcs:[], nearCharacter:null, dialogueOpen:false, journalOpen:false, talk:false,
@@ -184,9 +184,10 @@ function buildMaze(){
   M.lamp.intensity = 1.5;                   // reset (animated bands drive this per-frame)
   M.scene.add(M.dolly);
 
-  const { goal, goalLight, spinners, tokens } = buildEntities(three, M.scene, M, goalCell);
+  const { goal, goalLight, beam, spinners, tokens } = buildEntities(three, M.scene, M, goalCell);
   M.goal = goal;
   M.goalLight = goalLight;
+  M.goalBeam = beam;               // wayfinding column, driven by updateGate
   M.spinners.push(...spinners);
   M.tokens = tokens;
 
@@ -235,6 +236,7 @@ function buildBase(){
   M.trimMat  = s.trimMat;
   M.cyberMat = s.cyberMat;
   M.goal = s.goal; M.goalLight = s.goalLight;
+  M.goalBeam = null;               // no beacon in the sanctum: one open room, the gate is visible
   M.npcs = s.npcs; M.nearCharacter = null;
   M.tokens = []; M.props = []; M.propFx = null;
 
@@ -390,6 +392,22 @@ function updateGate(dt){
     const pulse = Math.sin(M.gateFlash * Math.PI);   // 0 -> 1 -> 0 over the flash
     if (M.goalLight) M.goalLight.intensity += pulse * 2.2;
     if (M.goal) M.goal.scale.setScalar(1 + pulse * 0.12);
+  }
+
+  // the beacon over the ring: nothing while the story holds the gate flat,
+  // a slow-breathing column once it rises (boosted through the unlock flash),
+  // and gone the moment the gate is used. The sanctum has no beam.
+  if (M.goalBeam){
+    if (!M.goal){
+      M.goalBeam.visible = false;
+    } else {
+      const k = M.gateRise * M.gateRise * (3 - 2 * M.gateRise);   // same smoothstep as the pose
+      const breathe = 1 + 0.3 * Math.sin(performance.now() * 0.0021);
+      const op = 0.28 * k * breathe + Math.sin(Math.max(0, M.gateFlash) * Math.PI) * 0.25;
+      M.goalBeam.material.opacity = op;
+      M.goalBeam.visible = op > 0.01;
+      M.goalBeam.rotation.y += dt * 0.4;             // a lazy turn keeps the column alive up close
+    }
   }
 }
 

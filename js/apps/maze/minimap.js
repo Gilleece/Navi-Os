@@ -212,14 +212,45 @@ export function updateMinimap(M){
   g.stroke();
 
   // the exit ring, once its cell has been seen: dim while the narrative
-  // gate holds it flat, bright when the way down is open
+  // gate holds it flat; pulsing once the way down is open, to draw the eye.
+  // If it's open but its cell is still unexplored, a chevron pinned to the
+  // map's edge gives the bearing without giving away the layout — the fog
+  // of war stays honest, and a locked gate hints nothing at all.
+  const gateOpen = !(M.gatePending && M.gatePending.length > 0);
   if (goal && seen[goal.y][goal.x]){
-    const locked = M.gatePending && M.gatePending.length > 0;
-    g.strokeStyle = locked ? "rgba(255,122,26,0.35)" : "#ff7a1a";
+    const pulse = gateOpen ? 0.5 + 0.5 * Math.sin(performance.now() * 0.005) : 0;
+    g.strokeStyle = gateOpen ? `rgba(255,122,26,${0.6 + 0.4 * pulse})` : "rgba(255,122,26,0.35)";
     g.lineWidth = 3;
     g.beginPath();
-    g.arc((goal.x + 0.5) * CELL * s, (goal.y + 0.5) * CELL * s, CELL * s * 0.28, 0, Math.PI * 2);
+    g.arc((goal.x + 0.5) * CELL * s, (goal.y + 0.5) * CELL * s,
+          CELL * s * (0.28 + 0.08 * pulse), 0, Math.PI * 2);
     g.stroke();
+  } else if (goal && gateOpen){
+    // bearing tick: walk the player->gate ray to the canvas border (inset a
+    // hair so the chevron stays fully on the map) and point it outward
+    const pxc = px * s, pzc = pz * s;
+    let bx = (goal.x + 0.5) * CELL * s - pxc, bz = (goal.y + 0.5) * CELL * s - pzc;
+    const bl = Math.hypot(bx, bz);
+    if (bl > 1){
+      bx /= bl; bz /= bl;
+      const B = SIZE * DPR, inset = 7 * DPR;
+      let t = Infinity;
+      if (bx >  1e-6) t = Math.min(t, (B - inset - pxc) / bx);
+      if (bx < -1e-6) t = Math.min(t, (inset - pxc) / bx);
+      if (bz >  1e-6) t = Math.min(t, (B - inset - pzc) / bz);
+      if (bz < -1e-6) t = Math.min(t, (inset - pzc) / bz);
+      if (isFinite(t) && t >= 0){
+        const ex = pxc + bx * t, ez = pzc + bz * t, r = 5 * DPR;
+        const blink = 0.55 + 0.45 * Math.sin(performance.now() * 0.005);
+        g.fillStyle = `rgba(255,122,26,${blink})`;
+        g.beginPath();
+        g.moveTo(ex + bx * r, ez + bz * r);
+        g.lineTo(ex - bx * r * 0.7 - bz * r * 0.8, ez - bz * r * 0.7 + bx * r * 0.8);
+        g.lineTo(ex - bx * r * 0.7 + bz * r * 0.8, ez - bz * r * 0.7 - bx * r * 0.8);
+        g.closePath();
+        g.fill();
+      }
+    }
   }
 
   // characters: first letter of the name, at their window, once seen

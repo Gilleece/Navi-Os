@@ -21,6 +21,7 @@ import { WORLD_ITEMS, activeErrands } from "./story.js";
 
 const W = 560, H = 760, DPR = 2;    // logical size; canvas is DPR× for crisp text
 const TABS = ["OBJECTIVE", "CONTACTS", "INVENTORY", "ERRANDS", "STATS"];
+const TAB_Y = 62, TAB_H = 34, TAB_W = (W - 48) / TABS.length;   // tab bar geometry, shared by draw + click hit-test
 
 let canvas = null, g = null;
 let M = null;                        // shared engine state (kept for the DOM redraws)
@@ -69,6 +70,28 @@ export function buildJournal(state){
   });
   // wheel scroll on the DOM overlay
   canvas.addEventListener("wheel", e => { if (M.journalOpen){ e.preventDefault(); scrollBy(e.deltaY); } }, { passive: false });
+
+  // mouse: the tab bar is clickable too. The canvas is CSS-scaled, so map
+  // client coords back into the logical W×H space before hit-testing.
+  const logicalXY = e => {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+  };
+  const tabHit = ({ x, y }) => {
+    if (y < TAB_Y || y > TAB_Y + TAB_H) return -1;
+    const i = Math.floor((x - 24) / TAB_W);
+    // each tab is TAB_W wide with a 6px gap on its right — the gap is dead space
+    return (i >= 0 && i < TABS.length && x - 24 - i * TAB_W <= TAB_W - 6) ? i : -1;
+  };
+  canvas.addEventListener("click", e => {
+    if (!M.journalOpen || M.inVR) return;
+    const i = tabHit(logicalXY(e));
+    if (i >= 0) setTab(i);
+  });
+  canvas.addEventListener("mousemove", e => {
+    if (!M.journalOpen || M.inVR) return;
+    canvas.style.cursor = tabHit(logicalXY(e)) >= 0 ? "pointer" : "default";
+  });
 
   const btn = $("#btn-journal");
   if (btn) btn.addEventListener("click", () => toggleJournal());
@@ -156,17 +179,16 @@ export function draw(){
   g.fillStyle = DIM; g.font = "16px 'Share Tech Mono', monospace";
   g.fillText(player.name, W - 24 - g.measureText(player.name).width, 42);
 
-  // tab bar
-  const tabY = 62, tabH = 34, tw = (W - 48) / TABS.length;
+  // tab bar (geometry in TAB_Y/TAB_H/TAB_W so the click hit-test matches)
   TABS.forEach((label, i) => {
-    const x = 24 + i * tw;
+    const x = 24 + i * TAB_W;
     g.fillStyle = i === tab ? "rgba(70,255,142,0.16)" : "rgba(4,8,10,0.5)";
-    g.fillRect(x, tabY, tw - 6, tabH);
+    g.fillRect(x, TAB_Y, TAB_W - 6, TAB_H);
     g.strokeStyle = i === tab ? GREEN : DIM; g.lineWidth = 1.5;
-    g.strokeRect(x, tabY, tw - 6, tabH);
+    g.strokeRect(x, TAB_Y, TAB_W - 6, TAB_H);
     g.fillStyle = i === tab ? GREEN : DIM;
     g.font = "18px 'VT323', monospace"; g.textAlign = "center";
-    g.fillText(`${i + 1} ${label}`, x + (tw - 6) / 2, tabY + 23);
+    g.fillText(`${i + 1} ${label}`, x + (TAB_W - 6) / 2, TAB_Y + 23);
   });
   g.textAlign = "left";
 
@@ -345,7 +367,7 @@ function drawStats(top){
   g.fillStyle = DIM; g.font = "14px 'Share Tech Mono', monospace";
   y = wrap(player.points > 0
     ? (M.inVR ? "Stick ▴▾ to select an attribute, trigger to raise it." : "↑↓ to select an attribute, ENTER to raise it.")
-    : "Earn points at each Custodian audience, and the first time a trapped user comes to adore you.",
+    : "Build relationships within the labyrinth to enhance your stats.",
     24, y, W - 60, 20);
   y += 12;
 

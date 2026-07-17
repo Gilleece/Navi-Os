@@ -71,6 +71,18 @@ export function buildEntities(three, scene, cfg, goalCell){
   gateLight.position.set(gate.position.x, 1.5, gate.position.z);
   scene.add(gateLight);
 
+  // a light column over the ring: invisible while the narrative gate lies
+  // flat, faded up by maze.js (updateGate) once the way down opens — so a
+  // distant player can sight the open gate down a corridor
+  const beam = new three.Mesh(
+    new three.CylinderGeometry(0.42, 0.42, 3.2, 12, 1, true),
+    new three.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0,
+                                  depthWrite: false, side: three.DoubleSide,
+                                  blending: three.AdditiveBlending }));
+  beam.position.set(gate.position.x, 1.6, gate.position.z);
+  beam.visible = false;
+  scene.add(beam);
+
   // one interior cell per pickup, shuffled, so nothing spawns stacked on
   // anything else (or inside the goal cell where the gate already sits)
   const cells = [];
@@ -117,7 +129,7 @@ export function buildEntities(three, scene, cfg, goalCell){
   }
 
   refreshTokenHud();
-  return { goal: gate, goalLight: gateLight, spinners, tokens };
+  return { goal: gate, goalLight: gateLight, beam, spinners, tokens };
 }
 
 /* per-frame: float + spin the tokens, collect any the player walks into,

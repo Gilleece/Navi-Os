@@ -16,7 +16,7 @@
    through to the network.
    ============================================================ */
 
-const VERSION    = "v2";
+const VERSION    = "v3";
 const CACHE_NAME = `navi-${VERSION}`;
 const RUNTIME_CACHE = `navi-runtime-${VERSION}`;
 
@@ -165,11 +165,24 @@ async function networkFirst(request, cacheName){
   }
 }
 
+/* local dev: cache-first would serve edited files one reload stale, which
+   makes "why didn't my change take" bugs. On localhost, go to the network
+   every time (cache only as an offline fallback) so a single reload always
+   runs the code on disk. Production keeps the offline-first strategies. */
+const IS_DEV = ["localhost", "127.0.0.1"].includes(self.location.hostname);
+
 self.addEventListener("fetch", event => {
   const { request } = event;
   if (request.method !== "GET") return;   // never touch POSTs etc.
 
   const url = new URL(request.url);
+
+  if (IS_DEV){
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request).then(r => r || Response.error()))
+    );
+    return;
+  }
 
   // BBS worker — live data, never cached
   if (isWorkerAPI(url)){

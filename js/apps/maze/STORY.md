@@ -928,6 +928,18 @@ of the final sanctum into `runEnding` — there is no depth 31.
   `maze.js`), so it works in VR too. Footsteps and dialogue blips stay
   non-spatial. Mute + the SFX-volume slider still govern everything (the
   panner feeds `sfxBus`).
+- **Sprint (`player.js`).** 1.5× move speed, three ways in: hold Shift on
+  desktop, pin the virtual stick to its rim for a beat on touch (0.95 engage
+  after 0.25 s, 0.8 release), or click the left thumbstick (L3) in VR — a
+  toggle that self-clears after half a second of idle stick. Non-VR gets a
+  small FOV kick (72→78) while actually moving faster than a walk, skipped
+  under reduce-motion; head-bob amplitude stays capped at walk pace.
+- **Gate wayfinding (`entities.js` / `minimap.js` / `maze.js`).** Once the
+  narrative gate opens, an additive light column (`M.goalBeam`) fades up over
+  the ring — sightable down a corridor — and the minimap's goal marker pulses
+  once its cell is explored; if it isn't explored yet, a bearing chevron
+  pinned to the map's edge points the way without revealing layout. A locked
+  gate still hints nothing, and the sanctum gets no beam.
 - **Bloom + CRT post-processing (`postfx.js`, non-VR only).** A self-contained
   composer built from core three r128 (render targets + full-screen-quad
   passes — no vendored example scripts): scene → bright-pass → half-res blur →

@@ -9,6 +9,9 @@ import { playFootstep } from "./audio.js";
 import { togglePause } from "./pause.js";
 
 const SPEED = 3.2;
+const SPRINT = 1.5;       // sprint speed multiplier (Shift / pinned stick / VR L3)
+const BASE_FOV = 72;      // matches the camera built in maze.js
+const SPRINT_FOV = 78;    // widened while actually moving faster than a walk
 const STEP_DIST = 1.5;    // metres of actual movement between footstep sounds (also paces the head-bob)
 const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
 
@@ -125,14 +128,29 @@ export function updatePlayer(three, M, dt){
       if (src.handedness === "right"){
         if (Math.abs(sx) > 0.7 && M.snapReady){ M.yaw -= Math.sign(sx)*Math.PI/6; M.snapReady = false; }
         if (Math.abs(sx) < 0.3) M.snapReady = true;
-      } else { mvx += sx; mvy += sy; }
+      } else {
+        mvx += sx; mvy += sy;
+        // L3 sprint toggle: clicking the left thumbstick (xr-standard button 3)
+        // flips sprint on/off; edge-detected so holding it doesn't retrigger
+        const b = src.gamepad.buttons && src.gamepad.buttons[3];
+        const pressed = !!(b && b.pressed);
+        if (pressed && !M.l3Prev) M.vrSprint = !M.vrSprint;
+        M.l3Prev = pressed;
+      }
     }
     if (Math.abs(mvx) > 0.12 || Math.abs(mvy) > 0.12){
+      M.vrIdle = 0;
       const q = new three.Quaternion();
       M.renderer.xr.getCamera(M.camera).getWorldQuaternion(q);
       const fwd = new three.Vector3(0,0,-1).applyQuaternion(q); fwd.y = 0; fwd.normalize();
       const rgt = new three.Vector3(1,0,0).applyQuaternion(q);  rgt.y = 0; rgt.normalize();
-      tryMove(M, (fwd.x*-mvy + rgt.x*mvx) * SPEED * dt, (fwd.z*-mvy + rgt.z*mvx) * SPEED * dt);
+      const spd = SPEED * (M.vrSprint ? SPRINT : 1);
+      tryMove(M, (fwd.x*-mvy + rgt.x*mvx) * spd * dt, (fwd.z*-mvy + rgt.z*mvx) * spd * dt);
+    } else {
+      // sprint doesn't linger: half a second of idle stick clears the toggle,
+      // so nobody walks off unknowingly still in sprint
+      M.vrIdle = (M.vrIdle || 0) + dt;
+      if (M.vrIdle > 0.5) M.vrSprint = false;
     }
     M.dolly.rotation.y = M.yaw;
   } else {
@@ -150,12 +168,25 @@ export function updatePlayer(three, M, dt){
     const len = Math.hypot(f,s);
     if (len > 1){ f/=len; s/=len; }
 
+    // touch pin-to-sprint: holding the virtual stick against its rim for a
+    // beat breaks into a run; easing back off the rim drops to a walk. The
+    // 0.95/0.8 hysteresis keeps ordinary full-speed steering from flickering
+    // sprint on and off.
+    const jmag = Math.hypot(M.joy.x, M.joy.y);
+    if (!M.joySprint){
+      M.joyPin = jmag > 0.95 ? (M.joyPin || 0) + dt : 0;
+      if (M.joyPin >= 0.25) M.joySprint = true;
+    } else if (jmag < 0.8){
+      M.joySprint = false; M.joyPin = 0;
+    }
+
     // acceleration/deceleration: ease a world-space velocity toward the
     // desired direction instead of snapping. Gives movement weight without
     // affecting VR (which keeps direct 1:1 control for comfort, above).
+    const sprint = (M.keys["shift"] || M.joySprint) ? SPRINT : 1;
     const sin = Math.sin(M.yaw), cos = Math.cos(M.yaw);
-    const wantX = (-sin*f + cos*s) * SPEED;
-    const wantZ = (-cos*f - sin*s) * SPEED;
+    const wantX = (-sin*f + cos*s) * SPEED * sprint;
+    const wantZ = (-cos*f - sin*s) * SPEED * sprint;
     const rate = (f || s) ? 10 : 14;                 // accel slower than decel
     const kv = 1 - Math.exp(-rate * dt);
     M.vel.x += (wantX - M.vel.x) * kv;
@@ -180,7 +211,18 @@ export function updatePlayer(three, M, dt){
   if (!M.inVR){
     M.bobPhase = (M.bobPhase || 0) + moved * (Math.PI / STEP_DIST);   // a trough per step
     const speed = Math.hypot(M.vel.x, M.vel.z);
-    const amp = 0.03 * Math.min(1, speed / SPEED);
+    const amp = 0.03 * Math.min(1, speed / SPEED);   // capped at walk pace — sprinting must not add sway
     M.camera.position.y = 1.6 + Math.sin(M.bobPhase) * amp;
+
+    // sprint FOV kick: the lens widens a touch while actually moving faster
+    // than a walk, and eases back on slowing. Reduced motion keeps the speed
+    // but leaves the lens alone; VR never gets here (the headset owns fov).
+    const reduce = document.body.classList.contains("reduce-motion");
+    const fovTarget = (!reduce && speed > SPEED * 1.02) ? SPRINT_FOV : BASE_FOV;
+    const next = M.camera.fov + (fovTarget - M.camera.fov) * (1 - Math.exp(-8 * dt));
+    if (Math.abs(next - M.camera.fov) > 0.01){
+      M.camera.fov = next;
+      M.camera.updateProjectionMatrix();
+    }
   }
 }
