@@ -1,0 +1,15 @@
+{
+  "name": "NAVI-OS",
+  "short_name": "NAVI-OS",
+  "description": "A retro cyberpunk desktop OS in the browser. Jack in — projects, games, a working terminal, and a maze in the wired, offline-capable.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#04080a",
+  "theme_color": "#04080a",
+  "icons": [
+    { "src": "assets/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "assets/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
+  ]
+}

@@ -4,6 +4,7 @@
    drip of ambient transmissions from the wired.
    ============================================================ */
 import { $ } from "./utils.js";
+import { store } from "./store.js";
 
 let stack = null;
 
@@ -44,7 +45,7 @@ export function initNotify(){
     let i;
     do { i = Math.floor(Math.random() * AMBIENT.length); } while (i === last);
     last = i;
-    if (!document.getElementById("boot")) notify(...AMBIENT[i]);
+    if (!document.getElementById("boot") && store.get("ambient", true) !== false) notify(...AMBIENT[i]);
     setTimeout(fire, 240000 + Math.random() * 240000);
   };
   setTimeout(fire, 75000 + Math.random() * 90000);

@@ -8,11 +8,17 @@ import { $ } from "../utils.js";
 import { openWindow, APPS } from "../windows.js";
 import { listProcs, kill, uptimeStr, reboot, kernelPanic } from "../system.js";
 import { setTheme, THEMES } from "../theme.js";
+import {
+  fsList, fsRead, fsWrite, fsMkdir, fsRm,
+  fsExists, fsIsDir, fsJoin, fsParent, fsBase,
+} from "../fs.js";
 
 /* program names come from the shared registry in windows.js */
 const WINDOWS = Object.fromEntries(Object.entries(APPS).map(([n, a]) => [n, a.id]));
 
 let out, input, history = [], hi = 0;
+let cwd = "/home/operator";                 // shell working dir on the VFS
+const abs = p => fsJoin(cwd, (p || "").trim());
 
 function print(text = "", cls = ""){
   const line = document.createElement("div");
@@ -31,7 +37,16 @@ const COMMANDS = {
   help(){
     print("available commands:", "accent");
     print("  help              this list");
-    print("  ls                list programs");
+    print("  ls [-a] [dir]     list the current directory");
+    print("  pwd               print working directory");
+    print("  cd <dir>          change directory");
+    print("  cat <file>        print a file");
+    print("  touch <file>      create an empty file");
+    print("  mkdir <dir>       create a directory");
+    print("  rm <path>         remove a file or directory");
+    print("  tree [dir]        show the directory tree");
+    print("  echo <text>       say it back (> file, >> append)");
+    print("  apps              list installed programs");
     print("  open <name>       launch a program window");
     print("  close <name>      close a program window");
     print("  ps                list running processes");
@@ -40,7 +55,6 @@ const COMMANDS = {
     print("  uptime            time since boot");
     print("  theme [name]      list or switch colour themes");
     print("  neofetch          system readout");
-    print("  echo <text>       say it back");
     print("  whoami            operator identity");
     print("  date              current wired time");
     print("  fortune           a transmission from the wired");
@@ -49,8 +63,74 @@ const COMMANDS = {
     print("  reboot            reload the shell");
     print("  exit              close this terminal");
   },
-  ls(){
+  apps(){
+    print("installed programs:", "accent");
     Object.keys(WINDOWS).forEach(k => print("  " + k));
+    print("open <name> to launch one.", "dim");
+  },
+  ls(a, raw){
+    const toks = (raw || "").trim().split(/\s+/).filter(Boolean);
+    const showHidden = toks.includes("-a");
+    const rest = toks.filter(t => t !== "-a")[0];
+    const target = rest ? abs(rest) : cwd;
+    if (!fsExists(target)) return print(`ls: no such path: ${rest}`, "err");
+    if (!fsIsDir(target)) return print(fsBase(target));
+    (fsList(target, showHidden) || []).forEach(e => print("  " + (e.dir ? e.name + "/" : e.name)));
+  },
+  pwd(){ print(cwd); },
+  cd(a, raw){
+    const t = (raw || "").trim();
+    if (!t || t === "~") { cwd = "/home/operator"; return; }
+    const target = abs(t);
+    if (!fsExists(target)) return print(`cd: no such directory: ${t}`, "err");
+    if (!fsIsDir(target)) return print(`cd: not a directory: ${t}`, "err");
+    cwd = target;
+  },
+  cat(a, raw){
+    const t = (raw || "").trim();
+    if (!t) return print("cat: usage: cat <file>", "err");
+    const target = abs(t);
+    if (!fsExists(target)) return print(`cat: no such file: ${t}`, "err");
+    if (fsIsDir(target)) return print(`cat: is a directory: ${t}`, "err");
+    const c = fsRead(target);
+    if (c) c.replace(/\n$/, "").split("\n").forEach(l => print(l));
+  },
+  touch(a, raw){
+    const t = (raw || "").trim();
+    if (!t) return print("touch: usage: touch <file>", "err");
+    const target = abs(t);
+    if (fsExists(target)) return;                 // touch an existing path is a no-op
+    const err = fsWrite(target, "");
+    if (err) print("touch: " + err, "err");
+  },
+  mkdir(a, raw){
+    const t = (raw || "").trim();
+    if (!t) return print("mkdir: usage: mkdir <dir>", "err");
+    const err = fsMkdir(abs(t));
+    if (err) print("mkdir: " + err, "err");
+  },
+  rm(a, raw){
+    const t = (raw || "").trim();
+    if (!t) return print("rm: usage: rm <path>", "err");
+    const target = abs(t);
+    if (!fsExists(target)) return print(`rm: no such path: ${t}`, "err");
+    const err = fsRm(target);
+    if (err) return print("rm: " + err, "err");
+    if (target === cwd) cwd = fsParent(cwd);       // stepped off the deleted dir
+  },
+  tree(a, raw){
+    const t = (raw || "").trim();
+    const start = t ? abs(t) : cwd;
+    if (!fsIsDir(start)) return print(`tree: not a directory: ${t || start}`, "err");
+    print(start, "accent");
+    (function walk(dir, prefix){
+      const rows = fsList(dir, false) || [];
+      rows.forEach((e, i) => {
+        const last = i === rows.length - 1;
+        print(prefix + (last ? "`-- " : "|-- ") + e.name + (e.dir ? "/" : ""));
+        if (e.dir) walk(fsJoin(dir, e.name), prefix + (last ? "    " : "|   "));
+      });
+    })(start, "");
   },
   open(a){
     const id = WINDOWS[a?.toLowerCase()];
@@ -100,7 +180,19 @@ const COMMANDS = {
 <span class="accent">   present time     </span>  <span class="ok"> hehehe.</span>
 </span>`);
   },
-  echo(a, raw){ print(raw); },
+  echo(a, raw){
+    const m = (raw || "").match(/^(.*?)\s*(>>|>)\s*(\S+)\s*$/);
+    if (m){
+      const [, text, op, file] = m;
+      const target = abs(file);
+      if (fsIsDir(target)) return print(`echo: is a directory: ${file}`, "err");
+      const prev = op === ">>" ? (fsRead(target) || "") : "";
+      const err = fsWrite(target, prev + text + "\n");
+      if (err) print("echo: " + err, "err");
+      return;
+    }
+    print(raw);
+  },
   whoami(){ print("sean gilleece — operator, present day, present time."); },
   date(){ print(new Date().toString()); },
   fortune(){
@@ -146,7 +238,8 @@ export function initTerminal(){
   if (!out || !input) return;
 
   print("NAVI-OS shell — term.exe", "accent");
-  print("type 'help' for commands. ` toggles this window.", "dim");
+  print("type 'help' for commands. 'ls' browses the disk, 'apps' lists programs.", "dim");
+  print("` toggles this window.", "dim");
 
   input.addEventListener("keydown", e => {
     if (e.key === "Enter"){ run(input.value); input.value = ""; }
@@ -165,7 +258,7 @@ export function initTerminal(){
 
   // backtick toggles the terminal from anywhere
   addEventListener("keydown", e => {
-    if (e.key !== "`" || document.getElementById("boot")) return;
+    if (e.key !== "`" || e.altKey || e.ctrlKey || e.metaKey || document.getElementById("boot")) return;
     const tag = document.activeElement?.tagName;
     if (tag === "TEXTAREA" || (tag === "INPUT" && document.activeElement !== input)) return;
     e.preventDefault();

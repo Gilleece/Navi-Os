@@ -46,3 +46,8 @@ export function initBoot(){
   addEventListener("keydown", e => { if (!bootDone) enterDesktop(); }, {once:false});
   setTimeout(enterDesktop, 7000); // auto-boot fallback
 }
+
+/* service worker — offline shell + installability, fails silent */
+addEventListener("load", () => {
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+});

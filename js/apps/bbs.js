@@ -25,7 +25,6 @@ const SEED = [
 
 const load = () => { try { const r = localStorage.getItem(KEY); if (r) return JSON.parse(r); } catch(e){} return SEED.slice(); };
 const save = p => { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch(e){} };
-const esc = s => String(s).replace(/[<>&]/g, c => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;" }[c]));
 const when = ts => { const s = (Date.now() - ts) / 1000;
   return s < 60 ? "just now" : s < HR/1000 ? Math.floor(s/60) + "m ago" : s < 86400 ? Math.floor(s/3600) + "h ago" : Math.floor(s/86400) + "d ago"; };
 
@@ -63,9 +62,14 @@ async function initFilter(onReady){
 
 export function initBBS(){
   const win = $("#win-bbs"), list = $("#bbs-posts"), handle = $("#bbs-handle"),
-        msg = $("#bbs-msg"), btn = $("#bbs-post"), status = $("#bbs-status");
+        msg = $("#bbs-msg"), btn = $("#bbs-post"), status = $("#bbs-status"),
+        form = win && win.querySelector(".bbs-form");
   if (!win || !list) return;
   let posts = load();
+
+  /* handle persists across visits ------------------------------- */
+  handle.value = store.get("bbs-handle") || "operator";
+  handle.addEventListener("input", () => store.set("bbs-handle", handle.value));
 
   const linkStatus = (txt, cls) => {
     if (!status) return;
@@ -73,16 +77,59 @@ export function initBBS(){
     status.className = "bbs-status" + (cls ? " " + cls : "");
   };
 
+  /* live char counter, tucked under the POST button ------------- */
+  const counter = document.createElement("span");
+  counter.className = "bbs-counter";
+  counter.style.cssText = "grid-column:2;grid-row:3;justify-self:end;font-size:11px;color:var(--green-dim);padding-top:2px";
+  if (form) form.appendChild(counter);
+  function updateCounter(){
+    const n = msg.value.length;
+    counter.textContent = n + "/280";
+    counter.style.color = n > 240 ? "var(--orange)" : "var(--green-dim)";
+  }
+  msg.addEventListener("input", updateCounter);
+
+  function quoteReply(p){
+    const body = censor(p.body || "").replace(/\s+/g, " ").trim();
+    const snippet = body.length > 60 ? body.slice(0, 60) + "…" : body;
+    const quote = `> ${censor(p.handle || "anon")}: ${snippet}\n\n`;
+    const draft = msg.value;
+    msg.value = draft ? draft.replace(/\n?$/, "\n") + quote : quote;
+    msg.focus();
+    msg.setSelectionRange(msg.value.length, msg.value.length);
+    updateCounter();
+  }
+
   function render(){
+    const scrollTop = list.scrollTop;
     list.innerHTML = "";
-    if (!posts.length){ const e = document.createElement("div"); e.className = "bbs-empty"; e.textContent = "no transmissions yet. be the first."; list.appendChild(e); return; }
-    for (const p of posts){
-      const d = document.createElement("div"); d.className = "bbs-post";
-      const meta = document.createElement("div"); meta.className = "bbs-meta";
-      meta.innerHTML = `<b>${esc(censor(p.handle || "anon"))}</b><span>${when(p.ts)}</span>`;
-      const body = document.createElement("div"); body.className = "bbs-text"; body.textContent = censor(p.body);
-      d.append(meta, body); list.appendChild(d);
+    if (!posts.length){
+      const e = document.createElement("div"); e.className = "bbs-empty"; e.textContent = "no transmissions yet. be the first.";
+      list.appendChild(e);
+    } else {
+      for (const p of posts){
+        const d = document.createElement("div"); d.className = "bbs-post";
+        const meta = document.createElement("div"); meta.className = "bbs-meta";
+        const nameEl = document.createElement("b"); nameEl.textContent = censor(p.handle || "anon");
+        const right = document.createElement("span"); right.style.cssText = "display:flex;align-items:baseline;gap:6px";
+        const timeEl = document.createElement("span"); timeEl.className = "bbs-time"; timeEl.textContent = when(p.ts);
+        const replyBtn = document.createElement("button");
+        replyBtn.type = "button"; replyBtn.title = "reply"; replyBtn.textContent = "[>]";
+        replyBtn.style.cssText = "background:none;border:none;padding:0;margin:0;color:var(--green-dim);font-family:inherit;font-size:11px;cursor:pointer;line-height:1";
+        replyBtn.addEventListener("mouseenter", () => replyBtn.style.color = "var(--orange)");
+        replyBtn.addEventListener("mouseleave", () => replyBtn.style.color = "var(--green-dim)");
+        replyBtn.addEventListener("click", () => quoteReply(p));
+        right.append(timeEl, replyBtn);
+        meta.append(nameEl, right);
+        const body = document.createElement("div"); body.className = "bbs-text"; body.textContent = censor(p.body);
+        d.append(meta, body); list.appendChild(d);
+      }
     }
+    list.scrollTop = scrollTop;
+  }
+
+  function refreshTimestamps(){
+    list.querySelectorAll(".bbs-time").forEach((el, i) => { if (posts[i]) el.textContent = when(posts[i].ts); });
   }
 
   async function syncRemote(){
@@ -106,6 +153,7 @@ export function initBBS(){
     const body = msg.value.trim(); if (!body) return;
     const entry = { handle: (handle.value.trim() || "operator").slice(0, 24), body: body.slice(0, 280), ts: Date.now() };
     msg.value = "";
+    updateCounter();
     if (API){
       btn.disabled = true;
       try{
@@ -130,8 +178,31 @@ export function initBBS(){
   btn.addEventListener("click", post);
   msg.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) post(); });
 
+  /* live clock + auto-refresh, only while the window is open ---- */
+  let tsTimer = null, syncTimer = null;
+  function stopTimers(){
+    if (tsTimer) clearInterval(tsTimer); tsTimer = null;
+    if (syncTimer) clearInterval(syncTimer); syncTimer = null;
+  }
+  function startTimers(){
+    stopTimers();
+    tsTimer = setInterval(refreshTimestamps, 30000);
+    if (API) syncTimer = setInterval(() => {
+      if (win.classList.contains("open") && document.visibilityState === "visible") syncRemote();
+    }, 60000);
+  }
+  let wasOpen = win.classList.contains("open");
+  new MutationObserver(() => {
+    const isOpen = win.classList.contains("open");
+    if (isOpen === wasOpen) return;
+    wasOpen = isOpen;
+    if (isOpen) startTimers(); else stopTimers();
+  }).observe(win, { attributes:true, attributeFilter:["class"] });
+
   render();
+  updateCounter();
   initFilter(render);   // re-render once the word list is ready
   if (API){ linkStatus("LINK: DIALING…"); syncRemote(); }
   else linkStatus("NODE: LOCAL — transmissions stay on this machine");
+  if (win.classList.contains("open")) startTimers();
 }

@@ -45,9 +45,24 @@ a{color:var(--green)}
 @keyframes flicker{
   0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.86} 94%{opacity:1} 97%{opacity:.93} 98%{opacity:1}
 }
-@media (prefers-reduced-motion:reduce){
-  .crt::after{animation:none}
-  *,*::before,*::after{animation-duration:.001s !important;transition-duration:.001s !important}
+/* full reduced-motion handling — both this @media trigger and the
+   body.reduce-motion class CONFIG.SYS toggles (see js/apps/settings.js)
+   — lives in the dedicated "REDUCED MOTION" section at the end of this
+   file, so the two triggers stay a single source of truth instead of
+   being split across the cascade. */
+/* CRT effects level (CONFIG.SYS) — "full" is the default look above.
+   "off" drops the scanline + vignette/flicker layers entirely (no
+   pseudo-element generated, so the flicker animation doesn't run
+   either); "low" keeps them but at roughly half strength. */
+body.crt-off::before,
+body.crt-off::after{
+  content:none;
+}
+body.crt-low::before{
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.11) 0 1px,transparent 1px 3px);
+}
+body.crt-low::after{
+  background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.28) 100%);
 }
 
 /* ---------- boot screen ---------------------------------- */
@@ -140,6 +155,8 @@ a{color:var(--green)}
   opacity:.65;
 }
 .win-resize:hover{opacity:1}
+/* a lazy app (maze / arcade game) is importing before its window opens */
+body[data-loading]{cursor:progress}
 .titlebar{
   display:flex;align-items:center;gap:8px;
   background:linear-gradient(90deg,var(--green-ink),var(--panel-2));
@@ -321,6 +338,32 @@ a{color:var(--green)}
 .sm-kill:hover{background:var(--red);border-color:var(--red);color:#fff;text-shadow:none}
 #sysmon-foot{flex:none;font-size:11px;color:var(--green-dim);border-top:1px dashed var(--green-dim);padding-top:5px}
 
+/* ---------- config.sys (settings) --------------------------- */
+#win-settings{width:420px;top:12%;left:34%}
+.set-body{display:flex;flex-direction:column;gap:14px}
+.set-group h3{
+  font-family:var(--font-d);font-size:16px;letter-spacing:2px;color:var(--green-dim);
+  border-bottom:1px dashed var(--green-ink);padding-bottom:4px;margin-bottom:8px;
+}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.set-row:last-child{margin-bottom:0}
+.set-lab{font-size:12px;color:#9df3bf;flex:1}
+.set-opts{display:flex;gap:6px;flex-wrap:wrap}
+.set-opts button{
+  border:1px solid var(--green-dim);padding:4px 9px;background:var(--panel-2);
+  font-family:var(--font-d);font-size:14px;letter-spacing:1px;color:var(--green);
+}
+.set-opts button:hover{background:rgba(70,255,142,.12)}
+.set-opts button.on{background:var(--green);color:var(--bg);text-shadow:none}
+.set-slider{display:flex;align-items:center;gap:8px}
+.set-slider input[type=range]{width:120px;accent-color:var(--green)}
+.set-slider b{font-family:var(--font-d);font-size:15px;color:var(--orange);min-width:3ch;text-align:right}
+.set-danger{
+  border:1px solid var(--red);padding:4px 10px;background:var(--panel-2);
+  font-family:var(--font-d);font-size:14px;letter-spacing:1px;color:var(--red);
+}
+.set-danger:hover{background:var(--red);color:#fff;text-shadow:none}
+
 /* ---------- games: flappy + worm --------------------------- */
 #win-flappy{width:300px;top:8%;left:34%}
 #win-worm{width:380px;top:10%;left:24%}
@@ -501,6 +544,69 @@ canvas.pix{image-rendering:pixelated}
 }
 .bbs-postbtn:hover{background:var(--orange);color:var(--bg);text-shadow:none}
 
+/* ---------- files.sys (file explorer) --------------------- */
+#win-files{width:540px;height:400px;top:18%;left:30%}
+.files-body{display:flex;flex-direction:column;gap:8px}
+.files-toolbar{display:flex;gap:6px;flex-wrap:wrap;flex:none}
+.files-toolbar button{
+  border:1px solid var(--green-dim);padding:4px 9px;background:var(--panel-2);
+  font-family:var(--font-d);font-size:15px;letter-spacing:1px;color:var(--green);
+}
+.files-toolbar button:hover{background:var(--green);color:var(--bg);text-shadow:none}
+.files-toolbar #files-del:hover{background:var(--red);border-color:var(--red);color:#fff}
+.files-toolbar #files-hidden[aria-pressed="true"]{border-color:var(--orange);color:var(--orange)}
+/* breadcrumb path bar */
+.files-crumb{
+  display:flex;align-items:center;flex-wrap:wrap;gap:1px;flex:none;
+  border:1px solid var(--green-ink);background:var(--bg);padding:4px 8px;
+  font-family:var(--font-d);font-size:16px;letter-spacing:1px;
+}
+.files-seg{font-family:inherit;font-size:inherit;letter-spacing:inherit;color:var(--orange);padding:0 2px}
+.files-seg:hover{text-decoration:underline}
+.files-sep{color:var(--green-dim)}
+/* listing + editor sit side by side */
+.files-main{display:flex;gap:8px;flex:1;min-height:0}
+.files-list{
+  flex:1 1 44%;min-width:0;overflow-y:auto;padding:4px;
+  border:1px solid var(--green-dim);background:var(--bg);
+  scrollbar-width:thin;scrollbar-color:var(--green-dim) transparent;
+}
+.files-list::-webkit-scrollbar{width:8px}
+.files-list::-webkit-scrollbar-thumb{background:var(--green-dim)}
+.files-row{
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px;width:100%;
+  padding:3px 6px;text-align:left;border:1px solid transparent;
+  font-family:var(--font-b);font-size:13px;color:#9df3bf;
+}
+.files-row:hover{background:rgba(70,255,142,.06);border-color:var(--green-ink)}
+.files-row.dir .files-name{color:var(--green)}
+.files-row.sel{background:var(--green-ink);border-color:var(--green-dim)}
+.files-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.files-meta{flex:none;font-family:var(--font-d);font-size:13px;letter-spacing:1px;color:var(--green-dim)}
+.files-editor{flex:1 1 56%;display:flex;flex-direction:column;gap:6px;min-width:0}
+#files-view{
+  flex:1;width:100%;resize:none;background:var(--bg);color:var(--green);
+  border:1px solid var(--green-dim);padding:8px;line-height:1.5;text-shadow:inherit;
+  font-family:var(--font-b);font-size:13px;
+}
+#files-view:focus{outline:1px solid var(--green)}
+#files-view:disabled{opacity:.6}
+.files-editfoot{display:flex;justify-content:space-between;align-items:center;flex:none}
+#files-name{font-family:var(--font-d);font-size:15px;letter-spacing:1px;color:var(--orange);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.files-editfoot button{
+  border:1px solid var(--green-dim);padding:2px 12px;
+  font-family:var(--font-d);font-size:15px;letter-spacing:1px;color:var(--green);
+}
+.files-editfoot button:hover:not(:disabled){background:var(--green);color:var(--bg);text-shadow:none}
+.files-editfoot button:disabled{opacity:.4;cursor:not-allowed}
+/* narrow screens: stack the list above the editor */
+@media (max-width:760px){
+  .files-main{flex-direction:column}
+  .files-list{flex:none;height:34%}
+  .files-editor{flex:1}
+}
+
 /* ---------- notifications ---------------------------------- */
 #notify-stack{
   position:fixed;right:12px;top:12px;z-index:8800;
@@ -598,6 +704,36 @@ canvas.pix{image-rendering:pixelated}
 .sm-themes{grid-column:1/-1;display:flex;gap:6px;padding:4px 2px}
 .sm-swatch{width:24px;height:24px;border:1px solid var(--green-dim);cursor:pointer;padding:0}
 .sm-swatch:hover{outline:2px solid var(--orange);outline-offset:1px}
+
+/* ---------- window snap ghost + Alt+` switcher -------------- */
+/* translucent preview shown while dragging near a screen edge */
+#snap-ghost{
+  position:fixed;z-index:6000;pointer-events:none;display:none;opacity:0;
+  border:2px dashed var(--green);background:rgba(70,255,142,.08);
+  box-shadow:inset 0 0 24px rgba(70,255,142,.12);
+  transition:opacity .12s ease;
+}
+#snap-ghost.show{display:block;opacity:1}
+/* centred window switcher (mirrors #start-menu's chrome) */
+#win-switcher{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8950;
+  min-width:260px;max-width:80vw;max-height:80vh;overflow-y:auto;display:none;
+  background:var(--panel);border:1px solid var(--green-dim);
+  box-shadow:0 0 0 1px var(--green-ink),0 0 24px rgba(70,255,142,.12),10px 10px 0 rgba(0,0,0,.45);
+  padding:8px;scrollbar-width:thin;scrollbar-color:var(--green-dim) transparent;
+}
+#win-switcher.show{display:block}
+#win-switcher .sw-title{
+  font-family:var(--font-d);font-size:15px;letter-spacing:2px;color:var(--orange);
+  border-bottom:1px dashed var(--green-dim);padding:4px 4px 6px;margin-bottom:4px;
+}
+#win-switcher .sw-item{
+  font-family:var(--font-d);font-size:17px;letter-spacing:1px;color:var(--green);
+  padding:5px 10px;border:1px solid transparent;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+}
+#win-switcher .sw-item.min{color:var(--green-dim)}
+#win-switcher .sw-item.sel{border-color:var(--green);background:rgba(70,255,142,.1);color:var(--green)}
 
 /* ---------- maze overlay ------------------------------------ */
 #maze-layer{position:fixed;inset:0;z-index:8500;background:#000;display:none}
@@ -854,4 +990,236 @@ canvas.pix{image-rendering:pixelated}
   #notify-stack{left:8px;right:8px;width:auto;top:8px}
   .sm-head,.sm-row{grid-template-columns:30px 1fr 46px 40px 20px}
   .sm-bar{display:none}
+}
+
+/* ============================================================
+   MERITS.SYS — taskbar button + achievements panel
+   Button mirrors #tb-mute's look; panel mirrors #start-menu's
+   look (border/shadow/scrollbar), just as a single-column list.
+   ============================================================ */
+#tb-merits{
+  flex:none;border:1px solid var(--green-dim);color:var(--green);
+  font-family:var(--font-d);font-size:16px;letter-spacing:1px;padding:0 10px;
+}
+#tb-merits:hover{background:var(--green);color:var(--bg);text-shadow:none}
+#tb-merits[aria-expanded="true"]{background:var(--green);color:var(--bg);text-shadow:none}
+
+#merits-panel{
+  position:fixed;right:6px;bottom:calc(var(--tb-h) + 6px);z-index:8900;
+  width:340px;max-height:min(520px,70vh);overflow-y:auto;
+  background:var(--panel);border:1px solid var(--green-dim);
+  box-shadow:0 0 0 1px var(--green-ink),0 0 24px rgba(70,255,142,.12),10px 10px 0 rgba(0,0,0,.45);
+  padding:8px;
+  scrollbar-width:thin;scrollbar-color:var(--green-dim) transparent;
+}
+#merits-panel[hidden]{display:none}
+#merits-panel::-webkit-scrollbar{width:8px}
+#merits-panel::-webkit-scrollbar-thumb{background:var(--green-dim)}
+.mrt-title{
+  font-family:var(--font-d);font-size:15px;letter-spacing:2px;color:var(--orange);
+  border-bottom:1px dashed var(--green-dim);padding:2px 2px 7px;margin-bottom:6px;
+}
+.mrt-list{display:flex;flex-direction:column}
+.mrt-item{border-bottom:1px dashed var(--green-ink);padding:6px 4px;opacity:.6}
+.mrt-item:last-child{border-bottom:none}
+.mrt-name{font-family:var(--font-d);font-size:16px;letter-spacing:1px;color:var(--green-dim)}
+.mrt-desc{font-size:12px;color:var(--green-dim);line-height:1.4;margin-top:2px}
+.mrt-date{font-size:11px;color:var(--green-dim);opacity:.8;margin-top:2px}
+.mrt-item.unlocked{opacity:1}
+.mrt-item.unlocked .mrt-name{color:var(--orange)}
+.mrt-item.unlocked .mrt-desc{color:var(--green)}
+.mrt-item.unlocked .mrt-date{color:var(--green)}
+
+@media (max-width:760px){
+  #merits-panel{left:4px;right:4px;width:auto}
+}
+
+/* ---------- command palette (Ctrl+K / Cmd+K) ---------------- */
+/* centred launcher overlay; mirrors #start-menu / #win-switcher
+   chrome — panel bg, dim border, hard offset shadow, VT323 labels.
+   z-index sits above windows (JS-managed, low ints) but below
+   #notify-stack (8800), so a toast never gets buried under it. */
+#navi-palette{
+  position:fixed;left:50%;top:18vh;transform:translateX(-50%);z-index:8750;
+  width:min(520px,92vw);display:none;
+}
+#navi-palette.show{display:block}
+#navi-palette .palette-box{
+  background:var(--panel);border:1px solid var(--green-dim);
+  box-shadow:0 0 0 1px var(--green-ink),0 0 24px rgba(70,255,142,.12),10px 10px 0 rgba(0,0,0,.45);
+  padding:8px;
+}
+.palette-input{
+  width:100%;background:var(--bg);border:1px solid var(--green-dim);color:var(--green);
+  font-family:var(--font-d);font-size:18px;letter-spacing:1px;padding:8px 10px;margin-bottom:8px;
+}
+.palette-input::placeholder{color:var(--green-dim)}
+.palette-input:focus{outline:none;border-color:var(--green)}
+.palette-list{
+  max-height:min(360px,50vh);overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--green-dim) transparent;
+}
+.palette-list::-webkit-scrollbar{width:8px}
+.palette-list::-webkit-scrollbar-thumb{background:var(--green-dim)}
+.palette-group{
+  font-family:var(--font-d);font-size:14px;letter-spacing:2px;color:var(--orange);
+  border-bottom:1px dashed var(--green-dim);padding:6px 4px 3px;margin-bottom:2px;
+}
+.palette-group:not(:first-child){margin-top:6px}
+.palette-item{
+  font-family:var(--font-d);font-size:16px;letter-spacing:1px;color:var(--green);
+  padding:6px 10px;border:1px solid transparent;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;cursor:pointer;
+}
+.palette-item b{color:var(--orange);font-style:normal}
+.palette-item:hover{border-color:var(--green-dim);background:rgba(70,255,142,.07)}
+.palette-item.sel{background:var(--green);color:var(--bg);text-shadow:none}
+.palette-item.sel b{color:var(--bg)}
+.palette-empty{padding:10px;color:var(--green-dim);font-family:var(--font-d);font-size:15px;letter-spacing:1px}
+
+/* ============================================================
+   REDUCED MOTION
+   Honours two independent triggers with IDENTICAL effect:
+     - body.reduce-motion       — operator set REDUCE MOTION: ON
+       in CONFIG.SYS; the class is persisted by js/apps/settings.js
+     - @media (prefers-reduced-motion: reduce) — OS-level setting
+   A class selector and a media feature can't share one rule body,
+   so each block below is written twice on purpose (duplication is
+   fine in plain CSS — this keeps each trigger's rules easy to scan
+   as a unit rather than threading one through the other).
+
+   KILLED outright (animation:none) — the two purely decorative,
+   infinite/looping animations in the app:
+     - .crt::after's vignette flicker
+     - .maze-solo / .maze-solo svg's idle shake + chromatic glitch
+   Neither uses animation-fill-mode:forwards, so removing the
+   animation just leaves the element at its normal resting style —
+   there's no "stuck" state to worry about.
+
+   KEPT on purpose — #boot .cursor's blink. A blinking text caret is
+   expected, legible UI (it reads as "the log is still writing"),
+   not gratuitous motion, so it's left running under both triggers.
+
+   COMPRESSED, not killed — one-shot UI motion (toasts, the kernel
+   panic entrance, and the general window/button/overlay transition
+   surface) drops to a near-instant animation/transition-duration
+   instead of being removed. This is NOT a blanket `*` rule — it's a
+   curated list of the selectors that actually carry animation or
+   transition in this file, so unrelated/future motion isn't silently
+   neutered and anything without a duration keeps behaving exactly as
+   before (CSS's own default for a property with no transition is
+   already instant).
+     .toast.bye specifically NEEDS this "compress" treatment rather
+     than animation:none — it relies on animation-fill-mode:forwards
+     to hold itself invisible while notify.js's fixed 350ms setTimeout
+     (unchanged, still runs) waits to remove the node. Killing the
+     animation instead of shortening it would drop that hold and let
+     the toast flash back to fully visible for the remainder of that
+     350ms, mid-dismiss — exactly the "broken functional state" this
+     pass is meant to avoid.
+   ============================================================ */
+body.reduce-motion .crt::after,
+body.reduce-motion .maze-solo,
+body.reduce-motion .maze-solo svg{
+  animation:none;
+}
+@media (prefers-reduced-motion:reduce){
+  .crt::after,
+  .maze-solo,
+  .maze-solo svg{
+    animation:none;
+  }
+}
+
+body.reduce-motion .toast,
+body.reduce-motion .toast.bye,
+body.reduce-motion #panic,
+body.reduce-motion .window,
+body.reduce-motion .tb-btn,
+body.reduce-motion button,
+body.reduce-motion .icon,
+body.reduce-motion .sm-bar i,
+body.reduce-motion #snap-ghost,
+body.reduce-motion #hud-objective,
+body.reduce-motion #hud-msg,
+body.reduce-motion #maze-fade{
+  animation-duration:.01ms !important;
+  transition-duration:.01ms !important;
+}
+@media (prefers-reduced-motion:reduce){
+  .toast,
+  .toast.bye,
+  #panic,
+  .window,
+  .tb-btn,
+  button,
+  .icon,
+  .sm-bar i,
+  #snap-ghost,
+  #hud-objective,
+  #hud-msg,
+  #maze-fade{
+    animation-duration:.01ms !important;
+    transition-duration:.01ms !important;
+  }
+}
+
+/* ============================================================
+   FOCUS VISIBILITY
+   The base rule (near the top of this file, by `button{...}`) already
+   gives every <button>/<a>/[tabindex] a 2px orange ring on
+   :focus-visible — .icon, .tb-task, .tb-btn, #tb-root, #tb-mute and
+   #tb-merits are all plain <button> elements underneath, so they
+   inherit it already. They're listed again below anyway, explicitly,
+   so this element list reads as a complete, intentional inventory
+   rather than relying on a reader to know that inheritance.
+
+   The generic input:focus-visible / textarea:focus-visible /
+   select:focus-visible trio is the real new coverage: nothing in the
+   base rule touches form controls, and it's what makes #set-vol,
+   the maze pause menu's <select>s, and the tracker's per-cell note
+   <select> (.trk-note) all get a ring for free.
+
+   A handful of text inputs set an unconditional `outline:none` for
+   their own terminal-caret aesthetic (#term-input, #oracle-input,
+   #maze-create .cr-name) or swap in a soft green `:focus` outline
+   instead of `:focus-visible` (#note-area, #files-view, .bbs-handle,
+   .bbs-msg, .palette-input). Those need their own :focus-visible
+   selector — of equal or higher specificity than the rule it's
+   overriding — listed explicitly here, or the generic trio above
+   would lose to them.
+
+   Deliberately NOT covered: the Alt+` window switcher's .sw-item rows
+   and the command palette's .palette-item rows. Both are plain <div>s
+   with no tabindex — selection moves through them by a custom
+   keydown handler (arrow-key style), never native DOM focus, so
+   :focus-visible can never match them; that's a windows.js/palette.js
+   change, out of scope for this CSS-only pass. Their current state
+   is already visually indicated via the .sel class in each panel's
+   existing CSS (border/background swap), which is a reasonable
+   stand-in until they're made natively focusable. The palette's
+   actual <input> (.palette-input) IS native and IS covered below.
+   ============================================================ */
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible,
+.icon:focus-visible,
+.tb-task:focus-visible,
+.tb-btn:focus-visible,
+#tb-root:focus-visible,
+#tb-mute:focus-visible,
+#tb-merits:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+#term-input:focus-visible,
+#oracle-input:focus-visible,
+#note-area:focus-visible,
+#files-view:focus-visible,
+.bbs-handle:focus-visible,
+.bbs-msg:focus-visible,
+.palette-input:focus-visible,
+#maze-create .cr-name:focus-visible{
+  outline:2px solid var(--orange);
+  outline-offset:2px;
 }

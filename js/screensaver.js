@@ -35,9 +35,26 @@ export function initScreensaver(){
     raf = requestAnimationFrame(frame);
   }
 
-  function start(){
+  /* Read fresh every time start() is about to fire — not cached at
+     init — so a mid-session CONFIG.SYS toggle (or an OS-level change
+     while the tab is open) takes effect on the very next idle timeout,
+     not just after a reload. Checks both triggers the settings app
+     honours: the body.reduce-motion class and the OS media query. */
+  function reducedMotion(){
+    return document.body.classList.contains("reduce-motion")
+      || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function start(force){
     if (active || document.getElementById("boot")) return;
     if (document.getElementById("maze-layer")?.classList.contains("on")) return;
+    /* Reduced motion suppresses the idle rain loop — it's pure ambient
+       motion with no functional purpose, so the ordinary idle timeout
+       just declines to start it. An explicit "navi-matrix" request
+       (operator typed MATRIX, a palette action, …) is deliberate user
+       intent rather than an ambient idle trigger, so it's allowed to
+       override the preference via the `force` flag. */
+    if (!force && reducedMotion()) return;
     active = true;
     resize(); ctx.fillStyle = "#04080a"; ctx.fillRect(0, 0, cv.width, cv.height);
     cv.classList.add("on");
@@ -56,6 +73,6 @@ export function initScreensaver(){
   addEventListener("resize", () => { if (active) resize(); });
   ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"]
     .forEach(ev => addEventListener(ev, poke, { passive: true }));
-  addEventListener("navi-matrix", () => { clearTimeout(idleTimer); start(); });
+  addEventListener("navi-matrix", () => { clearTimeout(idleTimer); start(true); });
   poke();
 }

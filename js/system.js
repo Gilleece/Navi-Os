@@ -95,6 +95,7 @@ export function reboot(delay = 600){
 /* ---------- kernel panic ------------------------------------ */
 export function kernelPanic(cause){
   if (document.getElementById("panic")) return;
+  dispatchEvent(new CustomEvent("navi-panic"));
   const hex = () => (Math.random() * 0xffffffff >>> 0).toString(16).padStart(8, "0");
   let dump = "";
   for (let i = 0; i < 6; i++) dump += `    0x${hex()}  0x${hex()}  0x${hex()}\n`;

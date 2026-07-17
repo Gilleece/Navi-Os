@@ -11,6 +11,8 @@ considering moving in future to a framework but that depends on how much it expa
 ```
 .
 ├── index.html            # markup only: boot, desktop, taskbar, start menu, maze overlay
+├── manifest.webmanifest  # PWA manifest — the site installs as an app
+├── sw.js                 # service worker: offline shell + cache strategy (bump VERSION on deploy)
 ├── .github/workflows/
 │   └── deploy.yml        # GitHub Pages deploy on push to master
 ├── backend/              # optional Cloudflare Worker that makes BBS.SYS a shared board
@@ -20,19 +22,23 @@ considering moving in future to a framework but that depends on how much it expa
     ├── main.js           # entry point — imports and initialises every module
     ├── utils.js          # shared DOM helpers ($, $$, isMobile)
     ├── store.js          # localStorage wrapper (theme, scores, patterns, drawings)
+    ├── fs.js             # virtual filesystem (persisted) — FILES.SYS / shell / notepad share it
     ├── boot.js           # boot sequence + "jack in"; #hash deep links skip the boot
-    ├── clock.js          # live taskbar clock
+    ├── clock.js          # live taskbar clock (12/24h via CONFIG.SYS)
     ├── theme.js          # colour themes (persisted)
     ├── system.js         # fake process table, SIGKILL, kernel panic
-    ├── notify.js         # toasts + ambient transmissions
-    ├── screensaver.js    # idle digital rain
-    ├── windows.js        # window manager + APPS registry + #hash routing
+    ├── notify.js         # toasts + ambient transmissions (toggleable)
+    ├── screensaver.js    # idle digital rain (honours reduced motion)
+    ├── windows.js        # window manager: APPS registry, #hash routing, edge snapping,
+    │                     #   Alt+` switcher, session restore, lazy-loading of maze + games
     ├── startmenu.js      # ROOT button start menu (programs, themes, reboot)
     ├── sound.js          # taskbar SND toggle (global mute)
+    ├── achievements.js   # MERITS.SYS — passive achievement layer (taskbar MRT button)
+    ├── palette.js        # NAVI SEARCH — Ctrl/Cmd+K command palette
     └── apps/
-        ├── _fx.js        # shared palette cache + master audio bus + beep()
-        ├── ...           # one file per program (terminal, tracker, games, bbs, …)
-        └── maze/         # MAZE.EXE — Three.js labyrinth (desktop / touch / VR)
+        ├── _fx.js        # shared palette cache + master audio bus + beep() + volume
+        ├── ...           # one file per program (terminal, tracker, files, settings, …)
+        └── maze/         # MAZE.EXE — Three.js labyrinth (desktop / touch / VR), lazy-loaded
 ```
 
 The JavaScript is split into native **ES modules** (`<script type="module">`), so the
@@ -59,7 +65,15 @@ One-time setup: repo **Settings → Pages → Source → GitHub Actions**.
 
 Every program has a shareable URL: `/#projects`, `/#term`, `/#tracker`, … A hash
 link skips the boot sequence and opens that window directly. The address bar
-follows whichever window is focused.
+follows whichever window is focused. TRACKER.EXE's [SHARE] button additionally
+encodes the current pattern into a `/#tracker=<code>` link.
+
+## PWA / offline
+
+The site registers `sw.js` and installs as an app. The app shell (including the
+maze) is precached, so it boots offline; same-origin assets use
+stale-while-revalidate, so a deploy shows up on the *second* load. When you add
+a new JS file, add it to `PRECACHE_URLS` in `sw.js` and bump `VERSION`.
 
 ## Making BBS.SYS a real shared board
 

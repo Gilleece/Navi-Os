@@ -23,12 +23,23 @@ export function pal(){
 /* ---------- master audio bus -------------------------------- */
 let ac = null, master = null;
 let muted = store.get("muted", false) === true;
+let vol = clampVol(store.get("vol", 100));
+
+function clampVol(v){
+  v = Number(v);
+  return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 100;
+}
+/* mute and volume are separate multipliers on the one gain node —
+   muting never clobbers the saved volume, and vice versa */
+function applyGain(){
+  if (master) master.gain.value = muted ? 0 : vol / 100;
+}
 
 export function actx(){
   if (!ac){
     ac = new (window.AudioContext || window.webkitAudioContext)();
     master = ac.createGain();
-    master.gain.value = muted ? 0 : 1;
+    applyGain();
     master.connect(ac.destination);
   }
   if (ac.state === "suspended") ac.resume();
@@ -41,7 +52,14 @@ export function isMuted(){ return muted; }
 export function setMuted(m){
   muted = !!m;
   store.set("muted", muted);
-  if (master) master.gain.value = muted ? 0 : 1;
+  applyGain();
+}
+
+export function getVolume(){ return vol; }
+export function setVolume(v){
+  vol = clampVol(v);
+  store.set("vol", vol);
+  applyGain();
 }
 
 export function beep(freq, dur = .08, type = "square", vol = .18){
