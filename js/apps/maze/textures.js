@@ -381,9 +381,17 @@ export function ledTexture(three, rand = Math.random){
    floor / ceiling: a dark surface ruled into a fine glowing grid, like
    the inside of a wireframe. cellBackTexture is the rear wall the figure
    stands against — same lining plus falling data-rain columns and the
-   tenancy serial stencilled across the top. Both draw in the level's
-   representative neon (theme.rgb), kept dim so the glowing tenant stays
-   the brightest thing in the box. */
+   TENANT'S OWN dressing (CELL_DRESSING, keyed by character id): the
+   things they've hung, pinned and stacked against the wall of the box
+   they live in. No text anywhere — the cell tells you whose it is by
+   what's in it. All of it draws in the level's representative neon
+   (theme.rgb), kept dim so the glowing tenant stays the brightest thing
+   in the box.
+
+   Geometry note for the painters: the 256px canvas maps the 3.4m back
+   wall, y=0 at the ceiling. The window shows roughly canvas y 84..202,
+   and the figure covers x 56..200 — so the art lives in the side
+   columns (x 4..56 and 200..252) and the band over their head. */
 function paintCellGrid(g, nr, ng, nb){
   g.fillStyle = `rgb(${nr*0.045|0},${ng*0.045|0},${nb*0.045|0})`;
   g.fillRect(0, 0, 256, 256);
@@ -413,13 +421,243 @@ export function cellWallTexture(three, theme){
   return canvasTexture(three, g => paintCellGrid(g, nr, ng, nb));
 }
 
-export function cellBackTexture(three, theme, serial, rand = Math.random){
+/* Scally's stall: a striped awning over everything, shelves of stock on
+   one side, the loud coat on its hook on the other. Open for business. */
+function dressScally(g, ink, rand){
+  for (let x = 12, i = 0; x < 244; x += 29, i++){       // the awning
+    g.fillStyle = ink(i % 2 ? 0.34 : 0.12);
+    g.fillRect(x, 82, 29, 14);
+    g.beginPath(); g.arc(x + 14.5, 96, 14.5, 0, Math.PI); g.fill();
+  }
+  g.strokeStyle = ink(0.5); g.lineWidth = 3;            // shelves of goods
+  for (const sy of [134, 166, 198]){
+    g.beginPath(); g.moveTo(6, sy); g.lineTo(54, sy); g.stroke();
+    for (let bx = 9; bx < 44; bx += 12 + rand() * 5){
+      const bh = 10 + rand() * 14, bw = 7 + rand() * 4;
+      g.fillStyle = ink(0.2 + rand() * 0.3);
+      g.fillRect(bx, sy - bh, bw, bh);
+    }
+  }
+  g.strokeStyle = ink(0.55); g.lineWidth = 2.5;         // the coat, hung ready
+  g.beginPath(); g.arc(224, 116, 4, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = ink(0.3);
+  g.beginPath();
+  g.moveTo(224, 120); g.lineTo(206, 134); g.lineTo(202, 192);
+  g.lineTo(246, 192); g.lineTo(242, 134); g.closePath(); g.fill();
+  g.strokeStyle = ink(0.5); g.lineWidth = 2;            // lapels
+  g.beginPath();
+  g.moveTo(224, 122); g.lineTo(215, 152);
+  g.moveTo(224, 122); g.lineTo(233, 152);
+  g.stroke();
+}
+
+/* Homiss's session corner: a staff of parked notes over his head, the
+   spare bass on the wall, compositions pinned on napkins. None legible.
+   He'd agree that's for the best. */
+function dressHomiss(g, ink, rand){
+  g.strokeStyle = ink(0.28); g.lineWidth = 1.5;         // the staff
+  for (let i = 0; i < 5; i++){
+    g.beginPath(); g.moveTo(24, 86 + i * 5); g.lineTo(232, 86 + i * 5); g.stroke();
+  }
+  g.fillStyle = ink(0.55);
+  for (const [nx, ny] of [[60, 97], [95, 91], [130, 101], [168, 96], [204, 89]]){
+    g.beginPath(); g.ellipse(nx, ny, 4.5, 3.5, -0.3, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = ink(0.55); g.lineWidth = 2;
+    g.beginPath(); g.moveTo(nx + 4, ny); g.lineTo(nx + 4, ny - 14); g.stroke();
+  }
+  g.strokeStyle = ink(0.5); g.lineWidth = 3;            // the spare bass
+  g.beginPath(); g.moveTo(30, 108); g.lineTo(30, 168); g.stroke();
+  g.lineWidth = 1.5;
+  for (const py of [112, 118, 124, 130]){
+    g.beginPath(); g.moveTo(23, py); g.lineTo(30, py); g.stroke();   // tuning pegs
+  }
+  g.fillStyle = ink(0.28);
+  g.beginPath(); g.ellipse(30, 186, 17, 22, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = ink(0.5); g.lineWidth = 1.5;          // strings, floor to peghead
+  g.beginPath();
+  g.moveTo(28, 108); g.lineTo(28, 200);
+  g.moveTo(32, 108); g.lineTo(32, 200);
+  g.stroke();
+  for (const [px, py, tilt] of [[222, 128, -0.12], [218, 168, 0.1], [230, 200, -0.06]]){
+    g.save(); g.translate(px, py); g.rotate(tilt);      // pinned napkins
+    g.fillStyle = ink(0.16); g.fillRect(-14, -14, 28, 28);
+    g.strokeStyle = ink(0.45); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(-9, -5);
+    for (let sx = -6; sx <= 9; sx += 3) g.lineTo(sx, -5 + Math.sin(sx) * 3 + rand() * 5);
+    g.stroke();
+    g.fillStyle = ink(0.6);
+    g.beginPath(); g.arc(0, -12, 2, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+}
+
+/* Little Bee's ward: an EEG trace running the width of the cell, a chart
+   still climbing, tally groups, and a horse drawn the way you draw the
+   thing you miss. A rosette she won under it. */
+function dressLittlebee(g, ink, rand){
+  g.strokeStyle = ink(0.45); g.lineWidth = 1.5;         // the EEG trace
+  g.beginPath(); g.moveTo(8, 95);
+  for (let x = 12; x <= 248; x += 4)
+    g.lineTo(x, 95 + (rand() < 0.12 ? (rand() - 0.5) * 26 : (rand() - 0.5) * 6));
+  g.stroke();
+  g.strokeStyle = ink(0.5); g.lineWidth = 2;            // the chart
+  g.strokeRect(8, 116, 48, 56);
+  g.beginPath();
+  g.moveTo(14, 164); g.lineTo(14, 122);
+  g.moveTo(14, 164); g.lineTo(50, 164);
+  g.stroke();
+  g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(14, 158);
+  for (const [dx, dy] of [[8, -8], [16, -14], [24, -16], [30, -26], [34, -30]])
+    g.lineTo(14 + dx, 158 + dy);
+  g.stroke();
+  g.lineWidth = 1.5;                                    // the audit tallies
+  for (let group = 0; group < 3; group++){
+    const tx = 10 + group * 17;
+    for (let i = 0; i < 4; i++){
+      g.beginPath(); g.moveTo(tx + i * 3, 182); g.lineTo(tx + i * 3, 194); g.stroke();
+    }
+    g.beginPath(); g.moveTo(tx - 2, 194); g.lineTo(tx + 11, 182); g.stroke();
+  }
+  g.fillStyle = ink(0.32);                              // the horse
+  g.beginPath(); g.ellipse(220, 148, 16, 9, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = ink(0.4); g.lineWidth = 2.5;
+  for (const dx of [-11, -5, 6, 12]){
+    g.beginPath(); g.moveTo(220 + dx, 153); g.lineTo(220 + dx + (dx > 0 ? 2 : -1), 171); g.stroke();
+  }
+  g.beginPath(); g.moveTo(232, 142); g.lineTo(241, 128); g.stroke();   // neck
+  g.fillStyle = ink(0.36);
+  g.beginPath(); g.ellipse(243, 126, 6.5, 4, 0.5, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = ink(0.4); g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(240, 121); g.lineTo(238, 116); g.stroke();   // an ear
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(204, 146); g.quadraticCurveTo(196, 152, 199, 162); g.stroke();  // tail
+  g.fillStyle = ink(0.5);                               // the rosette
+  g.beginPath(); g.arc(220, 190, 7, 0, Math.PI * 2); g.fill();
+  g.fillStyle = ink(0.18);
+  g.beginPath(); g.arc(220, 190, 3, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = ink(0.45); g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(217, 196); g.lineTo(214, 208);
+  g.moveTo(223, 196); g.lineTo(226, 208);
+  g.stroke();
+}
+
+/* Sian's workshop: a cable run with a controller hung off it, a pegboard
+   of tools, and the blueprint for the next bot — dimensioned, in no
+   units, with the spinner circled twice. */
+function dressSian(g, ink, rand){
+  g.strokeStyle = ink(0.4); g.lineWidth = 2;            // the cable run
+  g.beginPath();
+  g.moveTo(8, 84); g.quadraticCurveTo(70, 96, 128, 90); g.quadraticCurveTo(190, 84, 248, 94);
+  g.stroke();
+  g.beginPath(); g.moveTo(150, 88); g.lineTo(150, 104); g.stroke();
+  g.fillStyle = ink(0.35);                              // the hanging controller
+  g.fillRect(138, 104, 24, 10);
+  g.fillRect(136, 112, 8, 9); g.fillRect(158, 112, 8, 9);
+  g.fillStyle = ink(0.2);                               // pegboard
+  for (let px = 12; px <= 52; px += 10)
+    for (let py = 118; py <= 198; py += 10){
+      g.beginPath(); g.arc(px, py, 1.2, 0, Math.PI * 2); g.fill();
+    }
+  g.strokeStyle = ink(0.5); g.lineWidth = 3;            // wrench + driver
+  g.beginPath(); g.moveTo(21, 132); g.lineTo(34, 160); g.stroke();
+  g.lineWidth = 2.5;
+  g.beginPath(); g.arc(19, 128, 5, 0.6, Math.PI * 2 - 0.6); g.stroke();
+  g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(44, 126); g.lineTo(44, 152); g.stroke();
+  g.fillStyle = ink(0.4); g.fillRect(41, 152, 7, 13);
+  g.strokeStyle = ink(0.5); g.lineWidth = 2;            // the blueprint
+  g.strokeRect(200, 116, 50, 62);
+  g.beginPath();
+  g.moveTo(208, 162); g.lineTo(244, 162); g.lineTo(244, 138); g.closePath();
+  g.stroke();
+  g.beginPath(); g.arc(238, 152, 6, 0, Math.PI * 2); g.stroke();       // the spinner
+  g.lineWidth = 1;
+  g.beginPath(); g.arc(238, 152, 9, 0, Math.PI * 2); g.stroke();       // circled twice
+  g.lineWidth = 1.5;                                    // dimension line
+  g.beginPath();
+  g.moveTo(208, 170); g.lineTo(244, 170);
+  g.moveTo(208, 166); g.lineTo(208, 174);
+  g.moveTo(244, 166); g.lineTo(244, 174);
+  g.stroke();
+  g.lineWidth = 2;                                      // hex bolts, escaped
+  for (const bx of [208, 224, 240]){
+    g.beginPath();
+    for (let i = 0; i <= 6; i++){
+      const a = i / 6 * Math.PI * 2 + 0.26;
+      const px = bx + Math.cos(a) * 6, py = 194 + Math.sin(a) * 6;
+      i ? g.lineTo(px, py) : g.moveTo(px, py);
+    }
+    g.stroke();
+  }
+}
+
+/* Dalypso's den: the aerial he keeps re-rigging, a stack of old tellies
+   (one still getting something), and the football wall — ball and
+   pennant. Every channel there ever was. */
+function dressDalypso(g, ink, rand){
+  g.strokeStyle = ink(0.45); g.lineWidth = 2;           // the aerial
+  g.beginPath(); g.moveTo(128, 112); g.lineTo(128, 86); g.stroke();
+  g.beginPath();
+  g.moveTo(106, 82); g.lineTo(150, 94);
+  g.moveTo(106, 94) ; g.lineTo(150, 82);
+  g.stroke();
+  g.lineWidth = 1.5;                                    // the signal, allegedly
+  g.beginPath();
+  g.moveTo(140, 78); g.lineTo(146, 84); g.lineTo(141, 86); g.lineTo(147, 92);
+  g.stroke();
+  for (const [ty, on] of [[118, true], [158, false]]){  // the telly stack
+    g.strokeStyle = ink(0.5); g.lineWidth = 2.5;
+    g.strokeRect(8, ty, 46, 34);
+    g.fillStyle = ink(on ? 0.28 : 0.1);
+    g.fillRect(13, ty + 4, 30, 26);
+    g.fillStyle = ink(on ? 0.55 : 0.22);                // static
+    for (let i = 0; i < (on ? 26 : 10); i++)
+      g.fillRect(13 + rand() * 28, ty + 4 + rand() * 24, 2, 2);
+    g.fillStyle = ink(0.5);                             // knobs
+    g.beginPath(); g.arc(49, ty + 10, 2, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(49, ty + 20, 2, 0, Math.PI * 2); g.fill();
+  }
+  g.strokeStyle = ink(0.55); g.lineWidth = 2.5;         // the ball
+  g.beginPath(); g.arc(222, 136, 15, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = ink(0.45);
+  g.beginPath();
+  for (let i = 0; i <= 5; i++){
+    const a = i / 5 * Math.PI * 2 - Math.PI / 2;
+    const px = 222 + Math.cos(a) * 6, py = 136 + Math.sin(a) * 6;
+    i ? g.lineTo(px, py) : g.moveTo(px, py);
+  }
+  g.closePath(); g.fill();
+  g.strokeStyle = ink(0.35); g.lineWidth = 1.5;
+  for (let i = 0; i < 5; i++){
+    const a = i / 5 * Math.PI * 2 - Math.PI / 2;
+    g.beginPath();
+    g.moveTo(222 + Math.cos(a) * 6, 136 + Math.sin(a) * 6);
+    g.lineTo(222 + Math.cos(a) * 13, 136 + Math.sin(a) * 13);
+    g.stroke();
+  }
+  g.strokeStyle = ink(0.5); g.lineWidth = 2;            // the pennant
+  g.beginPath(); g.moveTo(206, 158); g.lineTo(206, 200); g.stroke();
+  g.fillStyle = ink(0.3);
+  g.beginPath();
+  g.moveTo(208, 160); g.lineTo(246, 170); g.lineTo(208, 180); g.closePath();
+  g.fill();
+}
+
+const CELL_DRESSING = {
+  scally: dressScally, homiss: dressHomiss, littlebee: dressLittlebee,
+  sian: dressSian, dalypso: dressDalypso,
+};
+
+export function cellBackTexture(three, theme, tenant, rand = Math.random){
   const [nr, ng, nb] = theme.rgb.map(Math.round);
   return canvasTexture(three, g => {
     paintCellGrid(g, nr, ng, nb);
     // data rain: thin columns of process noise sliding down the wall
-    for (let i = 0; i < 3; i++){
-      const x = 30 + rand() * 196;
+    // (kept clear of the side columns, where the tenant's things hang)
+    for (let i = 0; i < 2; i++){
+      const x = 70 + rand() * 116;
       let y = rand() * 60;
       while (y < 250){
         const h = 4 + rand() * 14;
@@ -428,15 +666,8 @@ export function cellBackTexture(three, theme, serial, rand = Math.random){
         y += h + 4 + rand() * 26;
       }
     }
-    // the tenancy serial, placed to read through the window opening —
-    // just above the tenant's head (the wall is 3.4m; the glass shows
-    // roughly the 0.7..2.3m band, so canvas y≈96 lands at ~2.1m)
-    g.fillStyle = `rgba(${nr},${ng},${nb},.75)`;
-    g.font = "30px 'VT323', monospace"; g.textAlign = "center";
-    g.fillText(`TENANCY ${serial}`, 128, 96);
-    g.fillStyle = `rgba(${nr},${ng},${nb},.35)`;
-    g.font = "16px 'VT323', monospace";
-    g.fillText("DO NOT RELEASE", 128, 118);
+    const dress = CELL_DRESSING[tenant];
+    if (dress) dress(g, a => `rgba(${nr},${ng},${nb},${a})`, rand);
   });
 }
 

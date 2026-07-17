@@ -163,8 +163,9 @@ function buildMaze(){
   const spawns = spawnCharacters(cells, goalCell, M.depth, M);
   const windows = new Set(spawns.map(s => wallKey(s.wall.x, s.wall.z, s.wall.alongX)));
   const darkWindows = new Set(spawns.filter(s => s.empty).map(s => wallKey(s.wall.x, s.wall.z, s.wall.alongX)));
+  const owners = new Map(spawns.map(s => [wallKey(s.wall.x, s.wall.z, s.wall.alongX), s.character.id]));
 
-  const { walls, cyberMat, paneMat, trimMat, ambient } = buildEnvironment(three, M.scene, M, cells, goalCell, windows, darkWindows);
+  const { walls, cyberMat, paneMat, trimMat, ambient } = buildEnvironment(three, M.scene, M, cells, goalCell, windows, darkWindows, owners);
   M.walls.push(...walls);
   M.cyberMat = cyberMat;
   M.paneMat = paneMat;

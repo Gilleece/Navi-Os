@@ -95,10 +95,12 @@ export function chaosFor(depth){
    glass (a freed tenant's frame: nobody home, no light behind it).
    Every character window backs onto a sealed holding cell (addCell),
    so the tenants read as HELD — never loose in front of the vista.
+   `owners` maps a window's wall key to its character id, so each cell
+   is dressed with that tenant's own things (wall art + furniture).
    Returns { walls, cyberMat, paneMat, trimMat, ambient } — `walls`
    are axis-aligned collision boxes, the materials are exposed so the
    loop can pulse / recolour them. */
-export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = new Set(), darkWindows = new Set()){
+export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = new Set(), darkWindows = new Set(), owners = new Map()){
   const { N, CELL, WALL_H, WALL_T, theme, depth } = cfg;
   const size = N * CELL;
 
@@ -172,6 +174,11 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   // cut — a freed tenant's cell, empty and unlit behind the black glass.
   const cellWallMat = new three.MeshBasicMaterial({map: cellWallTexture(three, theme), fog:false});
   const cellDarkMat = new three.MeshBasicMaterial({map: cellWallTexture(three, theme), color:0x2e3138, fog:false});
+  // the cells' OUTSIDE skin and their furniture: flat dark surfaces, unlit
+  // and unfogged like the rest of the cell so silhouettes read cleanly
+  const cellShellMat = new three.MeshBasicMaterial({color:0x141821, fog:false});
+  const cellPropMat  = new three.MeshBasicMaterial({color:0x2a3140, fog:false});
+  const cellPropBoxes = [];   // every cell's furniture, merged into ONE mesh at the end
   // vista viewport glazing: near-clear, a breath of cold tint — the view
   // does the work. Unfogged so the glass never greys out the skyline.
   // At the bottom of the cycle (depth 10: the abyss, vista.js) the glass
@@ -215,23 +222,32 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   // behind a character window, so the figure reads as HELD — walled in a
   // digital holding cell — rather than loose in front of the vista's open
   // city. Occupied cells get glowing containment bars across the opening,
-  // a ceiling light strip and a tenancy serial on the back wall (both on
-  // the neon trim material, so they ride the palette animation). A freed
-  // tenant's cell is the same box with the bars gone and the power cut.
-  function addCell(x, z, alongX, dark, ow, oh, cy){
+  // a ceiling light strip and the TENANT'S OWN dressing: their wall art
+  // (textures.cellBackTexture, keyed by `owner`) plus their furniture —
+  // dark boxes pooled in cellPropBoxes, glowing accents on the trim
+  // material so they ride the palette animation. Every plane also gets an
+  // outward-facing twin on the shell material: from outside (a vista
+  // window beside the cell) the box reads solid, never an open dollhouse.
+  // A freed tenant's cell keeps the box, loses the bars and the power.
+  function addCell(x, z, alongX, dark, ow, oh, cy, owner){
     const T = WALL_T, H = WALL_H;
     const CW = 3.4, CD = 2.0;              // interior: the figure stands 0.7 back
     const o = alongX ? (z <= 0.01 ? -1 : 1) : (x <= 0.01 ? -1 : 1);   // outward side
     const r = rng(wallSeed(depth ?? 1, x, z, alongX) ^ 0x7E11);
     const wallM = dark ? cellDarkMat : cellWallMat;
     const backM = dark ? cellDarkMat : new three.MeshBasicMaterial({
-      map: cellBackTexture(three, theme, String(1 + (r() * 98 | 0)).padStart(2, "0"), r),
-      fog: false });
+      map: cellBackTexture(three, theme, owner, r), fog: false });
     const plane = (w, h, mat, px, py, pz, ry, rx = 0) => {
       const m = new three.Mesh(new three.PlaneGeometry(w, h), mat);
       m.position.set(px, py, pz);
       m.rotation.set(rx, ry, 0);
       scene.add(m);
+      // outward twin: rotating π about local Y flips the normal exactly
+      // (coplanar, opposite winding — one face culled from each side)
+      const s = new three.Mesh(new three.PlaneGeometry(w, h), cellShellMat);
+      s.position.set(px, py, pz);
+      s.rotation.set(rx, ry + Math.PI, 0);
+      scene.add(s);
     };
     if (alongX){
       const zc = z + o * (T/2 + CD/2), zb = z + o * (T/2 + CD);
@@ -248,7 +264,7 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
       plane(CD, CW, wallM, xc, 0.02, z, 0, -Math.PI/2);
       plane(CD, CW, wallM, xc, H - 0.02, z, 0, Math.PI/2);
     }
-    if (dark) return;                      // released: no bars, no light
+    if (dark) return;                      // released: no bars, no light, bare box
     // containment bars just behind the glass, and the cell's light strip
     const bo = o * (T/2 + 0.06);
     const bars = [];
@@ -262,12 +278,74 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
     }
     if (alongX) trimBoxes.push({ w: 0.7, h: 0.04, d: 0.7, x, y: H - 0.06, z: z + o * (T/2 + CD/2) });
     else        trimBoxes.push({ w: 0.7, h: 0.04, d: 0.7, x: x + o * (T/2 + CD/2), y: H - 0.06, z });
+
+    // ---- the tenant's furniture ----
+    // u = along the wall from the window centre (mirrored per cell by
+    // `flip`), v = depth into the cell from the wall's inner face — one
+    // layout serves all four wall orientations. The window sill sits at
+    // ~0.72m, so each set's hero piece stands tall enough to be seen
+    // through the glass; the low pieces reward looking in at an angle.
+    const flip = r() < 0.5 ? 1 : -1;
+    const propBox = (list, w, h, d, u, y, v) => {
+      u *= flip;
+      if (alongX) list.push({ w, h, d, x: x + u, y, z: z + o * (T/2 + v) });
+      else        list.push({ w: d, h, d: w, x: x + o * (T/2 + v), y, z: z + u });
+    };
+    const dk = (w, h, d, u, y, v) => propBox(cellPropBoxes, w, h, d, u, y, v);
+    const gl = (w, h, d, u, y, v) => propBox(trimBoxes, w, h, d, u, y, v);
+    switch (owner){
+      case "scally":     // the stall: stocked shelves, crates still coming in
+        dk(0.62, 0.05, 0.36,  1.22, 0.78, 1.25);
+        dk(0.62, 0.05, 0.36,  1.22, 1.24, 1.25);
+        gl(0.10, 0.12, 0.10,  1.06, 0.87, 1.22);
+        gl(0.08, 0.15, 0.08,  1.32, 0.89, 1.28);
+        gl(0.09, 0.09, 0.09,  1.20, 1.32, 1.20);
+        dk(0.46, 0.46, 0.46, -1.20, 0.50, 1.05);
+        dk(0.34, 0.34, 0.34, -1.14, 0.90, 0.98);
+        break;
+      case "homiss":     // the session corner: amp up on its road case, humming
+        dk(0.44, 0.50, 0.36,  1.22, 0.25, 1.15);
+        dk(0.52, 0.62, 0.38,  1.22, 0.81, 1.15);
+        gl(0.38, 0.09, 0.03,  1.22, 0.80, 0.945);
+        gl(0.05, 0.05, 0.03,  1.40, 1.02, 0.945);
+        dk(0.34, 0.05, 0.34, -1.25, 0.47, 0.85);
+        dk(0.07, 0.45, 0.07, -1.25, 0.225, 0.85);
+        break;
+      case "littlebee":  // the lab bench: samples lit, field notes stacked
+        dk(0.72, 0.06, 0.42, -1.20, 0.86, 1.10);
+        dk(0.56, 0.80, 0.32, -1.20, 0.43, 1.15);
+        gl(0.06, 0.16, 0.06, -1.02, 0.97, 1.02);
+        gl(0.06, 0.12, 0.06, -1.38, 0.95, 1.10);
+        gl(0.05, 0.10, 0.05, -1.20, 0.94, 0.98);
+        dk(0.32, 0.07, 0.24,  1.25, 0.035, 0.80);
+        dk(0.28, 0.07, 0.22,  1.28, 0.105, 0.84);
+        dk(0.24, 0.06, 0.20,  1.22, 0.17, 0.78);
+        break;
+      case "sian":       // the workshop: bench, the half-built wedge, toolbox
+        dk(0.84, 0.06, 0.44,  1.20, 0.80, 1.15);
+        dk(0.66, 0.74, 0.36,  1.20, 0.40, 1.20);
+        dk(0.30, 0.13, 0.22,  1.10, 0.90, 1.05);
+        gl(0.20, 0.05, 0.05,  1.10, 0.90, 0.91);
+        gl(0.07, 0.07, 0.07,  1.44, 0.87, 1.15);
+        dk(0.40, 0.22, 0.28, -1.25, 0.11, 0.75);
+        gl(0.10, 0.04, 0.03, -1.25, 0.235, 0.60);
+        break;
+      case "dalypso":    // the den: armchair aimed at a telly that never sleeps
+        dk(0.50, 0.70, 0.34,  1.22, 0.35, 1.05);
+        dk(0.58, 0.46, 0.36,  1.22, 0.93, 1.05);
+        gl(0.46, 0.34, 0.02,  1.22, 0.93, 0.855);
+        dk(0.52, 0.32, 0.46, -1.22, 0.16, 0.95);
+        dk(0.52, 0.70, 0.14, -1.22, 0.51, 1.21);
+        dk(0.12, 0.42, 0.46, -0.98, 0.21, 0.95);
+        dk(0.12, 0.42, 0.46, -1.46, 0.21, 0.95);
+        break;
+    }
   }
 
   // a solid wall with a central window: built from a frame of four
   // brick segments around an opening, plus a translucent pane
   // (black glass instead when the tenant has been freed).
-  function addWindowWall(x, z, alongX, dark){
+  function addWindowWall(x, z, alongX, dark, owner){
     const L = CELL + WALL_T, T = WALL_T;
     const ow = L * 0.5, oh = WALL_H * 0.46, cy = 1.5;   // opening size + centre height
     const botH = cy - oh/2, topH = WALL_H - (cy + oh/2), sideW = (L - ow)/2;
@@ -291,7 +369,7 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
       const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), glass);
       pane.rotation.y = Math.PI/2; pane.position.set(x, cy, z); scene.add(pane);
     }
-    addCell(x, z, alongX, dark, ow, oh, cy);   // the holding cell behind the glass
+    addCell(x, z, alongX, dark, ow, oh, cy, owner);   // the holding cell behind the glass
     addTrim(x, z, alongX);
     collide(x, z, alongX);   // still blocks the player
   }
@@ -348,7 +426,7 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   const vistaChance = 0.30 + 0.15 * chaos;
   function place(geo, x, z, alongX, cyber, boundary){
     const key = wallKey(x, z, alongX);
-    if (windows.has(key)) addWindowWall(x, z, alongX, darkWindows.has(key));
+    if (windows.has(key)) addWindowWall(x, z, alongX, darkWindows.has(key), owners.get(key));
     else if (!cyber && boundary && rng(wallSeed(depth ?? 1, x, z, alongX) ^ 0x51E77)() < vistaChance)
       addVistaWindow(x, z, alongX);
     else addWall(geo, x, z, alongX, cyber);
@@ -365,6 +443,8 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
 
   // the level's every strip of neon trim, as a single mesh + draw call
   if (trimBoxes.length) scene.add(new three.Mesh(mergeBoxGeos(three, trimBoxes), trimMat));
+  // every tenant's furniture likewise: one dark mesh for the whole level
+  if (cellPropBoxes.length) scene.add(new three.Mesh(mergeBoxGeos(three, cellPropBoxes), cellPropMat));
 
   addSigns(three, scene, cfg, scrawlable, size);          // before graffiti: signs claim their walls
   addCables(three, scene, cfg, cells, trimMat);
