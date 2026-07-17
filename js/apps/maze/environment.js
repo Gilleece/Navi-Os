@@ -18,13 +18,54 @@
    than the last, and the final descent is fully chaotic. The
    dissolving cyber wall around the exit ring is untouched by any
    of this: it is always its own pattern.
+
+   THE SHELL HAS HOLES NOW: perimeter walls (the only walls whose
+   far side is guaranteed void) can open into a neon-trimmed
+   VISTA WINDOW — a glazed viewport onto the world vista.js builds
+   outside the maze (skyline, synthwave sun, the eye). Interior
+   detail: every wall now carries a cornice as well as a baseboard
+   (all trim merged into ONE mesh, so a level of neon costs one
+   draw call), a few walls hang vertical neon signage, and cable
+   runs sag across the corridors at ceiling height.
    ============================================================ */
 import { cellCenter } from "./generator.js";
 import { rng } from "./palette.js";
-import { FINAL_DEPTH } from "./state.js";
+import { FINAL_DEPTH, depthInCycle } from "./state.js";
 import { graffitiPool } from "./story.js";
-import { brickTexture, panelTexture, glyphTexture, crackedTexture,
-         graffitiTexture, floorTexture, ceilingTexture, cyberTexture } from "./textures.js";
+import { brickTexture, panelTexture, glyphTexture, crackedTexture, graffitiTexture,
+         floorTexture, ceilingTexture, cyberTexture, signTexture,
+         cellWallTexture, cellBackTexture } from "./textures.js";
+
+/* concatenate simple indexed BufferGeometries (position/normal/uv) into
+   one — the neon trim and the cable runs each collapse to a single mesh
+   instead of a few hundred draw calls. Sources are disposed. */
+function mergeGeos(three, geos){
+  const pos = [], norm = [], uv = [], idx = [];
+  let base = 0;
+  for (const src of geos){
+    const p = src.attributes.position;
+    pos.push(...p.array);
+    norm.push(...src.attributes.normal.array);
+    uv.push(...src.attributes.uv.array);
+    const ix = src.index;
+    for (let i = 0; i < ix.count; i++) idx.push(ix.getX(i) + base);
+    base += p.count;
+    src.dispose();
+  }
+  const geo = new three.BufferGeometry();
+  geo.setAttribute("position", new three.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("normal",   new three.Float32BufferAttribute(norm, 3));
+  geo.setAttribute("uv",       new three.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  return geo;
+}
+
+/* merge a list of {w,h,d,x,y,z} axis-aligned boxes into one geometry */
+const mergeBoxGeos = (three, boxes) => mergeGeos(three, boxes.map(b => {
+  const g = new three.BoxGeometry(b.w, b.h, b.d);
+  g.translate(b.x, b.y, b.z);
+  return g;
+}));
 
 /* stable id for a wall at a world position — lets callers (e.g.
    character spawns) ask for a window there regardless of which
@@ -52,6 +93,8 @@ export function chaosFor(depth){
    material; walls whose key is in `windows` are built with a window
    opening instead — and a window also in `darkWindows` gets black
    glass (a freed tenant's frame: nobody home, no light behind it).
+   Every character window backs onto a sealed holding cell (addCell),
+   so the tenants read as HELD — never loose in front of the vista.
    Returns { walls, cyberMat, paneMat, trimMat, ambient } — `walls`
    are axis-aligned collision boxes, the materials are exposed so the
    loop can pulse / recolour them. */
@@ -123,13 +166,30 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
   // "dark window" of Scally's rule three. Deliberately NOT on the palette
   // animation, so it stays dead while everything else breathes.
   const darkPaneMat = new three.MeshBasicMaterial({color:0x04060a, transparent:true, opacity:0.6, side:three.DoubleSide, fog:false});
-  // baseboard trim: a thin strip of the level's neon along every wall
+  // tenant cell lining (the sealed chamber behind a character window):
+  // dim grid-ruled surfaces, unlit + unfogged like the vista so they read
+  // through the glass. The dark variant is the same lining with the power
+  // cut — a freed tenant's cell, empty and unlit behind the black glass.
+  const cellWallMat = new three.MeshBasicMaterial({map: cellWallTexture(three, theme), fog:false});
+  const cellDarkMat = new three.MeshBasicMaterial({map: cellWallTexture(three, theme), color:0x2e3138, fog:false});
+  // vista viewport glazing: near-clear, a breath of cold tint — the view
+  // does the work. Unfogged so the glass never greys out the skyline.
+  // At the bottom of the cycle (depth 10: the abyss, vista.js) the glass
+  // is heavier and sea-green — water pressing against the other side.
+  const drowned = depthInCycle(depth ?? 1) === 10;
+  const vistaPaneMat = new three.MeshBasicMaterial({
+    color: drowned ? 0x2e8ea8 : 0x9fd8ff, transparent: true, opacity: drowned ? 0.22 : 0.08,
+    side: three.DoubleSide, fog: false, depthWrite: false});
+  // viewport mullions: dark steel bars crossing the glass
+  const mullionMat = new three.MeshLambertMaterial({color:0x11141c});
+  // neon trim: baseboard + cornice on every wall and the glowing frames of
+  // the vista viewports. All of it accumulates in trimBoxes and is merged
+  // into ONE mesh on trimMat at the end of the build.
   const trimMat = new three.MeshBasicMaterial({color:theme.neon});
   const TRIM_H = 0.09;
+  const trimBoxes = [];
   const geoH = new three.BoxGeometry(CELL + WALL_T, WALL_H, WALL_T); // runs along X
   const geoV = new three.BoxGeometry(WALL_T, WALL_H, CELL + WALL_T); // runs along Z
-  const trimH = new three.BoxGeometry(CELL + WALL_T, TRIM_H, WALL_T + 0.04);
-  const trimV = new three.BoxGeometry(WALL_T + 0.04, TRIM_H, CELL + WALL_T);
 
   const scrawlable = [];   // solid, non-window, non-goal walls: graffiti candidates
 
@@ -139,9 +199,10 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
     walls.push({minX:x-hx, maxX:x+hx, minZ:z-hz, maxZ:z+hz});
   }
   function addTrim(x, z, alongX){
-    const m = new three.Mesh(alongX ? trimH : trimV, trimMat);
-    m.position.set(x, TRIM_H/2, z);
-    scene.add(m);
+    const w = alongX ? CELL + WALL_T : WALL_T + 0.04;
+    const d = alongX ? WALL_T + 0.04 : CELL + WALL_T;
+    trimBoxes.push({ w, h: TRIM_H, d, x, y: TRIM_H/2, z },        // baseboard
+                   { w, h: 0.06,   d, x, y: WALL_H - 0.03, z });  // cornice
   }
   function addWall(geo, x, z, alongX, cyber){
     const m = new three.Mesh(geo, cyber ? cyberMat : pickMat(x, z, alongX));
@@ -150,6 +211,59 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
     if (!cyber){ addTrim(x, z, alongX); scrawlable.push({ x, z, alongX }); }
     collide(x, z, alongX);
   }
+  // the tenant's cell: a sealed grid-lined chamber jutting into the void
+  // behind a character window, so the figure reads as HELD — walled in a
+  // digital holding cell — rather than loose in front of the vista's open
+  // city. Occupied cells get glowing containment bars across the opening,
+  // a ceiling light strip and a tenancy serial on the back wall (both on
+  // the neon trim material, so they ride the palette animation). A freed
+  // tenant's cell is the same box with the bars gone and the power cut.
+  function addCell(x, z, alongX, dark, ow, oh, cy){
+    const T = WALL_T, H = WALL_H;
+    const CW = 3.4, CD = 2.0;              // interior: the figure stands 0.7 back
+    const o = alongX ? (z <= 0.01 ? -1 : 1) : (x <= 0.01 ? -1 : 1);   // outward side
+    const r = rng(wallSeed(depth ?? 1, x, z, alongX) ^ 0x7E11);
+    const wallM = dark ? cellDarkMat : cellWallMat;
+    const backM = dark ? cellDarkMat : new three.MeshBasicMaterial({
+      map: cellBackTexture(three, theme, String(1 + (r() * 98 | 0)).padStart(2, "0"), r),
+      fog: false });
+    const plane = (w, h, mat, px, py, pz, ry, rx = 0) => {
+      const m = new three.Mesh(new three.PlaneGeometry(w, h), mat);
+      m.position.set(px, py, pz);
+      m.rotation.set(rx, ry, 0);
+      scene.add(m);
+    };
+    if (alongX){
+      const zc = z + o * (T/2 + CD/2), zb = z + o * (T/2 + CD);
+      plane(CW, H, backM, x, H/2, zb, o > 0 ? Math.PI : 0);
+      plane(CD, H, wallM, x - CW/2, H/2, zc, Math.PI/2);
+      plane(CD, H, wallM, x + CW/2, H/2, zc, -Math.PI/2);
+      plane(CW, CD, wallM, x, 0.02, zc, 0, -Math.PI/2);
+      plane(CW, CD, wallM, x, H - 0.02, zc, 0, Math.PI/2);
+    } else {
+      const xc = x + o * (T/2 + CD/2), xb = x + o * (T/2 + CD);
+      plane(CW, H, backM, xb, H/2, z, o > 0 ? -Math.PI/2 : Math.PI/2);
+      plane(CD, H, wallM, xc, H/2, z - CW/2, 0);
+      plane(CD, H, wallM, xc, H/2, z + CW/2, Math.PI);
+      plane(CD, CW, wallM, xc, 0.02, z, 0, -Math.PI/2);
+      plane(CD, CW, wallM, xc, H - 0.02, z, 0, Math.PI/2);
+    }
+    if (dark) return;                      // released: no bars, no light
+    // containment bars just behind the glass, and the cell's light strip
+    const bo = o * (T/2 + 0.06);
+    const bars = [];
+    for (let yb = cy - oh/2 + 0.25; yb < cy + oh/2 - 0.1; yb += 0.4)
+      bars.push([0, yb, false]);
+    bars.push([-0.55, cy, true], [0.55, cy, true]);
+    for (const [ba, by, vert] of bars){
+      const bw = vert ? 0.03 : ow, bh = vert ? oh : 0.03;
+      if (alongX) trimBoxes.push({ w: bw, h: bh, d: 0.03, x: x + ba, y: by, z: z + bo });
+      else        trimBoxes.push({ w: 0.03, h: bh, d: bw, x: x + bo, y: by, z: z + ba });
+    }
+    if (alongX) trimBoxes.push({ w: 0.7, h: 0.04, d: 0.7, x, y: H - 0.06, z: z + o * (T/2 + CD/2) });
+    else        trimBoxes.push({ w: 0.7, h: 0.04, d: 0.7, x: x + o * (T/2 + CD/2), y: H - 0.06, z });
+  }
+
   // a solid wall with a central window: built from a frame of four
   // brick segments around an opening, plus a translucent pane
   // (black glass instead when the tenant has been freed).
@@ -177,25 +291,83 @@ export function buildEnvironment(three, scene, cfg, cells, goalCell, windows = n
       const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), glass);
       pane.rotation.y = Math.PI/2; pane.position.set(x, cy, z); scene.add(pane);
     }
+    addCell(x, z, alongX, dark, ow, oh, cy);   // the holding cell behind the glass
     addTrim(x, z, alongX);
     collide(x, z, alongX);   // still blocks the player
   }
 
-  function place(geo, x, z, alongX, cyber){
+  // a vista viewport: a wide neon-framed opening in a perimeter wall,
+  // glazed near-clear, looking out onto the world vista.js builds in the
+  // void. Dark mullions cross the glass; the opening's edges ride the
+  // trim's neon (and its palette animation). Still a solid collider.
+  function addVistaWindow(x, z, alongX){
+    const L = CELL + WALL_T, T = WALL_T;
+    const ow = 2.6, oh = 1.7, cy = 1.55;   // a broad viewport at eye height
+    const botH = cy - oh/2, topH = WALL_H - (cy + oh/2), sideW = (L - ow)/2;
+    const mat = pickMat(x, z, alongX);     // frame keeps the wall's own skin
+    const seg = (w, h, d, px, py, pz, m = mat) => {
+      const mesh = new three.Mesh(new three.BoxGeometry(w, h, d), m);
+      mesh.position.set(px, py, pz); scene.add(mesh);
+    };
+    if (alongX){
+      seg(L, botH, T, x, botH/2, z);
+      seg(L, topH, T, x, WALL_H - topH/2, z);
+      seg(sideW, oh, T, x - (ow + sideW)/2, cy, z);
+      seg(sideW, oh, T, x + (ow + sideW)/2, cy, z);
+      seg(ow, 0.05, T*0.5, x, cy, z, mullionMat);          // mullion cross
+      seg(0.05, oh, T*0.5, x, cy, z, mullionMat);
+      const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), vistaPaneMat);
+      pane.position.set(x, cy, z); scene.add(pane);
+      trimBoxes.push(                                       // the glowing frame
+        { w: ow + 0.12, h: 0.06, d: T + 0.06, x, y: cy + oh/2, z },
+        { w: ow + 0.12, h: 0.06, d: T + 0.06, x, y: cy - oh/2, z },
+        { w: 0.06, h: oh + 0.12, d: T + 0.06, x: x - ow/2, y: cy, z },
+        { w: 0.06, h: oh + 0.12, d: T + 0.06, x: x + ow/2, y: cy, z });
+    } else {
+      seg(T, botH, L, x, botH/2, z);
+      seg(T, topH, L, x, WALL_H - topH/2, z);
+      seg(T, oh, sideW, x, cy, z - (ow + sideW)/2);
+      seg(T, oh, sideW, x, cy, z + (ow + sideW)/2);
+      seg(T*0.5, 0.05, ow, x, cy, z, mullionMat);
+      seg(T*0.5, oh, 0.05, x, cy, z, mullionMat);
+      const pane = new three.Mesh(new three.PlaneGeometry(ow, oh), vistaPaneMat);
+      pane.rotation.y = Math.PI/2; pane.position.set(x, cy, z); scene.add(pane);
+      trimBoxes.push(
+        { w: T + 0.06, h: 0.06, d: ow + 0.12, x, y: cy + oh/2, z },
+        { w: T + 0.06, h: 0.06, d: ow + 0.12, x, y: cy - oh/2, z },
+        { w: T + 0.06, h: oh + 0.12, d: 0.06, x, y: cy, z: z - ow/2 },
+        { w: T + 0.06, h: oh + 0.12, d: 0.06, x, y: cy, z: z + ow/2 });
+    }
+    addTrim(x, z, alongX);
+    collide(x, z, alongX);   // still blocks the player
+  }
+
+  // perimeter walls (their far side is guaranteed void) roll a seeded
+  // chance to open into a vista viewport; deeper floors have shed more of
+  // their shell. Character windows and the goal's cyber wall always win.
+  const vistaChance = 0.30 + 0.15 * chaos;
+  function place(geo, x, z, alongX, cyber, boundary){
     const key = wallKey(x, z, alongX);
     if (windows.has(key)) addWindowWall(x, z, alongX, darkWindows.has(key));
+    else if (!cyber && boundary && rng(wallSeed(depth ?? 1, x, z, alongX) ^ 0x51E77)() < vistaChance)
+      addVistaWindow(x, z, alongX);
     else addWall(geo, x, z, alongX, cyber);
   }
   const gx = goalCell.x, gy = goalCell.y;
   for (let y = 0; y < N; y++)
     for (let x = 0; x < N; x++){
       const c = cells[y][x];
-      if (y === 0 && c.N) place(geoH, cellCenter(x, CELL), 0, true, x === gx && gy === 0);
-      if (c.S)            place(geoH, cellCenter(x, CELL), (y+1)*CELL, true, x === gx && (y === gy || y+1 === gy));
-      if (x === 0 && c.W) place(geoV, 0, cellCenter(y, CELL), false, y === gy && gx === 0);
-      if (c.E)            place(geoV, (x+1)*CELL, cellCenter(y, CELL), false, y === gy && (x === gx || x+1 === gx));
+      if (y === 0 && c.N) place(geoH, cellCenter(x, CELL), 0, true, x === gx && gy === 0, true);
+      if (c.S)            place(geoH, cellCenter(x, CELL), (y+1)*CELL, true, x === gx && (y === gy || y+1 === gy), y === N - 1);
+      if (x === 0 && c.W) place(geoV, 0, cellCenter(y, CELL), false, y === gy && gx === 0, true);
+      if (c.E)            place(geoV, (x+1)*CELL, cellCenter(y, CELL), false, y === gy && (x === gx || x+1 === gx), x === N - 1);
     }
 
+  // the level's every strip of neon trim, as a single mesh + draw call
+  if (trimBoxes.length) scene.add(new three.Mesh(mergeBoxGeos(three, trimBoxes), trimMat));
+
+  addSigns(three, scene, cfg, scrawlable, size);          // before graffiti: signs claim their walls
+  addCables(three, scene, cfg, cells, trimMat);
   addGraffiti(three, scene, cfg, scrawlable, size);
 
   return { walls, cyberMat, paneMat, trimMat, ambient };
@@ -236,4 +408,87 @@ function addGraffiti(three, scene, cfg, candidates, size){
     }
     scene.add(mesh);
   }
+}
+
+/* vertical neon sign boards on a few interior walls — the Protocol still
+   advertising to corridors nobody shops in. Accents are drawn from the
+   level's own colour set plus one warm amber, so the multi-colour signage
+   stays in-palette. Unlit, so the bloom pass catches them. Signs claim
+   their wall (splice) so graffiti never scrawls over them. */
+function addSigns(three, scene, cfg, candidates, size){
+  const { WALL_T, theme, depth } = cfg;
+  const chaos = chaosFor(depth);
+  const r = rng(((depth ?? 1) * 0xB0A4D5) >>> 0);
+  const toHex = t => (Math.min(255, Math.round(t[0])) << 16)
+                   | (Math.min(255, Math.round(t[1])) << 8)
+                   |  Math.min(255, Math.round(t[2]));
+  const accents = [theme.near, theme.mid, theme.far, [255, 179, 107]];
+  const count = Math.min(candidates.length, 2 + Math.round(chaos * 4 + r() * 2));
+  for (let i = 0; i < count && candidates.length; i++){
+    const wall = candidates.splice(Math.floor(r() * candidates.length), 1)[0];
+    let side = r() < 0.5 ? 1 : -1;
+    if (wall.alongX){ if (wall.z <= 0.01) side = 1; else if (wall.z >= size - 0.01) side = -1; }
+    else            { if (wall.x <= 0.01) side = 1; else if (wall.x >= size - 0.01) side = -1; }
+    const mesh = new three.Mesh(
+      new three.PlaneGeometry(0.6, 2.2),
+      new three.MeshBasicMaterial({ map: signTexture(three, r), transparent: true,
+                                    color: toHex(accents[Math.floor(r() * accents.length)]),
+                                    depthWrite: false }));
+    const along = r() * 1.6 - 0.8;
+    const off = WALL_T/2 + 0.03;
+    if (wall.alongX){
+      mesh.position.set(wall.x + along, 1.85, wall.z + side * off);
+      mesh.rotation.y = side > 0 ? 0 : Math.PI;
+    } else {
+      mesh.position.set(wall.x + side * off, 1.85, wall.z + along);
+      mesh.rotation.y = side > 0 ? Math.PI/2 : -Math.PI/2;
+    }
+    scene.add(mesh);
+  }
+}
+
+/* cable runs strung wall-to-wall across the corridors at ceiling height,
+   sagging like they were hung in a hurry and never inspected since. Most
+   are dead black rubber; the odd one is live and rides the trim's neon
+   (and therefore the palette animation). Dead runs merge into one mesh,
+   live runs into another — the whole harness is two draw calls. */
+function addCables(three, scene, cfg, cells, trimMat){
+  const { N, CELL, WALL_H, WALL_T, theme, depth } = cfg;
+  const chaos = chaosFor(depth);
+  const r = rng(((depth ?? 1) * 0xCAB1E5) >>> 0);
+  const spots = [];
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++){
+      const c = cells[y][x];
+      if (c.N && c.S) spots.push({ x, y, axis: "z" });   // corridor runs E-W: cable spans N-S
+      if (c.E && c.W) spots.push({ x, y, axis: "x" });   // corridor runs N-S: cable spans E-W
+    }
+  const darkGeos = [], liveGeos = [];
+  const count = Math.min(spots.length, Math.round(4 + chaos * 7 + r() * 2));
+  for (let i = 0; i < count && spots.length; i++){
+    const s = spots.splice(Math.floor(r() * spots.length), 1)[0];
+    const cx = cellCenter(s.x, CELL), cz = cellCenter(s.y, CELL);
+    const off = r() * 2.4 - 1.2;                          // where along the corridor it hangs
+    const yA = WALL_H - 0.08 - r() * 0.2;
+    const sag = 0.3 + r() * 0.45;
+    const half = CELL/2 - WALL_T/2;
+    const a = s.axis === "z" ? new three.Vector3(cx + off, yA, cz - half)
+                             : new three.Vector3(cx - half, yA, cz + off);
+    const b = s.axis === "z" ? new three.Vector3(cx + off, yA - r() * 0.12, cz + half)
+                             : new three.Vector3(cx + half, yA - r() * 0.12, cz + off);
+    const mid = a.clone().lerp(b, 0.5);
+    mid.y -= sag * 2;                                     // quadratic control: 2× dip ≈ true sag
+    const live = r() < 0.25;
+    const geo = new three.TubeGeometry(
+      new three.QuadraticBezierCurve3(a, mid, b), 9, live ? 0.014 : 0.024, 5, false);
+    (live ? liveGeos : darkGeos).push(geo);
+  }
+  const t3 = theme.texRgb;
+  if (darkGeos.length){
+    const dark = ((t3[0]*0.07|0) << 16) | ((t3[1]*0.07|0) << 8) | (t3[2]*0.07|0);
+    scene.add(new three.Mesh(mergeGeos(three, darkGeos),
+                             new three.MeshLambertMaterial({ color: dark })));
+  }
+  if (liveGeos.length)
+    scene.add(new three.Mesh(mergeGeos(three, liveGeos), trimMat));
 }

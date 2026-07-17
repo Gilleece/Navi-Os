@@ -18,6 +18,25 @@
    ============================================================ */
 import { cssHex } from "./palette.js";
 
+/* age + depth pass, laid over every wall variant: a fake ambient-
+   occlusion gradient at the floor and ceiling junctions plus a dusting
+   of grime speckle. Cheap, but it stops the walls reading as flat
+   wallpaper — corners feel like corners. Walls repeat vertically
+   exactly once, so the gradient always lands at the real junctions. */
+function agedOverlay(g){
+  const ao = g.createLinearGradient(0, 0, 0, 256);
+  ao.addColorStop(0.00, "rgba(0,0,0,.38)");
+  ao.addColorStop(0.16, "rgba(0,0,0,0)");
+  ao.addColorStop(0.82, "rgba(0,0,0,0)");
+  ao.addColorStop(1.00, "rgba(0,0,0,.45)");
+  g.fillStyle = ao; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 70; i++){
+    const s = 1 + Math.random() * 3;
+    g.fillStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.12})`;
+    g.fillRect(Math.random() * 256, Math.random() * 256, s, s);
+  }
+}
+
 /* the brick pattern, shared by brickTexture and crackedTexture */
 function paintBricks(g, theme){
   const [nr, ng, nb] = theme.texRgb;
@@ -44,7 +63,7 @@ function canvasTexture(three, paint){
 }
 
 export function brickTexture(three, theme){
-  return canvasTexture(three, g => paintBricks(g, theme));
+  return canvasTexture(three, g => { paintBricks(g, theme); agedOverlay(g); });
 }
 
 /* riveted panel plates with a couple of live circuit traces */
@@ -83,6 +102,7 @@ export function panelTexture(three, theme){
       g.fillStyle = `rgba(${nr},${ng},${nb},.95)`;     // live LED
       g.fillRect(x - 1.5, y - 1.5, 3, 3);
     }
+    agedOverlay(g);
   });
 }
 
@@ -117,6 +137,7 @@ export function glyphTexture(three, theme){
         g.stroke();
       }
     }
+    agedOverlay(g);
   });
 }
 
@@ -150,6 +171,7 @@ export function crackedTexture(three, theme){
       g.strokeStyle = `rgba(${nr},${ng},${nb},.5)`; g.lineWidth = 1.4;
       g.stroke();                                      // the wired, glowing in the gap
     }
+    agedOverlay(g);
   });
 }
 
@@ -188,15 +210,58 @@ export function cyberTexture(three, theme){
   return t;
 }
 
+/* one floor cell: deck plating in four quadrant panels, seams, corner
+   bolts, a dashed glowing conduit down the middle, scuffs and edge AO —
+   the old texture was a bare frame; this reads as a walked-on deck */
 export function floorTexture(three, theme){
   const [nr, ng, nb] = theme.texRgb;
   const c = document.createElement("canvas"); c.width = c.height = 256;
   const g = c.getContext("2d");
   g.fillStyle = cssHex(theme.texFog); g.fillRect(0,0,256,256);
-  g.strokeStyle = `rgba(${nr},${ng},${nb},.25)`; g.lineWidth = 2;
+  // quadrant deck panels, each a slightly different shade
+  for (const [px, py] of [[0,0],[128,0],[0,128],[128,128]]){
+    const f = 0.02 + Math.random()*0.025;
+    g.fillStyle = `rgb(${nr*f|0},${ng*f|0},${nb*f|0})`;
+    g.fillRect(px + 3, py + 3, 122, 122);
+  }
+  g.strokeStyle = `rgba(${nr},${ng},${nb},.25)`; g.lineWidth = 2;    // cell frame
   g.strokeRect(4,4,248,248);
-  g.strokeStyle = `rgba(${nr},${ng},${nb},.08)`;
+  g.strokeStyle = `rgba(${nr},${ng},${nb},.1)`;                      // panel seams
   g.beginPath(); g.moveTo(128,0); g.lineTo(128,256); g.moveTo(0,128); g.lineTo(256,128); g.stroke();
+  g.fillStyle = `rgba(${nr},${ng},${nb},.22)`;                       // seam bolts
+  for (const [bx, by] of [[128,128],[128,16],[128,240],[16,128],[240,128]]){
+    g.beginPath(); g.arc(bx, by, 3, 0, Math.PI*2); g.fill();
+  }
+  // a dashed conduit strip crossing the cell — a live line under the deck
+  const vert = Math.random() < 0.5;
+  g.strokeStyle = `rgba(${nr},${ng},${nb},.3)`; g.lineWidth = 3;
+  g.setLineDash([14, 10]);
+  g.beginPath();
+  if (vert){ g.moveTo(64 + Math.random()*128, 8); g.lineTo(64 + Math.random()*128, 248); }
+  else     { g.moveTo(8, 64 + Math.random()*128); g.lineTo(248, 64 + Math.random()*128); }
+  g.stroke();
+  g.setLineDash([]);
+  // scuffs: the drag marks of everything that was hauled through here
+  for (let i = 0; i < 7; i++){
+    g.strokeStyle = `rgba(0,0,0,${0.1 + Math.random()*0.15})`;
+    g.lineWidth = 2 + Math.random()*3;
+    const x = Math.random()*256, y = Math.random()*256;
+    g.beginPath(); g.moveTo(x, y);
+    g.lineTo(x + (Math.random()*2 - 1)*60, y + (Math.random()*2 - 1)*60);
+    g.stroke();
+  }
+  // edge AO so each cell pools a little shadow at its border
+  for (const rot of [0, 1]){
+    for (const flip of [0, 1]){
+      const grad = rot
+        ? g.createLinearGradient(flip ? 256 : 0, 0, flip ? 236 : 20, 0)
+        : g.createLinearGradient(0, flip ? 256 : 0, 0, flip ? 236 : 20);
+      grad.addColorStop(0, "rgba(0,0,0,.3)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 256, 256);
+    }
+  }
   const t = new three.CanvasTexture(c);
   t.wrapS = t.wrapT = three.RepeatWrapping;
   return t;
@@ -308,6 +373,113 @@ export function ledTexture(three, rand = Math.random){
       for (let x = 140; x < 240; x += 12) g.fillRect(x, y - 2, 6, 14);
     }
   });
+}
+
+/* ---------- the tenant cells --------------------------------------------
+   The chamber behind a character's window is a sealed digital holding
+   cell, not a balcony on the city. cellWallTexture lines the sides /
+   floor / ceiling: a dark surface ruled into a fine glowing grid, like
+   the inside of a wireframe. cellBackTexture is the rear wall the figure
+   stands against — same lining plus falling data-rain columns and the
+   tenancy serial stencilled across the top. Both draw in the level's
+   representative neon (theme.rgb), kept dim so the glowing tenant stays
+   the brightest thing in the box. */
+function paintCellGrid(g, nr, ng, nb){
+  g.fillStyle = `rgb(${nr*0.045|0},${ng*0.045|0},${nb*0.045|0})`;
+  g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = `rgba(${nr},${ng},${nb},.14)`; g.lineWidth = 1;
+  for (let k = 0; k <= 256; k += 32){
+    g.beginPath();
+    g.moveTo(0, k + 0.5); g.lineTo(256, k + 0.5);
+    g.moveTo(k + 0.5, 0); g.lineTo(k + 0.5, 256);
+    g.stroke();
+  }
+  g.strokeStyle = `rgba(${nr},${ng},${nb},.3)`; g.lineWidth = 2;   // major seams
+  g.beginPath();
+  g.moveTo(0, 128); g.lineTo(256, 128);
+  g.moveTo(128, 0); g.lineTo(128, 256);
+  g.stroke();
+  // corner brackets, like a targeting overlay that never went away
+  g.strokeStyle = `rgba(${nr},${ng},${nb},.5)`; g.lineWidth = 3;
+  for (const [cx, cy, sx, sy] of [[8,8,1,1],[248,8,-1,1],[8,248,1,-1],[248,248,-1,-1]]){
+    g.beginPath();
+    g.moveTo(cx + sx*22, cy); g.lineTo(cx, cy); g.lineTo(cx, cy + sy*22);
+    g.stroke();
+  }
+}
+
+export function cellWallTexture(three, theme){
+  const [nr, ng, nb] = theme.rgb.map(Math.round);
+  return canvasTexture(three, g => paintCellGrid(g, nr, ng, nb));
+}
+
+export function cellBackTexture(three, theme, serial, rand = Math.random){
+  const [nr, ng, nb] = theme.rgb.map(Math.round);
+  return canvasTexture(three, g => {
+    paintCellGrid(g, nr, ng, nb);
+    // data rain: thin columns of process noise sliding down the wall
+    for (let i = 0; i < 3; i++){
+      const x = 30 + rand() * 196;
+      let y = rand() * 60;
+      while (y < 250){
+        const h = 4 + rand() * 14;
+        g.fillStyle = `rgba(${nr},${ng},${nb},${0.1 + rand() * 0.35})`;
+        g.fillRect(x, y, 5, h);
+        y += h + 4 + rand() * 26;
+      }
+    }
+    // the tenancy serial, placed to read through the window opening —
+    // just above the tenant's head (the wall is 3.4m; the glass shows
+    // roughly the 0.7..2.3m band, so canvas y≈96 lands at ~2.1m)
+    g.fillStyle = `rgba(${nr},${ng},${nb},.75)`;
+    g.font = "30px 'VT323', monospace"; g.textAlign = "center";
+    g.fillText(`TENANCY ${serial}`, 128, 96);
+    g.fillStyle = `rgba(${nr},${ng},${nb},.35)`;
+    g.font = "16px 'VT323', monospace";
+    g.fillText("DO NOT RELEASE", 128, 118);
+  });
+}
+
+/* ---------- neon signage ------------------------------------------------
+   A vertical sign board (environment.js hangs these on interior walls):
+   framed column of bold dead glyphs over a small logo block, drawn in
+   white — the material's .color supplies the neon, so one texture works
+   for every accent the level hands out. `rand` is the level's seeded rng. */
+export function signTexture(three, rand = Math.random){
+  const c = document.createElement("canvas"); c.width = 128; c.height = 512;
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, 128, 512);
+  const ink = a => `rgba(255,255,255,${a})`;
+  g.strokeStyle = ink(0.9); g.lineWidth = 5;
+  g.strokeRect(8, 8, 112, 496);                       // the tube frame
+  g.strokeStyle = ink(0.22); g.lineWidth = 2;
+  g.strokeRect(18, 18, 92, 476);                      // inner accent line
+  g.lineCap = "square"; g.lineJoin = "miter";
+  // a column of blocky glyphs, like signage in a script nobody reads
+  let y = 44;
+  while (y < 420){
+    g.strokeStyle = ink(0.65 + rand() * 0.35);
+    g.lineWidth = 7;
+    const strokes = 2 + (rand() * 3 | 0);
+    g.beginPath();
+    for (let s = 0; s < strokes; s++){
+      const x1 = 40 + rand() * 44, y1 = y + rand() * 36;
+      g.moveTo(x1, y1);
+      g.lineTo(rand() < 0.5 ? x1 + 14 + rand() * 24 : x1,
+               rand() < 0.5 ? y1 : y1 + 12 + rand() * 22);
+      if (rand() < 0.5){                              // the odd second bend
+        g.lineTo(rand() < 0.5 ? x1 + 30 : x1 - 10, y1 + 20 + rand() * 16);
+      }
+    }
+    g.stroke();
+    g.strokeStyle = ink(0.25); g.lineWidth = 2;       // separator dash
+    g.beginPath(); g.moveTo(44, y + 54); g.lineTo(84, y + 54); g.stroke();
+    y += 62;
+  }
+  g.fillStyle = ink(0.85);                            // the logo block at the foot
+  g.fillRect(48, 448, 32, 32);
+  g.clearRect(56, 456, 16, 16);
+  return new three.CanvasTexture(c);
 }
 
 /* ---------- graffiti ----------------------------------------------------

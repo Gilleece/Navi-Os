@@ -16,7 +16,7 @@
    through to the network.
    ============================================================ */
 
-const VERSION    = "v3";
+const VERSION    = "v5";
 const CACHE_NAME = `navi-${VERSION}`;
 const RUNTIME_CACHE = `navi-runtime-${VERSION}`;
 
@@ -76,6 +76,7 @@ const PRECACHE_URLS = [
   "./js/apps/maze/state.js",
   "./js/apps/maze/story.js",
   "./js/apps/maze/textures.js",
+  "./js/apps/maze/vista.js",
   "./js/apps/maze/vrbanner.js",
   "./js/apps/notepad.js",
   "./js/apps/oracle.js",

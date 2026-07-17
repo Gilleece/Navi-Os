@@ -7,7 +7,8 @@
    Parts:
      generator.js   : maze grid algorithm (no three.js)
      textures.js    : procedural wall / floor textures
-     environment.js : fog, lights, floor, ceiling, walls
+     environment.js : fog, lights, floor, ceiling, walls, vista windows
+     vista.js       : the world outside the walls (skyline, sun, the eye)
      props.js       : set dressing + atmosphere (corner junk, dead-end
                       centrepieces, light wells, data motes) and the
                       VR grab/throw toy physics
@@ -26,6 +27,7 @@
    ============================================================ */
 import { $ } from "../../utils.js";
 import { buildEnvironment, wallKey, chaosFor } from "./environment.js";
+import { buildVista } from "./vista.js";
 import { buildProps, updateProps } from "./props.js";
 import { buildEntities, updateTokens } from "./entities.js";
 import { themeFor, animate, liveScene } from "./palette.js";
@@ -91,6 +93,7 @@ const M = {
   walls:[], goal:null, goalLight:null, goalBeam:null, spinners:[], depth:1, lamp:null, cyberMat:null,
   tokens:[], bursts:[], theme:null, ambient:null, paneMat:null, trimMat:null,
   props:[], propFx:null, grabs:null,
+  vista:null,                               // the world outside the walls (vista.js; null in the sanctum)
   npcs:[], nearCharacter:null, dialogueOpen:false, journalOpen:false, talk:false,
   // narrative gate: who still has unheard story beats (locks the exit ring),
   // the ring's rise animation state, and the recheck / message throttles
@@ -168,6 +171,9 @@ function buildMaze(){
   M.trimMat = trimMat;
   M.ambient = ambient;
 
+  // the world outside the walls, seen through the perimeter vista windows
+  M.vista = buildVista(three, M.scene, M);
+
   // set dressing + atmosphere (also frees anything still held in VR and
   // pushes the dead-end centrepiece colliders into M.walls)
   const { props, fx } = buildProps(three, M.scene, M, cells, goalCell, spawns);
@@ -239,6 +245,7 @@ function buildBase(){
   M.goalBeam = null;               // no beacon in the sanctum: one open room, the gate is visible
   M.npcs = s.npcs; M.nearCharacter = null;
   M.tokens = []; M.props = []; M.propFx = null;
+  M.vista = null;                  // no windows down here: the sanctum is sealed
 
   if (!M.lamp){
     M.lamp = new three.PointLight(M.theme.neon, 1.5, 18);
@@ -494,6 +501,7 @@ function mazeLoop(){
   }
 
   updateProps(three, M, dt);      // motes + light wells always; grab/throw pauses during dialogue
+  if (M.vista) M.vista.update(dt);   // the outside keeps moving even mid-conversation
   updateHands(M);                 // animate the VR hands + active-controller pointer (self-hides off-VR)
   updateVRBanner();               // hide the depth banner once its time is up
   updateMinimap(M);               // fog-of-war map: top-right on flat screens, left wrist in VR
