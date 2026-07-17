@@ -48,6 +48,7 @@ import { littlebeeBeats } from "./characters/story/littlebee.beats.js";
 import { sianBeats } from "./characters/story/sian.beats.js";
 import { dalypsoBeats } from "./characters/story/dalypso.beats.js";
 import { custodianBeats } from "./characters/story/custodian.beats.js";
+import { vistaRemarkFor, eyeTopicFor } from "./characters/story/vista.flavour.js";
 
 /* tiny deterministic pick: same depth always gets the same variant */
 function pickSeeded(arr, seed){
@@ -685,6 +686,8 @@ export function graffitiPool(depth){
     pool.push({ kind: "text", text: "IT WAS NEVER\nTUESDAY" });
   if (hasFlag("gave-saints-finger"))
     pool.push({ kind: "text", text: "KNOW WHAT\nYOU FEED" });
+  if (hasFlag("asked-about-eye"))
+    pool.push({ kind: "text", text: "IT BLINKS\nWHEN YOU BLINK" });
   // the cycles: the walls remember what the tenants can't
   if (cycleOf(depth) >= 2)
     pool.push({ kind: "text", text: "YOU'VE READ\nTHIS BEFORE" },
@@ -772,6 +775,17 @@ export function pendingBeats(character, depth, player){
 export function applyStory(hub, ctx){
   const { character, depth, run, cycle } = ctx;
   const topics = storyTopicsFor(ctx);
+
+  // what's outside the windows this floor: a scene-keyed aside from the few
+  // voices who'd comment on THIS view (vista.flavour.js — deliberately sparse)
+  const remark = vistaRemarkFor(ctx);
+  if (remark) hub.greet += ` ${remark}`;
+
+  // THE EYE: askable from depth 3 on, answered evasively, once per cycle.
+  // A plain `keep` topic — it sits with the trade option, never rotates out,
+  // and doesn't hold the narrative gate.
+  const eye = eyeTopicFor(ctx);
+  if (eye) hub.topics = [...hub.topics, eye];
 
   // cycles 2 and 3: the déjà vu leaks into the greeting — half-noticed in
   // cycle 2, spoken straight into the static by cycle 3

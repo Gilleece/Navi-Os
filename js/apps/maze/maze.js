@@ -245,7 +245,9 @@ function buildBase(){
   M.goalBeam = null;               // no beacon in the sanctum: one open room, the gate is visible
   M.npcs = s.npcs; M.nearCharacter = null;
   M.tokens = []; M.props = []; M.propFx = null;
-  M.vista = null;                  // no windows down here: the sanctum is sealed
+  M.vista = s.eye;                 // no windows down here: the sanctum is sealed — the
+                                   // only thing from outside is the Eye on the tower,
+                                   // blinking on the same per-frame slot the vista uses
 
   if (!M.lamp){
     M.lamp = new three.PointLight(M.theme.neon, 1.5, 18);

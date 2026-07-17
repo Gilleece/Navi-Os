@@ -244,7 +244,8 @@ function stepOrbit(m, o, dt, t){
 
 /* ---------- shared textures ---------- */
 
-function eyeTexture(three, A, B){
+/* exported: sanctum.js perches this same eye on the Custodian's tower */
+export function eyeTexture(three, A, B){
   const c = canvas(256, 256), g = c.getContext("2d");
   const ring = (rad, w, col) => {
     g.strokeStyle = col; g.lineWidth = w;

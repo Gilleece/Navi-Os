@@ -20,6 +20,7 @@
    ============================================================ */
 import { floorTexture, ceilingTexture, panelTexture, glyphTexture } from "./textures.js";
 import { characterById } from "./characters/characters.js";
+import { eyeTexture } from "./vista.js";
 
 export const ROOM   = 40;    // metres square — ~10 maze cells of open floor
 export const ROOF_H = 14;    // vs the maze's 3.4: the first tall room in the game
@@ -84,7 +85,8 @@ export function buildSanctum(three, scene, M){
   const paneMat  = new three.MeshBasicMaterial({ color: theme.neon, fog: false });
   const trimMat  = paneMat;
   const cyberMat = new three.MeshBasicMaterial({ color: theme.neon, transparent: true,
-                                                 opacity: 0.7, fog: false, side: three.DoubleSide });
+                                                 opacity: 0.7, fog: false, side: three.DoubleSide,
+                                                 depthWrite: false });   // the Eye draws through the beam
 
   /* ---------- the tower ---------- */
   const gTex = glyphTexture(three, theme); gTex.repeat.set(2, 6);
@@ -117,6 +119,37 @@ export function buildSanctum(three, scene, M){
   const beam = new three.Mesh(new three.CylinderGeometry(0.42, 0.58, ROOF_H - 12.4, 10, 1, true), cyberMat);
   beam.position.set(C, 12.4 + (ROOF_H - 12.4)/2, C);
   scene.add(beam);
+
+  /* THE EYE — the watcher from every vista window (vista.js), finally home:
+     perched at the tower's crown, tracking the player, blinking the same
+     slow blink it blinks outside the glass. It hovers just off the crown's
+     rim on the PLAYER'S side — sliding around as they circle the tower, so
+     the crown can never hide it and it is always, always facing you. */
+  const EYE_S = 1.8, EYE_R = 2.0, EYE_Y = 13.05, BLINK = 7.5;
+  const theEye = new three.Mesh(
+    new three.PlaneGeometry(1, 1),
+    new three.MeshBasicMaterial({ map: eyeTexture(three, theme.near, theme.mid),
+                                  transparent: true, depthWrite: false, fog: false }));
+  theEye.position.set(C, EYE_Y, C + EYE_R);
+  theEye.scale.set(EYE_S, EYE_S, 1);
+  theEye.renderOrder = 1;                    // after the beam, so it reads through the light
+  scene.add(theEye);
+  const eyeLook = new three.Vector3();
+  let eyeT = 1;                              // skip the t=0 blink on entry
+  const eyeUpdate = dt => {
+    eyeT += dt;
+    if (M.camera){
+      M.camera.getWorldPosition(eyeLook);
+      const dx = eyeLook.x - C, dz = eyeLook.z - C;
+      const h = Math.hypot(dx, dz) || 1;
+      theEye.position.set(C + (dx / h) * EYE_R, EYE_Y, C + (dz / h) * EYE_R);
+      theEye.lookAt(eyeLook);
+    }
+    const bt = eyeT % BLINK;
+    const shut = bt < 0.28 ? Math.sin((bt / 0.28) * Math.PI) : 0;
+    theEye.scale.set(EYE_S * (1 + 0.03 * Math.sin(eyeT * 0.8)),
+                     EYE_S * Math.max(0.06, 1 - shut), 1);
+  };
 
   // two slow orbits (driven by the main loop's spinner rotation)
   for (const [y, r] of [[4.6, 3.2], [8.4, 2.4]]){
@@ -159,6 +192,7 @@ export function buildSanctum(three, scene, M){
   return {
     walls, npcs, goal, goalLight, spinners,
     ambient, paneMat, trimMat, cyberMat,
+    eye: { update: eyeUpdate },   // plugs into the M.vista per-frame slot
     // enter at the south wall, facing down the hall at the tower
     playerStart: { x: C, z: ROOM - 3.5, yaw: 0 },
   };
