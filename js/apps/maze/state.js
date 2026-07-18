@@ -83,10 +83,15 @@ export function isBaseDepth(depth){ return depth % DEPTHS_PER_CYCLE === 0; }
    replays: relaunching the maze after a previous run is a new loop — the
    characters keep their memories and comment on seeing you "again from
    the top". Per-character memory lives on the Character instances.
+   `loops` counts Protocols actually COMPLETED (walked all the way to the
+   Custodian's door) — distinct from `run`, which climbs on every relaunch,
+   abandoned or not. The déjà-vu replay greets read `loops`, so a player who
+   quits early and starts over is NOT greeted as if they had been rewound;
+   only a genuine trip to the bottom earns that.
    `depth` mirrors the level currently being played (maze.js keeps it in
    sync) so systems without engine access — the trust cap in
    characters.js — can scale with how deep the player is. */
-export const story = { flags: new Set(), run: 1, started: false, depth: 1 };
+export const story = { flags: new Set(), run: 1, loops: 0, started: false, depth: 1 };
 export function setFlag(id){ story.flags.add(id); }
 export function hasFlag(id){ return story.flags.has(id); }
 

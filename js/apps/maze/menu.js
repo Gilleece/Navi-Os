@@ -51,6 +51,7 @@ function snapshot(depth){
     savedAt: new Date().toISOString(),
     depth,
     run: story.run,
+    loops: story.loops,
     flags: [...story.flags],
     player: {
       name: player.name,
@@ -82,10 +83,12 @@ export function saveGame(depth){
    must survive for New Game's déjà vu), but retire it — no CONTINUE back
    into a terminated Protocol. */
 export function markCompleted(){
+  story.loops += 1;   // a Protocol was walked to the bottom — the rewind is now earned
   const s = storage(); if (!s) return false;
   try {
     s.setItem(KEY, JSON.stringify({
-      v: VERSION, completed: true, run: story.run, savedAt: new Date().toISOString(),
+      v: VERSION, completed: true, run: story.run, loops: story.loops,
+      savedAt: new Date().toISOString(),
     }));
     return true;
   } catch { return false; }
@@ -96,6 +99,13 @@ export function markCompleted(){
 function savedRun(){
   const s = storage(); if (!s) return 0;
   try { return JSON.parse(s.getItem(KEY))?.run ?? 0; } catch { return 0; }
+}
+
+/* completed-loops from the slot — carried across New Game so the déjà-vu
+   greets stay earned even if the page was reloaded since the last finish */
+function savedLoops(){
+  const s = storage(); if (!s) return 0;
+  try { return JSON.parse(s.getItem(KEY))?.loops ?? 0; } catch { return 0; }
 }
 
 /* peek at the slot without touching game state (launcher labels) */
@@ -117,6 +127,7 @@ export function loadGame(){
 
   story.flags = new Set(d.flags ?? []);
   story.run = d.run ?? 1;
+  story.loops = d.loops ?? 0;
   story.started = true;
 
   player.name = d.player.name ?? "OPERATOR";
@@ -146,6 +157,7 @@ export function loadGame(){
 export function resetGame(){
   const prev = Math.max(story.started ? story.run : 0, savedRun());
   story.run = prev + 1;
+  story.loops = Math.max(story.loops, savedLoops());  // completed Protocols carry over
   story.started = true;
   story.flags.clear();
   resetPlayer();

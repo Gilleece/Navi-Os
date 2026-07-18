@@ -466,9 +466,12 @@ const STATIC_TOPICS = {
   ],
 };
 
-/* ---------- replays (run 2+) ---------------------------------------------
-   Relaunching after a previous run rewinds the player to depth 1, but the
-   characters keep their memories. Said once per character per run. */
+/* ---------- replays (after a completed Protocol) -------------------------
+   Once the player has walked a Protocol all the way to the Custodian's door
+   (state.js `loops` >= 1), New Game rewinds them to depth 1 but the
+   characters keep their déjà vu. Said once per character per run. Gated on
+   `loops`, NOT the raw relaunch counter, so a first descent — or a run
+   abandoned early and restarted — never triggers the rewound greeting. */
 const REPLAY_GREETS = {
   scally: "*He does a double-take, then laughs, low.* ...back at the very top, amico? Mamma mia. The Protocol rewound you. But Scally remembers everything, eh. Everything.",
   homiss: "*He blinks at ye.* Mornin'. ...again. Ye've a fresh-off-the-boat look about ye that I do NOT care for, seein' as I know yer face well.",
@@ -759,7 +762,7 @@ function storyTopicsFor(ctx){
 export function pendingBeats(character, depth, player){
   const ctx = { depth, shownDepth: depthInCycle(depth), cycle: cycleOf(depth),
                 player, affinity: character.affinity, tone: character.tone,
-                character, run: story.run };
+                character, run: story.run, loops: story.loops };
   const beats = storyTopicsFor(ctx).filter(t =>
     t.gate !== false
     && !(t.once && character.topicRetired(t.id))
@@ -773,7 +776,7 @@ export function pendingBeats(character, depth, player){
 }
 
 export function applyStory(hub, ctx){
-  const { character, depth, run, cycle } = ctx;
+  const { character, depth, run, cycle, loops } = ctx;
   const topics = storyTopicsFor(ctx);
 
   // what's outside the windows this floor: a scene-keyed aside from the few
@@ -794,7 +797,10 @@ export function applyStory(hub, ctx){
     if (g) hub.greet += ` ${g}`;
   }
 
-  if (run > 1 && depth === 1 && !character.recalls(`rerun-${run}`)){
+  // only once the player has actually walked a Protocol to the bottom (loops
+  // >= 1) do the tenants greet them as rewound — a fresh first descent, or an
+  // abandoned-and-restarted run that never reached the door, stays clean.
+  if (loops >= 1 && depth === 1 && !character.recalls(`rerun-${run}`)){
     character.remember(`rerun-${run}`);
     const g = REPLAY_GREETS[character.id];
     if (g) hub.greet += ` ${g}`;
